@@ -1,0 +1,69 @@
+generator client {
+   provider = "prisma-client-js"
+  output   = "../generated/prisma"
+}
+
+datasource db {
+  provider = "mysql"
+}
+
+model assets {
+  id          Int          @id @default(autoincrement())
+  type_id     Int?
+  name        String       @db.VarChar(50)
+  status      String?      @default("available") @db.VarChar(20)
+  qr_code     String?      @unique(map: "qr_code") @db.VarChar(36)
+  created_at  DateTime?    @default(now()) @db.DateTime(0)
+  type_assets type_assets? @relation(fields: [type_id], references: [id], onUpdate: NoAction, map: "fk_assets_type")
+  checkouts   checkouts[]
+
+  @@index([type_id], map: "fk_assets_type")
+}
+
+model checkouts {
+  id             Int       @id @default(autoincrement())
+  user_id        Int?
+  asset_id       Int?
+  checked_out_at DateTime? @default(now()) @db.DateTime(0)
+  checked_in_at  DateTime? @db.DateTime(0)
+  note           String?   @db.Text
+  assets         assets?   @relation(fields: [asset_id], references: [id], onDelete: Cascade, onUpdate: NoAction, map: "fk_checkouts_asset")
+  users          users?    @relation(fields: [user_id], references: [id], onDelete: Cascade, onUpdate: NoAction, map: "fk_checkouts_user")
+
+  @@index([asset_id], map: "fk_checkouts_asset")
+  @@index([user_id], map: "fk_checkouts_user")
+}
+
+model department {
+  id    Int     @id @default(autoincrement())
+  name  String  @db.VarChar(30)
+  users users[]
+}
+
+model roles {
+  id    Int     @id @default(autoincrement())
+  name  String  @db.VarChar(30)
+  users users[]
+}
+
+model type_assets {
+  id     Int      @id @default(autoincrement())
+  name   String   @db.VarChar(30)
+  assets assets[]
+}
+
+model users {
+  id            Int         @id @default(autoincrement())
+  department_id Int?
+  role_id       Int?
+  name          String      @db.VarChar(30)
+  password      String      @db.VarChar(255)
+  email         String?     @db.VarChar(30)
+  phone         String?     @db.VarChar(20)
+  checkouts     checkouts[]
+  department    department? @relation(fields: [department_id], references: [id], onUpdate: NoAction, map: "fk_users_department")
+  roles         roles?      @relation(fields: [role_id], references: [id], onUpdate: NoAction, map: "fk_users_role")
+
+  @@index([department_id], map: "fk_users_department")
+  @@index([role_id], map: "fk_users_role")
+}
