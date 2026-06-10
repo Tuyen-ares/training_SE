@@ -9,6 +9,10 @@
     "preview": "vite preview"
   },
   "dependencies": {
+    "bcrypt": "^6.0.0",
+    "cors": "^2.8.6",
+    "express-validator": "^7.3.2",
+    "jsonwebtoken": "^9.0.3",
     "pinia": "^3.0.4",
     "vue": "^3.5.32",
     "vue-router": "^5.0.4"
