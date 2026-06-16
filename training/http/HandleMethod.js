@@ -2,13 +2,16 @@ const http = require('http');
 const url = require('url');
 
 let userData = [
- { id: 1, name: 'Alice' },
- { id: 2, name: 'Bob' }
+ { id: 1, name: 'Jinna' },
+ { id: 2, name: 'Hayete' }
 ];
 
 const server = http.createServer((req, res) => {
   const {method,url} = req;
-  const parseUrl = new URL(url, `http://${req.headers.host}`);
+  const protocol = req.socket.encrypted ? 'https' : 'http';
+  //console.log(`Received ${method} request for ${url}`);
+  const parseUrl = new URL(url, `${protocol}://${req.headers.host}`);
+  //console.log("parrseURL chứa: ", parseUrl);
   const pathName = parseUrl.pathname;
 
   //set CORS header
