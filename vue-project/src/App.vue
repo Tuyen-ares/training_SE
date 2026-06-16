@@ -7,19 +7,14 @@ import { RouterLink } from 'vue-router'
   <header>
     <img src="@/assets/logo.svg" witdth="60px" height="60px" class="logo" alt="Vite logo" />
     <nav>
-      <RouterLink to="/">
-          <div class="btn-main">
-              Home
-            </div>
-     </RouterLink>
      <RouterLink to="/">
         <div class="btn-action">
         Login
           </div>
       </RouterLink>
-       <RouterLink to="/create">
+       <RouterLink to="/register">
         <div class="btn-action">
-        Create
+        register
           </div>
       </RouterLink>
     </nav>

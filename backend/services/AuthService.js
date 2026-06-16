@@ -1,82 +1,68 @@
 const bcrypt = require('bcrypt');
 const jwt = require('jsonwebtoken');
 const prisma = require('../prisma');
-
 const salt = bcrypt.genSaltSync(10);
 
-const hashUserPassword = async (userPassword) => {
-  let hashPassword = await bcrypt.hash(userPassword, salt);
+
+const hashUserPassword = async (Password) =>{
+  const hashPassword = await bcrypt.hash(Password, salt);
   return hashPassword;
-};
+}
 
-const createAuthError = (code, message) => {
-  const error = new Error(message);
-  error.code = code;
+const AuthError = (codeErr, message) =>{
+  const  error = new Error(message);
+  error.code = codeErr;
   return error;
-};
+}
 
-const register = async ({ departmentId, roleId, name, password, email, phone }) => {
-  const existing = await prisma.users.findFirst({ where: { email } });
-  if (existing) {
-    throw createAuthError('EMAIL_IN_USE', 'Email already in use');
+const register = async ({departmentId, roleId, name, password, email, phone}) =>{
+  const existEmail = await prisma.users.findFirst({
+    where: { email }
+  })
+  if(existEmail){ 
+   throw AuthError('EMAIL_IN_USE', 'Email already in use');
   }
-
-  const hashPass = await hashUserPassword(password);
-
-  const users = await prisma.users.create({
-    data: {
-      department_id: departmentId ?? null,
-      role_id: roleId ?? null,
+  const hashPassword = await hashUserPassword(password);
+  const user = await prisma.users.create({
+    data:{
+      department_id: departmentId,
+      role_id: roleId,
       name: name,
-      email: email,
-      phone: phone,
-      password: hashPass
+      password: hashPassword,
+      email : email,
+      phone : phone
     }
-  });
-  return users;
-};
+  })
+  return user;
+}
+const login = async ({email, password} ) => {
+ const user = await prisma.users.findFirst({
+  where: { email }
+ });
+ if(!user){ throw AuthError('INVALID_EMAIL', 'Invalid email'); }
 
-const login = async ({ email, password }) => {
-  const user = await prisma.users.findFirst({
-    where: { email },
-    include: {
-      department: true,
-      roles: true,
-    },
-  });
+ const isPasswordValidate  = await bcrypt.compare(password, user.password);
+ if(!isPasswordValidate){ throw AuthError('INVALID_PASSWORD', 'Invalid password'); }
 
-  if (!user) {
-    throw createAuthError('INVALID_CREDENTIALS', 'Invalid email or password');
+ const token = jwt.sign(
+  { sub: user.id,
+    email: user.email,
+    name: user.name,
+    roleId: user.role_id,
+    departmentId: user.department_id
+  },
+  process.env.JWT_SECRET,
+  { expiresIn: '1h'
   }
-
-  const isPasswordValid = await bcrypt.compare(password, user.password);
-  if (!isPasswordValid) {
-    throw createAuthError('INVALID_CREDENTIALS', 'Invalid email or password');
+ )
+ return { token ,
+  user: {
+    id: user.id,
+    name: user.name,
+    email: user.email,
+    roleId: user.role_id
   }
-
-  const token = jwt.sign(
-    {
-      sub: user.id,
-      email: user.email,
-      roleId: user.role_id,
-      departmentId: user.department_id,
-      name: user.name,
-    },
-    process.env.JWT_SECRET,
-    { expiresIn: process.env.JWT_EXPIRES_IN || '1h' }
-  );
-
-  return {
-    token,
-    user: {
-      id: user.id,
-      name: user.name,
-      email: user.email,
-      phone: user.phone,
-      department: user.department,
-      roles: user.roles,
-    },
-  };
+ };
 };
 
 module.exports = { register, login };

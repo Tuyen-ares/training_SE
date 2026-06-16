@@ -14,14 +14,14 @@ const router = createRouter({
       component : () => import('../views/Login/Login.vue')
     },
     {
-      path: '/create',
-      name: 'create',
-      component: () => import('../views/Admin/AsssetCreate.vue')
+      path: '/dashboard',
+      name: 'dashboard',
+      component: () => import('../views/Admin/Dashboard.vue')
     },
      {
-      path: '/assets',
-      name: 'assets',
-      component: () => import('../views/Admin/AssetsView.vue')
+      path: '/register',
+      name: 'register',
+      component: () => import('../views/Login/register.vue')
     },
       {
       path: '/assets/:id',

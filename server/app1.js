@@ -9,7 +9,7 @@ const server = net.createServer((socket) => {
     buffer += chunk.toString();
 
     if(isProcessing) return;
-
+    
     // Parse ranh giới header
     const headerEndIndex = buffer.indexOf('\r\n\r\n');
     if(headerEndIndex === -1) return; //chưa đủ header
@@ -19,7 +19,7 @@ const server = net.createServer((socket) => {
     //tách header và body để xử lí
     const rawHeader = buffer.slice(0,headerEndIndex);
     let rawBody = buffer.slice(headerEndIndex + 4); // lấy phần body sau header
-
+      //GET ../api/user?id=1&name=tuyen .. HTTP/1.1
       // phân tích xử lí luồng request
       const lines = rawHeader.split('\r\n');
       const requestLine = lines[0];
@@ -45,9 +45,9 @@ const server = net.createServer((socket) => {
       });
     }
     //gui response
-    const responseBod = (StatusCode, StatusText, contentType, body) =>{
+    const responseBod = (version,StatusCode, StatusText, contentType, body) =>{
        const response = 
-                `HTTP/1.1 ${StatusCode} ${StatusText}\r\n` +
+                `${version} ${StatusCode} ${StatusText}\r\n` +
                 `Content-Type: ${contentType}\r\n` +
                 `Content-Length: ${Buffer.byteLength(body)}\r\n` +
                 `Connection: close\r\n` +
@@ -97,9 +97,9 @@ const server = net.createServer((socket) => {
          method: 'POST',
         data : parsedBody
       });
-      responseBod(200, 'OK', 'application/json', responseBody);
+      responseBod(version,200, 'OK', 'application/json', responseBody);
     } else {
-            console.log(`   ❌ 404: ${method} ${path} not found`);
+            console.log(`    404: ${method} ${path} not found`);
             sendResponse(404, 'Not Found', 'text/plain', 'Not Found');
         }
     
