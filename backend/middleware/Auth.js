@@ -17,7 +17,7 @@ const verifyToken = (req, res, next) => {
   }
 };
 
-const authorizeRoles = (...allowedRoles) => {
+const authorizeRoles = (allowedRoles) => {
   return (req, res, next) => {
     if (!req.user) {
       return res.status(401).json({ error: 'Unauthorized' });

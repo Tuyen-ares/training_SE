@@ -44,15 +44,20 @@ const login = async ({email, password} ) => {
  const isPasswordValidate  = await bcrypt.compare(password, user.password);
  if(!isPasswordValidate){ throw AuthError('INVALID_PASSWORD', 'Invalid password'); }
 
- const token = jwt.sign(
-  { sub: user.id,
+ const payload = {
+    sub: user.id,
     email: user.email,
     name: user.name,
     roleId: user.role_id,
     departmentId: user.department_id
+ };
+
+ const token = jwt.sign(
+  { 
+    payload
   },
   process.env.JWT_SECRET,
-  { expiresIn: '1h'
+  { expiresIn: '30s'
   }
  )
  return { token ,

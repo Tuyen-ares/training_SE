@@ -42,15 +42,15 @@ const server = http.createServer((req, res) => {
     req.on('end',()=>{
       try{
         const newUser = JSON.parse(body);
-        const UserId = users.Length>0?Math.max(...users.map(u=>u.id)) + 1 : 1;
-        newUser.id = UserId;
+        const userId = users.Length > 0 ? Math.max(...users.map(u=>u.id)) + 1 : 1;
+        newUser.id = userId;
         userData.push(newUser);
         res.writeHead(201,{'Content-Type':'application/json'});
         res.end(JSON.stringify(newUser));
       }
       catch(err){
         res.writeHead(400,{'Content-Type':'application/json'});
-        ress.end(JSON.stringify({error:'Invalid JSON'}));
+        res.end(JSON.stringify({error:'Invalid JSON'}));
       }
     })
   }
