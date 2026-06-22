@@ -1,21 +1,34 @@
 <script setup>
 import {ref,reactive} from 'vue';
-
+import { useRouter } from 'vue-router';
+import {useAuthStore} from '../../stores/auth';
 const loginUser = reactive({
   username: '',
   password: ''
 });
 
+// const handleLogin = () => {
+//   // Handle login logic here
+//   console.log('Username:', loginUser.username);
+//   console.log('Password:', loginUser.password);
+// };
+const router = useRouter();
+const authStore = useAuthStore();
+
 const handleLogin = () => {
-  // Handle login logic here
-  console.log('Username:', loginUser.username);
-  console.log('Password:', loginUser.password);
+  if (loginUser.username === 'admin' && loginUser.password === '123456') {
+    authStore.login();
+    router.push({ name: 'dashboard' });
+  } else {
+    alert('Invalid credentials');
+  }
 };
+
 </script>
 
 <template>
   <div class="wrapper">
-  <div class="login" @submit.prevent="handleLogin">
+  <form class="login" @submit.prevent="handleLogin()">
      <div class="label"> <p>Login</p></div>
       <div class="form-group">
         <label >Username: </label>
@@ -26,7 +39,7 @@ const handleLogin = () => {
         <input type="password" placeholder="Password" v-model="loginUser.password" required/>
       </div>
       <button type="submit">Login</button>
-    </div>
+    </form>
   </div>
   </template>
 

@@ -7,7 +7,7 @@ const handleRegister = async (req, res) => {
     const user = await AuthService.register({ departmentId, roleId, name, password, email, phone });
     return res.status(201).json({ message: 'User registered successfully', user });
   } catch (err) {
-    if (err.code === 'EMAIL_IN_USE') {
+    if (err.message === 'EMAIL_IN_USE') {
       return res.status(400).json({ error: 'Email already in use' });
     }
     return res.status(500).json({ error: 'Server error', detail: err.message });
@@ -24,10 +24,10 @@ const handleLogin = async (req, res) => {
       user: result.user,
     });
   } catch (err) {
-    if (err.code === 'INVALID_EMAIL') {
+    if (err.message === 'INVALID_EMAIL') {
       return res.status(401).json({ error: 'Invalid email' });
     }
-    if (err.code === 'INVALID_PASSWORD') {
+    if (err.message === 'INVALID_PASSWORD') {
       return res.status(401).json({ error: 'Invalid password' });
     }
     return res.status(500).json({ error: 'Server error', detail: err.message });

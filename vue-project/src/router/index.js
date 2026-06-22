@@ -1,13 +1,9 @@
 import { createRouter, createWebHistory } from 'vue-router'
-
+import { useAuthStore } from '../stores/auth'
+import { useAppStore } from '../stores/app'
 const router = createRouter({
   history: createWebHistory(import.meta.env.BASE_URL),
   routes: [
-    // {
-    //   path: '/',
-    //   name: 'home',
-    //   component: HomeView,
-    // },
        {
       path :'/',
       name : 'login',
@@ -21,44 +17,45 @@ const router = createRouter({
     {
       path: '/dashboard',
       name: 'dashboard',
-      component: () => import('../views/Admin/Dashboard.vue')
+      component: () => import('../views/Admin/Dashboard.vue'),
+      meta : { requiresAuth: true }
     },
      {
       path: '/register',
-      name: 'register',
-      component: () => import('../views/Login/Register.vue')
-    },
-      {
-      path: '/assets/:id',
-      name: 'assetDetail',
-      component: () => import('../views/Admin/AssetDetailView.vue')
-    },
-    {
-      path: '/reactivity',
-      name: 'reactivity',
-      component: () => import('../views/train/reactivity.vue')
-    },
-     {
-      path: '/hookTrain',
-      name: 'hookTrain',
-      component: () => import('../views/train/Component/hookTrain.vue')
-    },
-      {
-      path: '/dashboardTest',
-      name: 'dashboardTest',
-      component: () => import('../views/train/Component/dashboardTest.vue')
-    },
-      {
-      path: '/app2',
-      name: 'app2',
-      component: () => import('../views/train/app4.vue')
-    },
+      name: 'egister',
+      component: () => import('../views/Login/Register.vue')},
       {
       path: '/CartItem',
       name: 'CartItem',
       component: () => import('../views/train/Component/SearchBar.vue')
     },
   ],
+})
+
+
+router.beforeEach((to, _, next) => {
+  const appStore = useAppStore();
+  const authStore = useAuthStore()
+  appStore.setLoading(true);
+  if (to.matched.some(record => record.meta.requiresAuth) && !authStore.isAuthenticated) {
+    next({ name: 'login' })
+  } else {
+    next()
+  }
+})
+
+// router.beforeEach((to, _, next) => {
+//   const authStore = useAuthStore()
+//   if (to.matched.some(record => record.meta.requiresAuth) && !authStore.isAuthenticated) {
+//     next({ name: 'login' })
+//   } else {
+//     next()
+//   }
+// })
+
+router.afterEach((to, from) => {
+  const appStore = useAppStore();
+  appStore.setLoading(false);
 })
 
 export default router

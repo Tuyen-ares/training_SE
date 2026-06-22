@@ -9,7 +9,7 @@ const handleGetAllUser = async (req, res) => {
     });
   }
   catch(err){
-    return res.status(500).json({ error : 'Server error', detailErr : err.message });
+    return res.status(500).json({ error : 'Server error'});
   }
 }
 
@@ -23,7 +23,7 @@ handleGetUserById = async (req, res) => {
     return res.status(200).json({ user });
   }
   catch(err){
-    return res.status(500).json({ error : 'Server error', detailErr : err.message });
+    return res.status(500).json({ error : 'Server error'});
   }
 }
 

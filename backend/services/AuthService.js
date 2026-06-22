@@ -9,18 +9,13 @@ const hashUserPassword = async (Password) =>{
   return hashPassword;
 }
 
-const AuthError = (codeErr, message) =>{
-  const  error = new Error(message);
-  error.code = codeErr;
-  return error;
-}
 
 const register = async ({departmentId, roleId, name, password, email, phone}) =>{
   const existEmail = await prisma.users.findFirst({
     where: { email }
   })
   if(existEmail){ 
-   throw AuthError('EMAIL_IN_USE', 'Email already in use');
+   throw new Error('EMAIL_IN_USE');
   }
   const hashPassword = await hashUserPassword(password);
   const user = await prisma.users.create({
@@ -39,10 +34,10 @@ const login = async ({email, password} ) => {
  const user = await prisma.users.findFirst({
   where: { email }
  });
- if(!user){ throw AuthError('INVALID_EMAIL', 'Invalid email'); }
+ if(!user){ throw new Error('INVALID_EMAIL'); }
 
  const isPasswordValidate  = await bcrypt.compare(password, user.password);
- if(!isPasswordValidate){ throw AuthError('INVALID_PASSWORD', 'Invalid password'); }
+ if(!isPasswordValidate){ throw new Error('INVALID_PASSWORD'); }
 
  const payload = {
     sub: user.id,
