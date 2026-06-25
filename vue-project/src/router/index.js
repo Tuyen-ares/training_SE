@@ -37,25 +37,15 @@ router.beforeEach((to, _, next) => {
   const appStore = useAppStore();
   const authStore = useAuthStore()
   appStore.setLoading(true);
-  if (to.matched.some(record => record.meta.requiresAuth) && !authStore.isAuthenticated) {
-    next({ name: 'login' })
-  } else {
+  if (to.name !== 'login' && !authStore.isAuthenticated) next({ name: 'login' })
+  else {
     next()
   }
 })
 
-// router.beforeEach((to, _, next) => {
-//   const authStore = useAuthStore()
-//   if (to.matched.some(record => record.meta.requiresAuth) && !authStore.isAuthenticated) {
-//     next({ name: 'login' })
-//   } else {
-//     next()
-//   }
+// router.afterEach((to, from) => {
+//   const appStore = useAppStore();
+//   appStore.setLoading(false);
 // })
-
-router.afterEach((to, from) => {
-  const appStore = useAppStore();
-  appStore.setLoading(false);
-})
 
 export default router

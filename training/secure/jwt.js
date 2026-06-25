@@ -4,25 +4,7 @@ const express = require('express');
 const app = express();
 
 app.use(express.json());
-/*
-Luồng:
-  login {
-    hứng username và password
-    kiểm tra password 
-    nạp payload 
-    đúng pass thì đi đăng ký token kèm reresh token
-    đẩy làm mới lên arr
-    res về 2 token đó để test
-  }
-    kiểm tra auth{
-      bắt thằng req authorization từ headers
-      kiểm tra headers 
-      lấy token từ headers
-      nếu hợp lệ thì verify token và attach user vào req.user
-      next() để đi vào route
-      nếu không hợp lệ thì res về lỗi
-    }
-*/
+
 const JWT_SECRET = 'Tuyen';
 
 const REFRESH_SECRET = 'TuyenRefresh';

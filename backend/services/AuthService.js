@@ -30,6 +30,7 @@ const register = async ({departmentId, roleId, name, password, email, phone}) =>
   })
   return user;
 }
+
 const login = async ({email, password} ) => {
  const user = await prisma.users.findFirst({
   where: { email }
