@@ -15,11 +15,11 @@ const parseHeaders = (rawHeaders) => {
     const lines = rawHeaders.split('\r\n');
     const headers = {};
     for(let i = 1; i < lines.length; i++) {
-        // const indexLine = lines[i].indexOf(':');
-        // const key = lines[i].substring(0, indexLine).trim().toLowerCase();
-        // const value = lines[i].substring(indexLine + 1).trim();
-        const [key, value] = lines[i].split(':');
-        headers[key] = value;
+        const indexLine = lines[i].indexOf(':');
+        const key = lines[i].substring(0, indexLine).trim().toLowerCase();
+        const value = lines[i].substring(indexLine + 1).trim();
+        // const [key, value] = lines[i].split(':');
+        // headers[key] = value;
     }
     return headers;
 }

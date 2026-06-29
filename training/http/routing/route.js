@@ -3,4 +3,4 @@ const UserRouting = {
   ADD_USER: '/user'
 };
 
-module.exports = UserRouting;
+module.exports = {UserRouting};

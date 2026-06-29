@@ -1,9 +1,14 @@
 const net = require('net');
-const userRepository = require('./repository/UserRepository');
-const {splitRawReq, parseMethodAndFullPath, ParseFullPath, parseHeaders} = require('./helpParse/Parse');
-const {RequestMethod} = require('./Method/method');
-const {UserRouting} = require('./Routing/route');
+const UserRepository = require('./repository/UserRepository');
+const {splitRawReq, parseMethodAndFullPath, ParseFullPath, parseHeaders} = require('./helpers/Parse');
+const {RequestMethod} = require('./method/method');
+const {UserRouting} = require('./routing/route');
+const {method} = require('./method/method');
+const UserService = require('./service/userService');
 
+
+const userRepository = new UserRepository();
+const userService = new UserService(userRepository);
 
 const response = (version,StatusCode, StatusText, contentType, body) =>{
        const res = 
@@ -16,9 +21,10 @@ const response = (version,StatusCode, StatusText, contentType, body) =>{
 }
 
 const server = net.createServer((socket) => {
-  
-  socket.on('data', (data) => {
+ 
     let buffer = '';
+  socket.on('data', (data) => {
+    console.log('Client req :', data.toString());
     buffer += data.toString();
 
     const req = splitRawReq(buffer);
@@ -29,8 +35,9 @@ const server = net.createServer((socket) => {
     const { path, query } = ParseFullPath(fullPath);
      console.log('\n Path:', path);
      console.log('\n Query:', query);
+
     if (method === RequestMethod.GET && path === UserRouting.GET_USER) {
-      const users = userRepository.getAllUsers();
+      const users = userService.getAllUsers();
       const res = response(version, 200, 'OK', 'application/json', JSON.stringify(users));
       socket.write(res);
       socket.end();
@@ -40,19 +47,19 @@ const server = net.createServer((socket) => {
       console.log('Raw body:', req.rawBody);
       const headers = parseHeaders(req.rawHeaders);
       console.log('Headers:', headers);
-      const contentLength = parseInt(headers['Content-Length']);
+      const contentLength = parseInt(headers['content-length']);
       console.log('Content Length:', contentLength);
       if(contentLength === req.rawBody.length){
         // const parseBody = JSON.parse(req.rawBody);
         // userRepository.addUser(parseBody);
-         userRepository.addUser(JSON.parse(req.rawBody));
-      const res = response(version, 200, 'OK', 'application/json', '{"message": "User added successfully"}');
-      socket.write(res);
-      socket.end();
+        userService.addUser(JSON.parse(req.rawBody));
+        const res = response(version, 200, 'OK', 'application/json', '{"message": "User added successfully"}');
+        socket.write(res);
+        socket.end();
       } else{
-      const res = response(version, 400, 'Bad Request', 'application/json', JSON.stringify({error: 'Invalid request'}));
-      socket.write(res);
-      socket.end();
+          const res = response(version, 400, 'Bad Request', 'application/json', JSON.stringify({error: 'Invalid request'}));
+          socket.write(res);
+          socket.end();
     }
 
     }
