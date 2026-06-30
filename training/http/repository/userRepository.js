@@ -12,6 +12,7 @@ class UserRepository {
     const newUserId = users.length > 0 ? Math.max(...users.map(u => u.id)) + 1 : 1;
     const newUser = new userModel(newUserId, usersData.username,usersData.password,usersData.email);
     users.push(newUser);
+    return newUser;
   }
 }
 

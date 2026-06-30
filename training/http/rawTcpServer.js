@@ -1,5 +1,5 @@
 const net = require('net');
-const UserRepository = require('./repository/UserRepository');
+const UserRepository = require('./repository/userRepository');
 const {splitRawReq, parseMethodAndFullPath, ParseFullPath, parseHeaders} = require('./helpers/Parse');
 const {RequestMethod} = require('./method/method');
 const {UserRouting} = require('./routing/route');
@@ -52,8 +52,8 @@ const server = net.createServer((socket) => {
       if(contentLength === req.rawBody.length){
         // const parseBody = JSON.parse(req.rawBody);
         // userRepository.addUser(parseBody);
-        userService.addUser(JSON.parse(req.rawBody));
-        const res = response(version, 200, 'OK', 'application/json', '{"message": "User added successfully"}');
+        const body = userService.addUser(JSON.parse(req.rawBody));
+        const res = response(version, 200, 'OK', 'application/json', JSON.stringify(body));
         socket.write(res);
         socket.end();
       } else{
