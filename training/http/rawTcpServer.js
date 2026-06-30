@@ -7,7 +7,8 @@ const {method} = require('./method/method');
 const UserService = require('./service/userService');
 
 
-const userRepository = new UserRepository();
+const usersData = require("./data/userData");
+const userRepository = new UserRepository(usersData);
 const userService = new UserService(userRepository);
 
 const response = (version,StatusCode, StatusText, contentType, body) =>{

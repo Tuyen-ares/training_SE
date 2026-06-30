@@ -19,7 +19,7 @@ const parseHeaders = (rawHeaders) => {
         const key = lines[i].substring(0, indexLine).trim().toLowerCase();
         const value = lines[i].substring(indexLine + 1).trim();
         // const [key, value] = lines[i].split(':');
-        // headers[key] = value;
+         headers[key] = value;
     }
     return headers;
 }
