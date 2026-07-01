@@ -1,19 +1,19 @@
 const http = require('http');
 const RequestMethod = require('./method/method');
-const {ProductRouting} = require('./routing/productRouting');
-const productRepository = require('./repository/productRepository');
-const productService = require('./service/productService');
+const AssetRouting = require('./routing/assetsRouting');
+const assetRepository = require('./repository/assetsRepository');
+const assetService = require('./service/assetsService');
+const assetController = require('./controller/assetsController');
+const pool = require('./data/database');
+// const assetsData = [
+//   { id: 1, type_id: 1, name: "Bàn phím cơ", status: "available", qr_code: "QR001", create_at: new Date() },
+//   { id: 2, type_id: 2, name: "Chuột Gaming", status: "available", qr_code: "QR002", create_at: new Date() },
+//   { id: 3, type_id: 3, name: "Màn hình 4K", status: "available", qr_code: "QR003", create_at: new Date() }
+// ];
 
-
-
-const productsData = [
-  { id: 1, name: "Bàn phím cơ", price: 1000, category: "gear" },
-  { id: 2, name: "Chuột Gaming", price: 500, category: "gear" },
-  { id: 3, name: "Màn hình 4K", price: 4000, category: "screen" }
-];
-
-const productRepositoryInstance = new productRepository(productsData);
-const productServiceInstance = new productService(productRepositoryInstance);
+const assetRepositoryInstance = new assetRepository(pool);
+const assetServiceInstance = new assetService(assetRepositoryInstance);
+const assetControllerInstance = new assetController(assetServiceInstance);
 
 const server = http.createServer((req,res)=> {
 
@@ -36,34 +36,17 @@ const server = http.createServer((req,res)=> {
     res.end();
     return;
   }
+
+
   //bước 5 : route request dựa trên method và pathname
-  if(method === RequestMethod.GET && pathName === ProductRouting.GET_PRODUCT)
-     res.writeHead(200,{'Content-Type':'application/json'});
-    return res.end(JSON.stringify(productServiceInstance.getAllProducts()));
+  if(method === RequestMethod.GET && pathName === AssetRouting.GET_ASSET)
+    // res.writeHead(200,{'Content-Type':'application/json'});
+    assetControllerInstance.getAllAssets(req, res);
 
-  if(method === RequestMethod.POST && pathName === ProductRouting.ADD_PRODUCT){
-    let body = '';
-
-
-
-    req.on('data',(chunkData)=>{
-      body += chunkData.toString();
-    })
-    req.on('end',()=>{
-      try{
-         const newProduct = JSON.parse(body);
-        // const newProductId = productsData.length > 0 ? Math.max(...productsData.map(p=>p.id)) + 1 : 1;
-        // newProduct.id = newProductId;
-        // productsData.push(newProduct);
-        res.writeHead(201,{'Content-Type':'application/json'});
-        res.end(JSON.stringify(productServiceInstance.addProduct(newProduct)));
-      }catch(err){
-        res.writeHead(400,{'Content-Type':'application/json'});
-        res.end(JSON.stringify({error:'Invalid JSON'}));
-      }
-    })
+  if(method === RequestMethod.POST && pathName === AssetRouting.ADD_ASSET){
+    assetControllerInstance.addAsset(req,res);
   }
-  //bước 6 : xử lý lỗi và trả về response
+
 
 })
 
