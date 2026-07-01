@@ -3,4 +3,9 @@ const UserRouting = {
   ADD_USER: '/user'
 };
 
-module.exports = {UserRouting};
+const ProductRouting = {
+  GET_PRODUCT: '/products',
+  ADD_PRODUCT: '/product'
+};
+
+module.exports = {UserRouting, ProductRouting};
