@@ -26,7 +26,7 @@ const server = http.createServer((req,res)=> {
   const pathName = parseUrl.pathname;
 
   //bước 3 : set CORS
- // res.setHeader('Access-Control-Allow-Origin', '*');
+  res.setHeader('Access-Control-Allow-Origin', '*');
   res.setHeader('Access-Control-Allow-Methods', 'GET, POST, OPTIONS');
   res.setHeader('Access-Control-Allow-Headers', 'Content-Type');
 
