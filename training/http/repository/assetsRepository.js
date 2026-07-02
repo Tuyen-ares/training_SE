@@ -10,11 +10,15 @@ class AssetRepository {
     return rows;
   }
 
-  async addAsset(data) {
+  async addAsset(data,qrcode) {
     console.log('Adding asset:', this.assets);
-    const newAssetId = this.assets.length > 0 ? Math.max(...this.assets.map(a => a.id)) + 1 : 1;
-    const newAsset = new productModel(newAssetId, data.type_id, data.name, data.status, data.qr_code, data.create_at);
-    this.assets.push(newAsset);
+    // const newAssetId = this.assets.length > 0 ? Math.max(...this.assets.map(a => a.id)) + 1 : 1;
+    const [rows] =
+     await this.assets.query('INSERT INTO assets (type_id, name, status, qr_code) VALUES (?, ?, ?, ?)',
+       [data.type_id, data.name, data.status, qrcode]);
+    const newAssetId = rows.insertId;
+    const qrCode = qrcode;
+    const newAsset = new productModel(newAssetId, data.type_id, data.name, data.status, qrCode);
     return newAsset;
   }
 }
