@@ -1,15 +1,12 @@
-class User {
-  id: number;
-  username: string;
-  password: string;
+
+export type Role = 'admin' | 'staff';
+export interface User {
+  id?: number;
+  departmentId: number;
+  role: Role;
+  name: string;
   email: string;
-
-  constructor(id: number, username: string, password: string, email: string) {
-    this.id = id;
-    this.username = username;
-    this.password = password;
-    this.email = email;
-  }
+  phone: string;
+  password: string;
+  createdAt?: Date;
 }
-
-module.exports = User;

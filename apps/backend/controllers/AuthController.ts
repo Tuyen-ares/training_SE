@@ -3,8 +3,8 @@ const AuthService = require('../services/AuthService');
 
 const handleRegister = async (req, res) => {
   try {
-    const { departmentId, roleId, name, password, phone, email } = req.body;
-    const user = await AuthService.register({ departmentId, roleId, name, password, email, phone });
+    const { departmentId, role, name, password, phone, email } = req.body;
+    const user = await AuthService.register({ departmentId, role, name, password, email, phone });
     return res.status(201).json({ message: 'User registered successfully', user });
   } catch (err) {
     if (err.code === 'EMAIL_IN_USE') {
@@ -35,4 +35,4 @@ const handleLogin = async (req, res) => {
 };
 
 
-module.exports = { handleRegister, handleLogin };
+export default { handleRegister, handleLogin };

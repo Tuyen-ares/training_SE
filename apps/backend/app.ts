@@ -1,20 +1,17 @@
-// backend/index.js
-const express = require('express');
-const path = require('path');
-const cors = require('cors');
-require('dotenv').config({ path: path.join(__dirname, '.env') });
+import express from 'express';
+import cors from 'cors';
+import { handleGetAllUser } from './controllers/UserController';
 
-const { handleGetAllUser  } = require('./controllers/UserController');
-const { verifyToken, authorizeRoles } = require('./middleware/Auth');
+require('dotenv').config({ path: `${process.cwd()}/.env` });
 
 const app = express();
 app.use(cors());
 app.use(express.json());
 
-app.post('/auth/', require('./routes/auth.routes'));
+//app.post('/auth/', require('./routes/auth.routes'));
 
 
-app.get('/api/users', verifyToken, authorizeRoles(1), handleGetAllUser);
+app.get('/api/users', handleGetAllUser);
 
 
-export = app;
+export default app;

@@ -1,5 +1,8 @@
+import type { PrismaClient } from '../generated/prisma';
+
 class UserRepository {
-  constructor(prisma) {
+  private prisma: PrismaClient;
+  constructor(prisma: PrismaClient) {
     this.prisma = prisma;
   }
 
@@ -7,23 +10,28 @@ class UserRepository {
       return this.prisma.users.findMany();
     }
 
-  findById(id) {
+  findById(id: number) {
     return this.prisma.users.findUnique({
       where: { id },
     });
     }
 
-  findByEmail(email) {
+  findByEmail(email: string) {
     return this.prisma.users.findUnique({
       where: { email },
     });
     }
+  findByPhone(phone: string) {
+    return this.prisma.users.findUnique({
+      where: { phone },
+    });
+  }
 
-  createUser = async({departmentId, role, name, password, email, phone}) =>{
+  createUser = async({departmentId, role, name, password, email, phone}: any) =>{
     const user = await this.prisma.users.create({
       data :{
         department_id: departmentId,
-        role_id: role,
+        role: role,
         name: name,
         password: password,
         email : email,
@@ -33,4 +41,4 @@ class UserRepository {
    return user;
   }
 }
- module.exports = UserRepository;
+ export default  UserRepository;

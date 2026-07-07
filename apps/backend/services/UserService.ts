@@ -1,6 +1,10 @@
-const prisma = require('../prisma');
+import prisma from '../prisma';
+import bcrypt from 'bcrypt';
+import UserRepository from '../repositories/user.repository';
+
 class UserService {
-  constructor(UserRepository) {
+  private userRepository: UserRepository;
+  constructor(UserRepository : UserRepository) {
     this.userRepository = UserRepository;
   }
 
@@ -49,4 +53,4 @@ class UserService {
     });
   };
 }
-module.exports = UserService;
+export default UserService;
