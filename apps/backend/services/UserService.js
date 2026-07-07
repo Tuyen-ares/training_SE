@@ -1,32 +1,34 @@
 const prisma = require('../prisma');
+class UserService {
+  constructor(UserRepository) {
+    this.userRepository = UserRepository;
+  }
 
-const getAllUser = async() =>{
-  const users = await prisma.users.findMany();
-  return users;
-};
+  getAllUser = async() =>{
+    const users = await this.userRepository.findAll();
+    return users;
+  };
 
-const getUserById = async (id) => {
-  const user = await prisma.users.findUnique({
-    where: { id },
-  });
+  getUserById = async (id) => {
+  const user = await this.userRepository.findById(id);
   return user;
 };
 
-const createUser = async({departmentId, roleId, name, password, email, phone}) =>{
-  const user = await prisma.users.create({
-    data :{
-      department_id: departmentId,
-      role_id: roleId,
-      name: name,
-      password: password,
-      email : email,
-      phone : phone
-    }
-  })
+ createUser = async({departmentId, role, name, password, email, phone}) =>{
+  const existingEmail = await this.userRepository.findByEmail(email);
+  const existingPhone = await this.userRepository.findByPhone(phone);
+  if (existingEmail) {
+    throw new Error('Email already exists');
+  }else if (existingPhone) {
+    throw new Error('Phone number already exists');
+  }else{
+  const hashedPassword = await bcrypt.hash(password, 10);
+  const user = await this.userRepository.createUser({departmentId, role, name, password: hashedPassword, email, phone});
   return user;
+  }
 };
 
-const updateUser = async (id, {departmentId, roleId, name, password, email, phone}) =>{
+ updateUser = async (id, {departmentId, roleId, name, password, email, phone}) =>{
   const user = await prisma.users.update({
     where: { id },
     data :{
@@ -41,10 +43,10 @@ const updateUser = async (id, {departmentId, roleId, name, password, email, phon
   return user;
 
 }
- const deleteUser = async (id) => {
+  deleteUser = async (id) => {
     await prisma.users.delete({
       where: { id },
     });
   };
-
-module.exports = { getAllUser, getUserById, createUser, updateUser, deleteUser };
+}
+module.exports = UserService;

@@ -9,21 +9,21 @@ const connection = mysql.createConnection({
     database: process.env.DB_NAME
 });
 
-connection.query('SELECT * FROM users', (err, results) => {
-    if (err) {
-        console.error('Error executing query:', err.message);
-        return;
-    }
-    console.log('Query results:', results);
-  });
+// connection.query('SELECT * FROM users', (err, results) => {
+//     if (err) {
+//         console.error('Error executing query:', err.message);
+//         return;
+//     }
+//     console.log('Query results:', results);
+//   });
 
-connection.query("select * from users where id = 1 and department = 'Engineering'", (err, results) => {
-    if (err) {
-        console.error('Error executing query:', err.message);
-        return;
-    }
-    console.log(' \n Query results:', results);
-});
+// connection.query("select * from users where id = 1 and department = 'Engineering'", (err, results) => {
+//     if (err) {
+//         console.error('Error executing query:', err.message);
+//         return;
+//     }
+//     console.log(' \n Query results:', results);
+// });
 
 // connection.query("INSERT INTO users (name, email, department) VALUES ('La Hoàn Tuyên ', 'tuyendz@gmail.com', 'Software Engineering');", (err, results) => {
 //     if (err) {

@@ -1,8 +1,10 @@
-const path = require('path');
-require('dotenv').config({ path: path.join(__dirname, '.env') });
+import path from 'path';
+import dotenv from 'dotenv';
+import { PrismaClient } from './generated/prisma';
+import { PrismaMariaDb } from '@prisma/adapter-mariadb';
 
-const { PrismaClient } = require('@prisma/client');
-const { PrismaMariaDb } = require('@prisma/adapter-mariadb');
+
+dotenv.config({ path: path.join(__dirname, '.env') });
 
 const adapter = new PrismaMariaDb({
   host: process.env.DB_HOST,
@@ -14,4 +16,4 @@ const adapter = new PrismaMariaDb({
 
 const prisma = new PrismaClient({ adapter });
 
-module.exports = prisma;
+export default prisma;

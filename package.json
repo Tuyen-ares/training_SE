@@ -1,7 +1,7 @@
 {
   "name": "train-bigin-se",
   "private": true,
-  "packageManager": "pnpm@11.8.0",
+  "packageManager": "pnpm@10.32.1",
   "scripts": {
     "dev": "pnpm --parallel --filter backend --filter frontend dev",
     "dev:frontend": "pnpm --filter frontend dev",

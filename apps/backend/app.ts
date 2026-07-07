@@ -1,17 +1,20 @@
 // backend/index.js
 const express = require('express');
 const path = require('path');
+const cors = require('cors');
 require('dotenv').config({ path: path.join(__dirname, '.env') });
-const bodyParser = express.json();
-const { handleRegister, handleLogin } = require('./controllers/AuthController');
+
 const { handleGetAllUser  } = require('./controllers/UserController');
 const { verifyToken, authorizeRoles } = require('./middleware/Auth');
-const app = express();
-app.use(bodyParser);
 
-app.post('/api/auth/register', handleRegister);
-app.post('/api/auth/login', handleLogin);
+const app = express();
+app.use(cors());
+app.use(express.json());
+
+app.post('/auth/', require('./routes/auth.routes'));
+
 
 app.get('/api/users', verifyToken, authorizeRoles(1), handleGetAllUser);
-const port = process.env.PORT;
-app.listen(port, () => console.log(`Server running on ${port}`));
+
+
+export = app;

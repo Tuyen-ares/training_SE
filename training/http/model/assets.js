@@ -1,4 +1,4 @@
-class Asset {
+class AssetModel {
   constructor(id, type_id, name, status, qr_code, create_at) {
    this.id = id;
    this.type_id = type_id;
@@ -9,4 +9,4 @@ class Asset {
   }
 }
 
-module.exports = Asset;
+module.exports = AssetModel;

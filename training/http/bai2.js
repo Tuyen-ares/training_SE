@@ -5,11 +5,7 @@ const assetRepository = require('./repository/assetsRepository');
 const assetService = require('./service/assetsService');
 const assetController = require('./controller/assetsController');
 const pool = require('./data/database');
-// const assetsData = [
-//   { id: 1, type_id: 1, name: "Bàn phím cơ", status: "available", qr_code: "QR001", create_at: new Date() },
-//   { id: 2, type_id: 2, name: "Chuột Gaming", status: "available", qr_code: "QR002", create_at: new Date() },
-//   { id: 3, type_id: 3, name: "Màn hình 4K", status: "available", qr_code: "QR003", create_at: new Date() }
-// ];
+const postgre = require('./data/postgre');
 
 const assetRepositoryInstance = new assetRepository(pool);
 const assetServiceInstance = new assetService(assetRepositoryInstance);

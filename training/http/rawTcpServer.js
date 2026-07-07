@@ -25,7 +25,7 @@ const server = net.createServer((socket) => {
  
     let buffer = '';
   socket.on('data', (data) => {
-    console.log('Client req :', data.toString());
+    //console.log('Client req :', data.toString());
     buffer += data.toString();
 
     const req = splitRawReq(buffer);
@@ -78,6 +78,6 @@ const server = net.createServer((socket) => {
 });
 
 
-server.listen(3000, () => {
-  console.log('TCP server listening on port 3000');
+server.listen(3001, () => {
+  console.log('TCP server listening on port 3001');
 });
