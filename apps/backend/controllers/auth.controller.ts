@@ -1,5 +1,4 @@
-// backend/Controller/AuthController.js
-const AuthService = require('../services/AuthService');
+const AuthService = require('../services/auth.service');
 
 const handleRegister = async (req, res) => {
   try {
@@ -35,4 +34,4 @@ const handleLogin = async (req, res) => {
 };
 
 
-export default { handleRegister, handleLogin };
+export { handleRegister, handleLogin };

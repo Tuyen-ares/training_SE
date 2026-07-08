@@ -1,4 +1,4 @@
-import type { PrismaClient } from '../generated/prisma';
+import type { PrismaClient } from '@/generated/prisma';
 
 class UserRepository {
   private prisma: PrismaClient;

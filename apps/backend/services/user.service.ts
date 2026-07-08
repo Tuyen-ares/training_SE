@@ -1,6 +1,6 @@
-import prisma from '../prisma';
+import prisma from '@/prisma';
 import bcrypt from 'bcrypt';
-import UserRepository from '../repositories/user.repository';
+import UserRepository from '@/repositories/user.repo';
 
 class UserService {
   private userRepository: UserRepository;
