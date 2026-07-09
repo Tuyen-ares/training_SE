@@ -1,5 +1,5 @@
 import type { PrismaClient } from '@/generated/prisma';
-
+import type { CreateUserDto , UpdateUserDto } from '@/model/user.model'
 class UserRepository {
   private prisma: PrismaClient;
   constructor(prisma: PrismaClient) {
@@ -27,18 +27,31 @@ class UserRepository {
     });
   }
 
-  createUser = async({departmentId, role, name, password, email, phone}: any) =>{
+  create = async(dto : CreateUserDto) =>{
     const user = await this.prisma.users.create({
       data :{
-        department_id: departmentId,
-        role: role,
-        name: name,
-        password: password,
-        email : email,
-        phone : phone
+        department_id: dto.department_id,
+        role: dto.role,
+        name: dto.name,
+        password: dto.password,
+        email : dto.email,
+        phone : dto.phone
       }
    })
    return user;
+  }
+
+  update = async (id: number, data: UpdateUserDto) => {
+     return this.prisma.users.update({
+      where: { id },
+      data: data
+    })
+  }
+
+  delete = async (id: number) => {
+    return this.prisma.users.delete({
+      where: { id },
+    });
   }
 }
  export default  UserRepository;

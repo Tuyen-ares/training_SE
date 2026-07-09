@@ -1,10 +1,13 @@
 import userRoutes from '@/routes/user.routes';
-import app from '@/app';
+import { Express } from 'express';
+import {RouteDefinition} from '@/shared/rest-router';
 
-const routes = [
+const routes: RouteDefinition[] = [
   userRoutes,
   // authRoute, (Khi nào làm xong file auth.routes.ts thì mở comment ra là xong)
 ];
-for (const route of routes) {
-  app.use(`/${route.resource}`, route.router);
+export function registerRoutes(app: Express): void {
+  for (const { resource, router } of routes) {
+    app.use(`/api/${resource}`, router)
+  }
 }

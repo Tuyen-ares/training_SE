@@ -1,6 +1,7 @@
 import prisma from '@/prisma';
+import type { CreateUserDto, UpdateUserDto } from '@/model/user.model'
 import bcrypt from 'bcrypt';
-import UserRepository from '@/repositories/user.repo';
+import UserRepository from '@/repositories/user.repository';
 
 class UserService {
   private userRepository: UserRepository;
@@ -8,49 +9,44 @@ class UserService {
     this.userRepository = UserRepository;
   }
 
-  getAllUser = async() =>{
+  getAll = async() =>{
     const users = await this.userRepository.findAll();
     return users;
   };
 
-  getUserById = async (id) => {
+  getById = async (id) => {
   const user = await this.userRepository.findById(id);
   return user;
 };
 
- createUser = async({departmentId, role, name, password, email, phone}) =>{
-  const existingEmail = await this.userRepository.findByEmail(email);
-  const existingPhone = await this.userRepository.findByPhone(phone);
+create = async (dto: CreateUserDto) => {
+  const existingEmail = await this.userRepository.findByEmail(dto.email)
+  const existingPhone = await this.userRepository.findByPhone(dto.phone)
+
   if (existingEmail) {
-    throw new Error('Email already exists');
-  }else if (existingPhone) {
-    throw new Error('Phone number already exists');
-  }else{
-  const hashedPassword = await bcrypt.hash(password, 10);
-  const user = await this.userRepository.createUser({departmentId, role, name, password: hashedPassword, email, phone});
-  return user;
+    return { error: 'Email already exists' }
   }
-};
 
- updateUser = async (id, {departmentId, roleId, name, password, email, phone}) =>{
-  const user = await prisma.users.update({
-    where: { id },
-    data :{
-      department_id: departmentId,
-      role_id: roleId,
-      name: name,
-      password: password,
-      email : email,
-      phone : phone
-    }
-  });
-  return user;
+  if (existingPhone) {
+    return { error: 'Phone number already exists' }
+  }
 
+  const hashedPassword = await bcrypt.hash(dto.password, 10)
+
+  const user = await this.userRepository.create({
+    ...dto,
+    password: hashedPassword,
+  })
+
+  return { data: user }
 }
-  deleteUser = async (id) => {
-    await prisma.users.delete({
-      where: { id },
-    });
+
+ update = async (id : number , data: UpdateUserDto) =>{
+    return this.userRepository.update(id, data)
+}
+  delete = async (id) => {
+    return this.userRepository.delete(id)
+  
   };
 }
 export default UserService;
