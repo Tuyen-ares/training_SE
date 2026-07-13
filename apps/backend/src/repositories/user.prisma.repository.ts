@@ -1,7 +1,7 @@
 import {BasePrismaRepository } from '@/shared/base.repository.js'
 import type { IUserRepository } from '@/repositories/user.repository.js'
-import type { User, CreateUserDto, UpdateUserDto } from '@/model/user.model.js'
-import type { PrismaClient } from '@/generated/prisma'
+import type { User, CreateUserDto, UpdateUserDto } from '@/models/user.model.js'
+import type { PrismaClient } from '../../generated/prisma/index.js'
 
 export class PrismaUserRepository
   extends BasePrismaRepository<User, CreateUserDto, UpdateUserDto>

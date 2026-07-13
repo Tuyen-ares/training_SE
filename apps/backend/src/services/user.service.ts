@@ -1,6 +1,6 @@
 import {BaseService} from '@/shared/base.service.js';
-import type { User, CreateUserDto, UpdateUserDto } from '@/model/user.model.js';
-import { IUserRepository } from '@/repositories/user.repository.js';
+import type { User, CreateUserDto, UpdateUserDto } from '@/models/user.model.js';
+import type { IUserRepository } from '@/repositories/user.repository.js';
 export class UserService extends BaseService<User, CreateUserDto, UpdateUserDto, IUserRepository> {
   constructor(repo: IUserRepository) {
     super(repo)

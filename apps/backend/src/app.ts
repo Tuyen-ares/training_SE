@@ -2,7 +2,7 @@ import express from 'express';
 import cors from 'cors';
 import dotenv from 'dotenv';
 dotenv.config({ path: `${process.cwd()}/.env` });
-import {registerRoutes} from '@/routes/index';
+import { registerRoutes } from '@/routes/index.js';
 
 
 const app = express();

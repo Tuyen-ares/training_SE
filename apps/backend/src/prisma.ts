@@ -1,9 +1,9 @@
 import path from 'path';
 import dotenv from 'dotenv';
-import type { PrismaClient as PrismaClientType } from './generated/prisma';
+import type { PrismaClient as PrismaClientType } from '../generated/prisma/index.js';
 import { PrismaMariaDb } from '@prisma/adapter-mariadb';
 
-const { PrismaClient } = require(path.join(process.cwd(), 'generated/prisma')) as typeof import('./generated/prisma');
+const { PrismaClient } = require(path.join(process.cwd(), 'generated/prisma')) as typeof import('../generated/prisma/index.js');
 
 dotenv.config({ path: path.join(process.cwd(), '.env') });
 

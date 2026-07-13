@@ -1,7 +1,7 @@
 import { z } from 'zod'
 import { BaseController } from '@/shared/base.controller.js'
 import type { UserService } from '@/services/user.service.js'
-import type { User, CreateUserDto, UpdateUserDto } from '@/model/user.model.js'
+import type { User, CreateUserDto, UpdateUserDto } from '@/models/user.model.js'
 class UserController extends BaseController<User, CreateUserDto, UpdateUserDto>  {
   
     protected readonly createSchema = z.object({

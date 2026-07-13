@@ -1,6 +1,6 @@
-import userRoutes from '@/routes/user.routes';
-import { Express } from 'express';
-import {RouteDefinition} from '@/shared/rest-router';
+import userRoutes from '@/routes/user.routes.js';
+import type { Express } from 'express';
+import type { RouteDefinition } from '@/shared/rest-router.js';
 
 const routes: RouteDefinition[] = [
   userRoutes,
