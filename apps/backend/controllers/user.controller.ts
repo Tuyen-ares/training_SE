@@ -1,64 +1,30 @@
-import type { Request, Response } from 'express'
-import { ApiResponse } from '@/shared/api-response'
-import UserService from '@/services/user.service';
-class UserController {
-  constructor(private userService: UserService) {}
- getAll = async (req:Request, res:Response) => {
-  try{
-    const result = await this.userService.getAll();
-    return ApiResponse.ok(res, result);
-  }
-  catch(err){
-    console.error('Get all users failed:', err);
-    return ApiResponse.internalError(res);
-  }
-}
+import { z } from 'zod'
+import { BaseController } from '@/shared/base.controller.js'
+import type { UserService } from '@/services/user.service.js'
+import type { User, CreateUserDto, UpdateUserDto } from '@/model/user.model.js'
+class UserController extends BaseController<User, CreateUserDto, UpdateUserDto>  {
+  
+    protected readonly createSchema = z.object({
+    department_id: z.number().int().positive(),
+    role: z.enum(['admin', 'staff']),
+    name: z.string().min(1),
+    email: z.email(),
+    phone: z.string().min(1),
+    password: z.string().min(6)
+  })
 
- getById = async (req:Request, res:Response) => {
-  try {
-    const id = Number(req.params.id as number);
-    const user = await this.userService.getById(id);
-    if (!user) {
-      return ApiResponse.notFound(res, `User with id ${id} not found`);
-    }
-    return ApiResponse.ok(res, { user });
-  }
-  catch(err){
-    console.error('Get user by id failed:', err);
-    return ApiResponse.internalError(res);
-  }
- }
-  create = async (req:Request, res:Response) => {
-    const userData = req.body;
-    try {
-      const user = await this.userService.create(userData);
-      return ApiResponse.created(res, { user });
-    } catch (err) {
-      console.error('Create user failed:', err);
-      return ApiResponse.internalError(res);
-    }
-  }  
-
-  update = async (req:Request, res:Response) => {
-    const userData = req.body;
-     try {
-      const user = await this.userService.update(Number(req.params.id as number), userData);
-      return ApiResponse.ok(res, { user });
-    } catch (err) {
-      console.error('Update user failed:', err);
-      return ApiResponse.internalError(res);
-    }
-  }
-
-  delete = async (req:Request, res:Response) => {
-     try {
-      const user = await this.userService.delete(req.params.id);
-      return ApiResponse.ok(res, { user });
-    } catch (err) {
-      console.error('Delete user failed:', err);
-      return ApiResponse.internalError(res);
-    }
-  }
+  protected readonly updateSchema = z.object({
+    department_id: z.number().int().positive().optional(),
+    role: z.enum(['admin', 'staff']).optional(),
+    name: z.string().min(1).optional(),
+    email: z.email().optional(),
+    phone: z.string().min(1).optional(),
+    password: z.string().min(6).optional()
+  })
+  protected readonly resourceName = 'User'
+  constructor(service: UserService) {
+    super(service)
+   }
 
 }
 

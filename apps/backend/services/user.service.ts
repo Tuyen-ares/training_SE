@@ -1,52 +1,22 @@
-import prisma from '@/prisma';
-import type { CreateUserDto, UpdateUserDto } from '@/model/user.model'
-import bcrypt from 'bcrypt';
-import UserRepository from '@/repositories/user.repository';
-
-class UserService {
-  private userRepository: UserRepository;
-  constructor(UserRepository : UserRepository) {
-    this.userRepository = UserRepository;
+import {BaseService} from '@/shared/base.service.js';
+import type { User, CreateUserDto, UpdateUserDto } from '@/model/user.model.js';
+import { IUserRepository } from '@/repositories/user.repository.js';
+export class UserService extends BaseService<User, CreateUserDto, UpdateUserDto, IUserRepository> {
+  constructor(repo: IUserRepository) {
+    super(repo)
   }
 
-  getAll = async() =>{
-    const users = await this.userRepository.findAll();
-    return users;
-  };
+  override async create(dto: CreateUserDto): Promise<{ data?: User; error?: string }> {
+    const existingUserByEmail = await this.repo.findByEmail(dto.email);
+    const existingUserByPhone = await this.repo.findByPhone(dto.phone);
 
-  getById = async (id) => {
-  const user = await this.userRepository.findById(id);
-  return user;
-};
-
-create = async (dto: CreateUserDto) => {
-  const existingEmail = await this.userRepository.findByEmail(dto.email)
-  const existingPhone = await this.userRepository.findByPhone(dto.phone)
-
-  if (existingEmail) {
-    return { error: 'Email already exists' }
+    if (existingUserByEmail) {
+      return { error: 'Email already exists' };
+    }
+    else if (existingUserByPhone) {
+      return { error: 'Phone number already exists' };
+    }
+    return super.create(dto);
   }
-
-  if (existingPhone) {
-    return { error: 'Phone number already exists' }
-  }
-
-  const hashedPassword = await bcrypt.hash(dto.password, 10)
-
-  const user = await this.userRepository.create({
-    ...dto,
-    password: hashedPassword,
-  })
-
-  return { data: user }
 }
 
- update = async (id : number , data: UpdateUserDto) =>{
-    return this.userRepository.update(id, data)
-}
-  delete = async (id) => {
-    return this.userRepository.delete(id)
-  
-  };
-}
-export default UserService;
