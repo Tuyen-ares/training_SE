@@ -3,6 +3,7 @@ import { z } from 'zod'
 import { ApiResponse } from '@/shared/api-response.js'
 import type { IRestController } from '@/shared/rest-router.js'
 import type { IBaseService } from '@/shared/base.service.js'
+import { ConflictError } from '@/shared/app-error.js'
 
 function formatZodErrors(error: z.ZodError): Record<string, string[]> {
   return error.issues.reduce<Record<string, string[]>>((acc, issue) => {
@@ -63,7 +64,11 @@ export abstract class BaseController<TEntity, TCreateDto, TUpdateDto>
       const item = await this.service.update(id, parsed.data)
       if (!item) return ApiResponse.notFound(res, `${this.resourceName} not found`)
       return ApiResponse.ok(res, item)
-    } catch {
+    } 
+    catch(error) {
+     if (error instanceof ConflictError) {
+          return ApiResponse.conflict(res, error.message);
+        }         
       return ApiResponse.internalError(res)
     }
   }

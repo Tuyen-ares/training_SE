@@ -1,19 +1,15 @@
 
-export type Role = 'admin' | 'staff';
 export interface User {
-  id?: number;
+  id: number;
   department_id: number;
-  role: Role;
   name: string;
   email: string;
   phone: string;
   password: string;
-  createdAt?: Date;
 }
 
 export interface CreateUserDto {
- department_id: number;
-  role: Role;
+  department_id: number;
   name: string;
   email: string;
   phone: string;
@@ -22,7 +18,6 @@ export interface CreateUserDto {
 
 export interface UpdateUserDto {
  department_id?: number;
-  role?: Role;
   name?: string;
   email?: string;
   phone?: string;

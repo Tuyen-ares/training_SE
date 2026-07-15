@@ -6,7 +6,6 @@ class UserController extends BaseController<User, CreateUserDto, UpdateUserDto> 
   
     protected readonly createSchema = z.object({
     department_id: z.number().int().positive(),
-    role: z.enum(['admin', 'staff']),
     name: z.string().min(1),
     email: z.email(),
     phone: z.string().min(1),
@@ -15,7 +14,6 @@ class UserController extends BaseController<User, CreateUserDto, UpdateUserDto> 
 
   protected readonly updateSchema = z.object({
     department_id: z.number().int().positive().optional(),
-    role: z.enum(['admin', 'staff']).optional(),
     name: z.string().min(1).optional(),
     email: z.email().optional(),
     phone: z.string().min(1).optional(),
