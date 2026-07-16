@@ -1,17 +1,10 @@
 import type { Request, Response } from 'express'
-import { z } from 'zod'
+import type { z } from 'zod'
 import { ApiResponse } from '@/shared/api-response.js'
 import type { IRestController } from '@/shared/rest-router.js'
 import type { IBaseService } from '@/shared/base.service.js'
 import { ConflictError } from '@/shared/app-error.js'
-
-function formatZodErrors(error: z.ZodError): Record<string, string[]> {
-  return error.issues.reduce<Record<string, string[]>>((acc, issue) => {
-    const key = issue.path.length > 0 ? String(issue.path[0]) : '_root'
-    acc[key] = [...(acc[key] ?? []), issue.message]
-    return acc
-  }, {})
-}
+import { parseRequestBody } from '@/shared/request-validation.js'
 
 export abstract class BaseController<TEntity, TCreateDto, TUpdateDto>
   implements IRestController
@@ -46,8 +39,8 @@ export abstract class BaseController<TEntity, TCreateDto, TUpdateDto>
 
   create = async (req: Request, res: Response): Promise<void> => {
     try {
-      const parsed = this.createSchema.safeParse(req.body)
-      if (!parsed.success) return ApiResponse.badRequest(res, formatZodErrors(parsed.error))
+      const parsed = parseRequestBody(this.createSchema, req.body)
+      if (parsed.success === false) return ApiResponse.badRequest(res, parsed.errors)
       const result = await this.service.create(parsed.data)
       if (result.error || !result.data) return ApiResponse.conflict(res, result.error)
       return ApiResponse.created(res, result.data)
@@ -58,8 +51,8 @@ export abstract class BaseController<TEntity, TCreateDto, TUpdateDto>
 
   update = async (req: Request, res: Response): Promise<void> => {
     try {
-      const parsed = this.updateSchema.safeParse(req.body)
-      if (!parsed.success) return ApiResponse.badRequest(res, formatZodErrors(parsed.error))
+      const parsed = parseRequestBody(this.updateSchema, req.body)
+      if (parsed.success === false) return ApiResponse.badRequest(res, parsed.errors)
       const id = Number(req.params.id)
       const item = await this.service.update(id, parsed.data)
       if (!item) return ApiResponse.notFound(res, `${this.resourceName} not found`)

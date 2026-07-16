@@ -4,7 +4,9 @@ const DEFAULT_MESSAGES = {
   badRequest: 'Invalid request',
   notFound: 'Resource not found',
   conflict: 'Resource already exists',
-  internalError: 'Internal server error'
+  internalError: 'Internal server error',
+  unAuthorized: 'Unauthorized',
+  forbidden: 'Forbidden'
 }
 
 export class ApiResponse {
@@ -18,6 +20,14 @@ export class ApiResponse {
 
   static noContent(res: Response): void {
     res.status(204).send()
+  }
+
+  static unauthorized(res: Response, message: string = DEFAULT_MESSAGES.unAuthorized): void {
+    res.status(401).json({ error: message })
+  }
+
+  static forbidden(res: Response, message: string = DEFAULT_MESSAGES.forbidden): void {
+    res.status(403).json({ error: message })
   }
 
   static badRequest(res: Response, errors: unknown, message: string = DEFAULT_MESSAGES.badRequest): void {
