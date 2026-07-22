@@ -24,13 +24,19 @@ export interface RouterOptions {
 
 export function createRestRouter(controller: IRestController, options?: RouterOptions) {
   const router = Router()
-  const globalMiddleware = options?.global ?? []
 
-  router.get('/', ...globalMiddleware, ...(options?.getAll ?? []), controller.getAll)
-  router.get('/:id', ...globalMiddleware, ...(options?.getById ?? []), controller.getById)
-  router.post('/', ...globalMiddleware, ...(options?.create ?? []), controller.create)
-  router.patch('/:id', ...globalMiddleware, ...(options?.update ?? []), controller.update)
-  router.delete('/:id', ...globalMiddleware, ...(options?.delete ?? []), controller.delete)
+  const globalMiddleware = options?.global ?? []
+  const getAllMw = options?.getAll ?? []
+  const getByIdMw = options?.getById ?? []
+  const createMw = options?.create ?? []
+  const updateMw = options?.update ?? []
+  const deleteMw = options?.delete ?? []
+
+  router.get('/', ...globalMiddleware, ...getAllMw, controller.getAll)
+  router.get('/:id', ...globalMiddleware, ...getByIdMw, controller.getById)
+  router.post('/', ...globalMiddleware, ...createMw, controller.create)
+  router.patch('/:id', ...globalMiddleware, ...updateMw, controller.update)
+  router.delete('/:id', ...globalMiddleware, ...deleteMw, controller.delete)
 
   return router
 }

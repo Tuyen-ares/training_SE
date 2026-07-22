@@ -1,4 +1,9 @@
 @import "./base.css";
+@import "./auth.css";
+
+#app {
+  min-height: 100vh;
+}
 
 .color-primary {
   color: #34495E;

@@ -31,10 +31,26 @@ model users {
   borrow_requests_borrow_requests_approved_byTousers borrow_requests[] @relation("borrow_requests_approved_byTousers")
   borrow_requests_borrow_requests_user_idTousers     borrow_requests[] @relation("borrow_requests_user_idTousers")
   repair_logs                                        repair_logs[]
+  refresh_tokens                                     refresh_tokens[]
   user_roles                                         user_roles[]
   department                                         departments       @relation(fields: [department_id], references: [id], onUpdate: NoAction, map: "fk_users_department")
 
   @@index([department_id], map: "fk_users_department")
+}
+
+model refresh_tokens {
+  id         BigInt   @id @default(autoincrement())
+  jti        String   @unique(map: "idx_jti") @db.VarChar(36)
+  user_id    Int
+  family_id  String   @db.VarChar(36)
+  is_used    Boolean  @default(false)
+  is_revoked Boolean  @default(false)
+  expires_at DateTime @db.DateTime(0)
+  created_at DateTime? @default(now()) @db.DateTime(0)
+  users      users    @relation(fields: [user_id], references: [id], onDelete: Cascade, onUpdate: NoAction, map: "fk_user")
+
+  @@index([family_id], map: "idx_family_id")
+  @@index([user_id], map: "fk_user")
 }
 
 model asset_types {

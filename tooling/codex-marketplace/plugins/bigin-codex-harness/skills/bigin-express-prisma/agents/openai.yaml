@@ -1,0 +1,4 @@
+interface:
+  display_name: "BigIn Express Prisma"
+  short_description: "Implement layered Express and Prisma backend code"
+  default_prompt: "Use $bigin-express-prisma to implement this backend change."

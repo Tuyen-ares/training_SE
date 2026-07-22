@@ -37,7 +37,7 @@ export abstract class BaseService<
 
   async delete(id: number): Promise<boolean> {
     try{
-      const res = this.repo.delete(id)
+      const res = await this.repo.delete(id)
       return !!res;
     }
     catch{
