@@ -8,5 +8,5 @@ export interface CreateDepartmentDto {
 }
 
 export interface UpdateDepartmentDto {
-  name?: string;
+  name: string;
 }

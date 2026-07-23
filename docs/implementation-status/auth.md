@@ -1,4 +1,6 @@
-# Auth Module Specification
+# Auth Module — Implementation Status
+
+> Đây là ảnh chụp trạng thái triển khai, không phải nguồn yêu cầu chuẩn. Contract hiện hành nằm tại [Auth module](../modules/auth.md); nếu có khác biệt, tài liệu kiến trúc và module được ưu tiên.
 
 ## 1. Thông tin tài liệu
 
@@ -6,7 +8,7 @@
 - Backend: Express 5, TypeScript, Prisma, MySQL/MariaDB
 - Trạng thái: đã triển khai luồng cơ bản
 - API prefix: `/api/auth`
-- Cập nhật: 2026-07-21
+- Cập nhật: 2026-07-23
 
 ## 2. Mục tiêu
 
@@ -378,6 +380,10 @@ fetch(url, {
 - [x] Reuse detection revoke toàn bộ family.
 - [x] Refresh tải lại permission hiện tại.
 - [x] Logout revoke family và xóa cookie.
+- [ ] Chưa kiểm tra `users.is_active` khi login/refresh.
+- [ ] Chưa có service revoke toàn bộ phiên khi Users khóa tài khoản.
+- [ ] Register chưa gọi `RbacService`; Auth repository vẫn đang ghi trực tiếp
+  `user_roles`.
 - [ ] Frontend chưa hoàn thiện API client và single-flight refresh.
 - [ ] Chưa có automated test suite cho rotation/reuse.
 - [ ] Chưa có job dọn refresh token đã hết hạn khỏi database.

@@ -172,9 +172,11 @@ model user_roles {
 
 enum assets_status {
   available
+  reserved
   borrowed
   damaged
   in_repair
+  retired
 }
 
 enum borrow_requests_status {

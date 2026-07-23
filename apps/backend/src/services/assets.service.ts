@@ -1,35 +1,238 @@
-import {BaseService} from '@/shared/base.service.js';
-import type { IAssetRepository } from '@/repositories/asset.repository.js';
-import type { Asset, CreateAssetDto, UpdateAssetDto } from '@/models/asset.model.js';
-import { ConflictError } from '@/shared/app-error.js';
-export class AssetService extends BaseService<Asset, CreateAssetDto, UpdateAssetDto, IAssetRepository> {
-	constructor(repo: IAssetRepository) {
-		super(repo)
-	}
+import { randomUUID } from 'node:crypto';
+import type {
+  Asset,
+  AssetStatus,
+  CreateAssetDto,
+  RepairResult,
+  ReturnCondition,
+  UpdateAssetDto,
+} from '@/models/asset.model.js';
+import type {
+  AssetTransaction,
+  IAssetRepository,
+} from '@/repositories/asset.repository.js';
+import type { IBaseService } from '@/shared/base.service.js';
+import {
+  ConflictError,
+  InvalidStateTransitionError,
+} from '@/shared/app-error.js';
 
-	override async create(dto: CreateAssetDto): Promise<{ data?: Asset; error?: string }> {
-		const existing = await this.repo.findByQrCode(dto.qr_code);
-		const existingBySerialNumber = await this.repo.findBySerialNumber(dto.serial_number);
+export class AssetService
+  implements IBaseService<Asset, CreateAssetDto, UpdateAssetDto>
+{
+  constructor(private readonly repo: IAssetRepository) {}
 
-		if (existing) {
-			return { error: 'Asset with this QR code already exists' };
-		}
-		if (existingBySerialNumber) {
-			return { error: 'Asset with this serial number already exists' };
-		}
-		return super.create(dto);
-	}
+  getAll(): Promise<Asset[]> {
+    return this.repo.findAll();
+  }
 
-	override async update(id: number, dto: UpdateAssetDto): Promise<Asset | null> {
-		const existing = await this.repo.findByQrCode(dto.qr_code);
-		const existingBySerialNumber = await this.repo.findBySerialNumber(dto.serial_number);
+  getById(id: number): Promise<Asset | null> {
+    return this.repo.findById(id);
+  }
 
-		if (existing) {
-			throw new ConflictError('QR code already exists');
-		}
-		if (existingBySerialNumber) {
-			throw new ConflictError('Serial number already exists');
-		}
-		return super.update(id, dto);
-	}
+  async create(
+    dto: CreateAssetDto,
+  ): Promise<{ data?: Asset; error?: string }> {
+    const assetModelExists = await this.repo.assetModelExists(dto.asset_model_id);
+    if (!assetModelExists) {
+      return { error: 'Asset model does not exist' };
+    }
+
+    if (dto.serial_number) {
+      const duplicateSerial = await this.repo.findBySerialNumber(dto.serial_number);
+      if (duplicateSerial) {
+        return { error: 'Serial number already exists' };
+      }
+    }
+
+    try {
+      const data = await this.repo.create({
+        asset_model_id: dto.asset_model_id,
+        serial_number: dto.serial_number ?? null,
+        qr_code: randomUUID(),
+        status: 'available',
+      });
+      return { data };
+    } catch (error) {
+      if (error instanceof ConflictError) {
+        return { error: error.message };
+      }
+      throw error;
+    }
+  }
+
+  async update(id: number, dto: UpdateAssetDto): Promise<Asset | null> {
+    const asset = await this.repo.findById(id);
+    if (!asset) return null;
+
+    if (
+      dto.asset_model_id !== undefined &&
+      !(await this.repo.assetModelExists(dto.asset_model_id))
+    ) {
+      throw new ConflictError('Asset model does not exist');
+    }
+
+    if (dto.serial_number !== undefined && dto.serial_number !== null) {
+      const duplicateSerial = await this.repo.findBySerialNumber(dto.serial_number);
+      if (duplicateSerial && duplicateSerial.id !== id) {
+        throw new ConflictError('Serial number already exists');
+      }
+    }
+
+    return this.repo.update(id, dto);
+  }
+
+  delete(id: number): Promise<boolean> {
+    return this.retire(id);
+  }
+
+  async retire(id: number): Promise<boolean> {
+    const asset = await this.repo.findById(id);
+    if (!asset) return false;
+
+    if (asset.status !== 'available' && asset.status !== 'damaged') {
+      throw new InvalidStateTransitionError(
+        `Cannot retire asset from status "${asset.status}"`,
+      );
+    }
+
+    await this.transitionOne(id, asset.status, 'retired');
+    return true;
+  }
+
+  reserve(assetIds: number[], transaction: AssetTransaction): Promise<void> {
+    return this.transitionMany(
+      assetIds,
+      'available',
+      'reserved',
+      transaction,
+    );
+  }
+
+  markBorrowed(
+    assetIds: number[],
+    transaction: AssetTransaction,
+  ): Promise<void> {
+    return this.transitionMany(
+      assetIds,
+      'reserved',
+      'borrowed',
+      transaction,
+    );
+  }
+
+  releaseReservation(
+    assetIds: number[],
+    transaction: AssetTransaction,
+  ): Promise<void> {
+    return this.transitionMany(
+      assetIds,
+      'reserved',
+      'available',
+      transaction,
+    );
+  }
+
+  returnAsset(
+    assetId: number,
+    condition: ReturnCondition,
+    transaction: AssetTransaction,
+  ): Promise<void> {
+    const nextStatus: AssetStatus =
+      condition === 'good' ? 'available' : 'damaged';
+    return this.transitionOne(
+      assetId,
+      'borrowed',
+      nextStatus,
+      transaction,
+    );
+  }
+
+  async reportDamaged(
+    assetId: number,
+    transaction?: AssetTransaction,
+  ): Promise<boolean> {
+    const asset = await this.repo.findById(assetId, transaction);
+    if (!asset) return false;
+
+    await this.transitionOne(
+      assetId,
+      'available',
+      'damaged',
+      transaction,
+    );
+    return true;
+  }
+
+  startRepair(
+    assetId: number,
+    transaction: AssetTransaction,
+  ): Promise<void> {
+    return this.transitionOne(
+      assetId,
+      'damaged',
+      'in_repair',
+      transaction,
+    );
+  }
+
+  completeRepair(
+    assetId: number,
+    result: RepairResult,
+    transaction: AssetTransaction,
+  ): Promise<void> {
+    const nextStatus: AssetStatus =
+      result === 'repaired' ? 'available' : 'damaged';
+    return this.transitionOne(
+      assetId,
+      'in_repair',
+      nextStatus,
+      transaction,
+    );
+  }
+
+  private async transitionOne(
+    assetId: number,
+    expectedStatus: AssetStatus,
+    nextStatus: AssetStatus,
+    transaction?: AssetTransaction,
+  ): Promise<void> {
+    const updatedCount = await this.repo.transitionStatus(
+      [assetId],
+      expectedStatus,
+      nextStatus,
+      transaction,
+    );
+
+    if (updatedCount !== 1) {
+      throw new InvalidStateTransitionError(
+        `Asset ${assetId} is not in status "${expectedStatus}"`,
+      );
+    }
+  }
+
+  private async transitionMany(
+    assetIds: number[],
+    expectedStatus: AssetStatus,
+    nextStatus: AssetStatus,
+    transaction: AssetTransaction,
+  ): Promise<void> {
+    const uniqueAssetIds = [...new Set(assetIds)];
+    if (uniqueAssetIds.length === 0) {
+      throw new ConflictError('At least one asset is required');
+    }
+
+    const updatedCount = await this.repo.transitionStatus(
+      uniqueAssetIds,
+      expectedStatus,
+      nextStatus,
+      transaction,
+    );
+
+    if (updatedCount !== uniqueAssetIds.length) {
+      throw new InvalidStateTransitionError(
+        `Not all assets are in status "${expectedStatus}"`,
+      );
+    }
+  }
 }

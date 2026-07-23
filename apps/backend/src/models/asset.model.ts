@@ -1,4 +1,13 @@
-export type AssetStatus = 'available' | 'borrowed' | 'damaged' | 'in_repair';
+export type AssetStatus =
+  | 'available'
+  | 'reserved'
+  | 'borrowed'
+  | 'damaged'
+  | 'in_repair'
+  | 'retired';
+
+export type ReturnCondition = 'good' | 'damaged';
+export type RepairResult = 'repaired' | 'failed';
 
 export interface Asset {
   id: number;
@@ -11,14 +20,10 @@ export interface Asset {
 
 export interface CreateAssetDto {
   asset_model_id: number;
-  qr_code: string;
   serial_number?: string | null;
-  status?: AssetStatus;
 }
 
 export interface UpdateAssetDto {
   asset_model_id?: number;
   serial_number?: string | null;
-  status?: AssetStatus;
-  qr_code?: string;
 }

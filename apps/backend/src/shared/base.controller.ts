@@ -72,7 +72,10 @@ export abstract class BaseController<TEntity, TCreateDto, TUpdateDto>
       const deleted = await this.service.delete(id)
       if (!deleted) return ApiResponse.notFound(res, `${this.resourceName} not found`)
       return ApiResponse.noContent(res)
-    } catch {
+    } catch (error) {
+      if (error instanceof ConflictError) {
+        return ApiResponse.conflict(res, error.message)
+      }
       return ApiResponse.internalError(res)
     }
   }

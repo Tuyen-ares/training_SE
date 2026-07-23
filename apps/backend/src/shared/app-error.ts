@@ -5,6 +5,13 @@ export class ConflictError extends Error {
   }
 }
 
+export class InvalidStateTransitionError extends ConflictError {
+  constructor(message: string) {
+    super(message);
+    this.name = 'InvalidStateTransitionError';
+  }
+}
+
 export type AuthErrorCode =
   | 'EMAIL_IN_USE'
   | 'PHONE_IN_USE'

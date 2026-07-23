@@ -26,8 +26,8 @@ Bảng `users` **không có** cột `role` hoặc `role_id`.
 
 Vì vậy các phần hiện tại cần được thay đổi:
 
-- [`auth.middleware.js`](../apps/backend/src/middleware/auth.middleware.js) đang dùng `req.user.roleId`.
-- [`auth.service.js`](../apps/backend/src/services/auth.service.js) đang ghi/đọc `users.role_id`.
+- [`auth.middleware.ts`](../apps/backend/src/middleware/auth.middleware.ts) đang dùng `req.user.roleId`.
+- [`auth.service.ts`](../apps/backend/src/services/auth.service.ts) đang ghi/đọc `users.role_id`.
 - Đây là sai với schema mới và sẽ lỗi khi chạy.
 
 ## 2. Tư duy RBAC: kiểm tra permission, không kiểm tra admin
@@ -454,6 +454,6 @@ Cảnh báo bảo mật: API register public không được cho client tự g�
 ## Tham chiếu trong repo
 
 - [Schema Prisma](../apps/backend/prisma/schema.prisma)
-- [Middleware hiện tại](../apps/backend/src/middleware/auth.middleware.js)
-- [Auth service hiện tại](../apps/backend/src/services/auth.service.js)
+- [Middleware hiện tại](../apps/backend/src/middleware/auth.middleware.ts)
+- [Auth service hiện tại](../apps/backend/src/services/auth.service.ts)
 - [Hướng dẫn Prisma migration](prisma-migration-newbie-guide.md)

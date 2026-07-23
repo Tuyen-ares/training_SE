@@ -1,4 +1,6 @@
-# User Module Specification
+# User Module — Implementation Status
+
+> Đây là ảnh chụp trạng thái triển khai, không phải nguồn yêu cầu chuẩn. Contract hiện hành nằm tại [Users module](../modules/users.md); nếu có khác biệt, tài liệu kiến trúc và module được ưu tiên.
 
 ## 1. Thông tin tài liệu
 
@@ -6,7 +8,7 @@
 - Backend: Express 5, TypeScript, Prisma, MySQL/MariaDB
 - Trạng thái: CRUD cơ bản đã có; security contract chưa hoàn thiện
 - API prefix: `/api/users`
-- Cập nhật: 2026-07-21
+- Cập nhật: 2026-07-23
 
 ## 2. Mục tiêu
 
@@ -224,14 +226,9 @@ Quy tắc:
 
 ### 6.5 DELETE `/api/users/:id`
 
-Thành công: `204 No Content`.
-
-Theo schema hiện tại, xóa user phải cascade:
-
-- `user_roles` của user.
-- `refresh_tokens` của user.
-
-Các quan hệ nghiệp vụ khác có ràng buộc phải được xử lý theo Prisma/database constraint.
+Contract mục tiêu: đặt `is_active=false`, giữ nguyên row và lịch sử, sau đó revoke
+toàn bộ refresh token của user. Hiện code vẫn đang đi qua hard-delete generic nên
+chưa đáp ứng contract này.
 
 ## 7. Validation
 
@@ -274,7 +271,8 @@ Repository không được chứa:
 - Access token đang cache `permissionCodes`.
 - Khi role thay đổi, access token hiện tại vẫn giữ quyền cũ đến khi hết hạn hoặc refresh.
 - Refresh endpoint tải lại permission mới nhất trước khi cấp access token mới.
-- Xóa user làm refresh token bị xóa cascade, nên phiên không thể refresh tiếp.
+- Khóa user phải revoke toàn bộ refresh token; login/refresh cũng phải kiểm tra
+  `is_active`.
 
 ## 10. Error contract
 
@@ -309,6 +307,10 @@ Chưa đáp ứng spec mục tiêu:
 - [ ] Chưa có `UserResponseDto` và response mapper.
 - [ ] User create chưa nhận/gán `roleIds`.
 - [ ] User update chưa quản lý `user_roles`.
+- [ ] Chưa có migration và model cho `users.is_active`.
+- [ ] DELETE vẫn là hard-delete generic, chưa chuyển thành deactivate.
+- [ ] Chưa có luồng kích hoạt lại tài khoản.
+- [ ] Chưa revoke phiên và chưa chặn login/refresh khi user không hoạt động.
 - [ ] Validation hiện chưa áp dụng đầy đủ giới hạn độ dài từ Prisma schema.
 - [ ] Chưa có automated test suite.
 
@@ -320,6 +322,8 @@ User module chỉ được xem là hoàn thiện khi:
 - [ ] Password luôn được hash trước khi lưu.
 - [ ] Create user gán ít nhất một role.
 - [ ] Update role được thực hiện nguyên tử.
+- [ ] Khóa user đặt `is_active=false` và revoke toàn bộ refresh token.
+- [ ] User không hoạt động không thể login hoặc refresh.
 - [ ] Email và phone unique được xử lý thành `409`.
 - [ ] Department/role không tồn tại được xử lý rõ ràng.
 - [ ] DTO dùng camelCase nhất quán ở HTTP boundary.
@@ -332,6 +336,5 @@ User module chỉ được xem là hoàn thiện khi:
 - User profile tự chỉnh sửa.
 - Đổi password yêu cầu password cũ.
 - Reset/quên password.
-- Khóa/mở khóa tài khoản.
 - Phân trang, tìm kiếm và lọc user.
 - Audit log thay đổi role.
