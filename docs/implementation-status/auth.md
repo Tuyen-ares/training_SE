@@ -1,6 +1,8 @@
 # Auth Module — Implementation Status
 
-> Đây là ảnh chụp trạng thái triển khai, không phải nguồn yêu cầu chuẩn. Contract hiện hành nằm tại [Auth module](../modules/auth.md); nếu có khác biệt, tài liệu kiến trúc và module được ưu tiên.
+> Đây là ảnh chụp trạng thái cũ. Contract hiện hành nằm tại
+> [Auth spec](../modules/auth/spec.md) và trạng thái mới tại
+> [Auth implementation](../modules/auth/implementation.md).
 
 ## 1. Thông tin tài liệu
 
@@ -380,12 +382,14 @@ fetch(url, {
 - [x] Reuse detection revoke toàn bộ family.
 - [x] Refresh tải lại permission hiện tại.
 - [x] Logout revoke family và xóa cookie.
-- [ ] Chưa kiểm tra `users.is_active` khi login/refresh.
-- [ ] Chưa có service revoke toàn bộ phiên khi Users khóa tài khoản.
-- [ ] Register chưa gọi `RbacService`; Auth repository vẫn đang ghi trực tiếp
+- [x] Login/refresh kiểm tra `users.is_active`.
+- [x] `SessionService` revoke toàn bộ phiên khi Users khóa tài khoản.
+- [x] Register dùng UserService + `RbacService`; Auth repository không ghi
   `user_roles`.
-- [ ] Frontend chưa hoàn thiện API client và single-flight refresh.
-- [ ] Chưa có automated test suite cho rotation/reuse.
+- [x] Frontend có API client runtime, tự refresh khi request nhận 401.
+- [x] Single-flight refresh gom các request 401 đồng thời vào cùng một lần rotation.
+- [x] Có automated unit test cho rotation/reuse và inactive account.
+- [ ] Chưa có MySQL concurrency integration test cho refresh rotation.
 - [ ] Chưa có job dọn refresh token đã hết hạn khỏi database.
 
 ## 11. Ngoài phạm vi hiện tại

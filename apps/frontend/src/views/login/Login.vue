@@ -10,18 +10,19 @@ const route = useRoute()
 const authStore = useAuthStore()
 
 const loginUser = reactive({
-  username: '',
+  email: '',
   password: '',
 })
 
 const errors = reactive({
-  username: '',
+  email: '',
   password: '',
   form: '',
 })
 
 const showPassword = ref(false)
 const showRecoveryHint = ref(false)
+const isSubmitting = ref(false)
 
 const registrationSuccess = computed(() => route.query.registered === '1')
 
@@ -31,8 +32,11 @@ const clearFieldError = (field) => {
 }
 
 const validateField = (field) => {
-  if (field === 'username') {
-    errors.username = loginUser.username.trim() ? '' : 'Vui lòng nhập tên đăng nhập.'
+  if (field === 'email') {
+    const emailPattern = /^[^\s@]+@[^\s@]+\.[^\s@]+$/
+    errors.email = emailPattern.test(loginUser.email.trim())
+      ? ''
+      : 'Vui lòng nhập địa chỉ email hợp lệ.'
   }
 
   if (field === 'password') {
@@ -40,25 +44,31 @@ const validateField = (field) => {
   }
 }
 
-const handleLogin = () => {
-  validateField('username')
+const handleLogin = async () => {
+  validateField('email')
   validateField('password')
   errors.form = ''
 
-  if (errors.username || errors.password) return
+  if (errors.email || errors.password) return
 
-  if (loginUser.username.trim() === 'admin' && loginUser.password === '123456') {
-    authStore.login()
-
+  isSubmitting.value = true
+  try {
+    await authStore.login({
+      email: loginUser.email.trim(),
+      password: loginUser.password,
+    })
     const redirect = typeof route.query.redirect === 'string'
       ? route.query.redirect
       : null
 
-    router.push(redirect || { name: 'dashboard' })
-    return
+    await router.push(redirect || { name: 'dashboard' })
+  } catch (error) {
+    errors.form = error.status === 401
+      ? 'Email hoặc mật khẩu không đúng, hoặc tài khoản đã ngừng hoạt động.'
+      : 'Không thể đăng nhập lúc này. Vui lòng thử lại.'
+  } finally {
+    isSubmitting.value = false
   }
-
-  errors.form = 'Tên đăng nhập hoặc mật khẩu chưa đúng. Hãy dùng tài khoản demo bên dưới.'
 }
 </script>
 
@@ -92,30 +102,30 @@ const handleLogin = () => {
 
       <form class="auth-form" novalidate @submit.prevent="handleLogin">
         <div class="auth-field">
-          <label class="auth-field__label" for="login-username">
-            Tên đăng nhập
+          <label class="auth-field__label" for="login-email">
+            Email
           </label>
           <div class="auth-field__control">
             <input
-              id="login-username"
-              v-model="loginUser.username"
+              id="login-email"
+              v-model="loginUser.email"
               class="auth-field__input"
-              type="text"
-              name="username"
-              autocomplete="username"
-              placeholder="Nhập tên đăng nhập"
-              :aria-invalid="Boolean(errors.username)"
-              aria-describedby="login-username-message"
-              @blur="validateField('username')"
-              @input="clearFieldError('username')"
+              type="email"
+              name="email"
+              autocomplete="email"
+              placeholder="you@company.com"
+              :aria-invalid="Boolean(errors.email)"
+              aria-describedby="login-email-message"
+              @blur="validateField('email')"
+              @input="clearFieldError('email')"
             />
           </div>
           <p
-            id="login-username-message"
+            id="login-email-message"
             class="auth-field__message"
             aria-live="polite"
           >
-            {{ errors.username }}
+            {{ errors.email }}
           </p>
         </div>
 
@@ -176,15 +186,10 @@ const handleLogin = () => {
           để được cấp lại mật khẩu.
         </div>
 
-        <button class="auth-submit" type="submit">Đăng nhập</button>
+        <button class="auth-submit" type="submit" :disabled="isSubmitting">
+          {{ isSubmitting ? 'Đang đăng nhập…' : 'Đăng nhập' }}
+        </button>
       </form>
-
-      <div class="auth-demo" aria-label="Thông tin tài khoản demo">
-        <strong>Tài khoản demo:</strong>
-        <code>admin</code>
-        <span>/</span>
-        <code>123456</code>
-      </div>
 
       <p class="auth-switch">
         Chưa có tài khoản?

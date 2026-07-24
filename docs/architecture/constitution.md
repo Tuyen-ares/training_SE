@@ -131,7 +131,7 @@ routes → controllers → services → repositories → Prisma → MySQL
 ## 7. Sự kiện nghiệp vụ và Notification — target, chưa triển khai
 
 - Hiện chưa có bảng Notification, listener hoặc event bus. Contract chi tiết nằm tại
-  [`../modules/notifications.md`](../modules/notifications.md).
+  [`../modules/notifications/spec.md`](../modules/notifications/spec.md).
 - Module nghiệp vụ chỉ publish domain event; tuyệt đối KHÔNG gọi NotificationService,
   email provider hoặc ghi bảng Notification trực tiếp.
 - Event chuẩn có envelope gồm `eventId`, `type`, `occurredAt` và `payload`; danh sách

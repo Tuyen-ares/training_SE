@@ -2,6 +2,10 @@
 
 > Aggregate root: `assets`. Bao gồm cả danh mục: asset_models, asset_types, brands.
 > Là CHỦ SỞ HỮU DUY NHẤT của việc đổi `assets.status`.
+>
+> Loại tài liệu: **Spec** — mô tả WHAT/WHY, phạm vi và tiêu chí chấp nhận.
+> Thiết kế triển khai nằm ở [`plan.md`](plan.md); trạng thái code nằm ở
+> [`implementation.md`](implementation.md).
 
 ## 1. Goals
 - CRUD thiết bị (assets) và các danh mục liên quan (models, types, brands).
@@ -65,7 +69,7 @@ type RepairResult = 'repaired' | 'failed';
 - REQ-0211: When admin tạo asset, the system shall khởi tạo `status = available` và sinh `qr_code` duy nhất.
 
 ### Transition (service gọi bởi module khác — xem
-[`system-overview.md`](../architecture/system-overview.md))
+[`system-overview.md`](../../architecture/system-overview.md))
 - REQ-0219: When được gọi `reserve(assetIds, tx)` để tạo đơn mượn và tất cả asset
   đang `available`, the system shall đổi toàn bộ sang `reserved`; nếu không giữ đủ
   số asset thì ném conflict để transaction tạo đơn rollback.

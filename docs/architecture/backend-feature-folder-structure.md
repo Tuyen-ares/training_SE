@@ -194,7 +194,7 @@ Hai tên đều dùng được. Dự án này nên dùng `modules/` vì tài li�
 
 Như vậy tên thư mục khớp trực tiếp với:
 
-- `docs/modules/*.md`
+- `docs/modules/<module>/spec.md`
 - `docs/architecture/module-boundaries.md`
 - ownership của bảng trong database
 

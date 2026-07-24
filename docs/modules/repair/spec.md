@@ -2,6 +2,10 @@
 
 > Aggregate root: `repair_logs`. Phụ thuộc module 02 (Thiết bị) và 03 (Người dùng).
 > Có vòng đời riêng (start/end/cost) nên là module, không phải bảng lookup.
+>
+> Loại tài liệu: **Spec** — mô tả WHAT/WHY, phạm vi và tiêu chí chấp nhận.
+> Thiết kế triển khai nằm ở [`plan.md`](plan.md); trạng thái code nằm ở
+> [`implementation.md`](implementation.md).
 
 ## 1. Goals
 - Tạo log sửa chữa cho một thiết bị hỏng, gán người xử lý.

@@ -33,8 +33,8 @@ Nguồn tham khảo cách làm việc của Stitch:
 2. `docs/architecture/system-overview.md`
 3. Module contract trong `docs/modules/`
 4. Prisma schema và dữ liệu RBAC thực tế trong database
-5. `docs/specs/auth-module-spec.md` và `docs/specs/user-module-spec.md` cho contract
-   đã triển khai gần nhất
+5. `docs/modules/auth/spec.md`, `docs/modules/users/spec.md` và các file
+   `implementation.md` tương ứng cho contract/trạng thái đã triển khai gần nhất
 6. Login/Register hiện tại làm mốc ngôn ngữ hình ảnh
 
 ### 2.2 Các điểm lệch phải biết trước khi dùng mockup

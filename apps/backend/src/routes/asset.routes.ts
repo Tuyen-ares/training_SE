@@ -1,6 +1,7 @@
 import prisma from '@/prisma.js';
 import AssetController from '@/controllers/asset.controller.js';
-import { requireAuth, requirePermission } from '@/middleware/auth.middleware.js';
+import { requireAuth } from '@/middleware/auth.middleware.js';
+import { requirePermission } from '@/middleware/rbac.middleware.js';
 import { PrismaAssetRepository } from '@/repositories/asset.prisma.repository.js';
 import { AssetService } from '@/services/assets.service.js';
 import { ApiResponse } from '@/shared/api-response.js';

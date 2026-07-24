@@ -1,0 +1,44 @@
+# Tasks — Asset Management
+
+- [x] AST-T01 [REQ-0210] Implement Brand CRUD và chặn xóa khi có model tham chiếu.
+  - Depends on: schema catalog
+  - Verify: Postman CRUD + referenced delete
+- [x] AST-T02 [REQ-0210] Implement Asset Type CRUD và chặn xóa khi có model.
+  - Depends on: schema catalog
+  - Verify: Postman CRUD + referenced delete
+- [x] AST-T03 [REQ-0210] Implement Asset Model CRUD và chặn xóa khi có asset.
+  - Depends on: AST-T01, AST-T02
+  - Verify: duplicate composite key và referenced delete
+- [x] AST-T04 [REQ-0201, REQ-0211] Implement Asset CRUD, QR server-side, serial unique.
+  - Depends on: AST-T03
+  - Verify: create luôn `available`; duplicate serial bị chặn
+- [x] AST-T05 [REQ-0232] Đổi delete asset thành retire.
+  - Depends on: enum `retired`
+  - Verify: chỉ `available|damaged → retired`
+- [x] AST-T06 Bổ sung enum `reserved` và `retired` bằng migration.
+  - Depends on: schema decision
+  - Verify: Prisma schema và migration cùng khớp
+- [x] AST-T07 [REQ-0220–REQ-0224] Implement conditional state transitions.
+  - Depends on: AST-T06
+  - Verify: số row update không đủ phải báo invalid transition
+- [x] AST-T08 Cung cấp `reserve`, `releaseReservation`, `markBorrowed`.
+  - Depends on: AST-T07
+  - Verify: methods bắt buộc nhận transaction
+- [x] AST-T09 Cung cấp `returnAsset`, `reportDamaged`, `startRepair`, `completeRepair`.
+  - Depends on: AST-T07
+  - Verify: mapping condition/result đúng state machine
+- [x] AST-T10 Gắn `requireAuth` và permission cho catalog/assets routes.
+  - Depends on: RBAC middleware
+  - Verify: route definitions khớp permission registry
+- [ ] AST-T11 Viết unit test đầy đủ cho service và state machine.
+  - Depends on: AST-T01–T10
+  - Verify: mọi transition hợp lệ/sai có test
+- [ ] AST-T12 Viết DB integration/concurrency test reserve cùng asset.
+  - Depends on: database test environment
+  - Verify: chỉ một transaction thành công
+- [ ] AST-T13 Hoàn thiện frontend Asset và đăng ký routes.
+  - Depends on: API ổn định
+  - Verify: list/detail/create/edit và permission-aware actions hoạt động
+- [ ] AST-T14 Tích hợp `asset.status_changed` sau khi Event Bus tồn tại.
+  - Depends on: Notification/Event infrastructure
+  - Verify: chỉ publish sau transaction commit

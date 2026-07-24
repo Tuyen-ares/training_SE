@@ -28,6 +28,7 @@ model users {
   password                                           String            @db.VarChar(60)
   email                                              String            @unique(map: "email") @db.VarChar(40)
   phone                                              String            @unique(map: "phone") @db.VarChar(10)
+  is_active                                          Boolean           @default(true)
   borrow_requests_borrow_requests_approved_byTousers borrow_requests[] @relation("borrow_requests_approved_byTousers")
   borrow_requests_borrow_requests_user_idTousers     borrow_requests[] @relation("borrow_requests_user_idTousers")
   repair_logs                                        repair_logs[]

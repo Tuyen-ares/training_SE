@@ -1,6 +1,7 @@
 import prisma from '@/prisma.js';
 import BrandController from '@/controllers/brand.controller.js';
-import { requireAuth, requirePermission } from '@/middleware/auth.middleware.js';
+import { requireAuth } from '@/middleware/auth.middleware.js';
+import { requirePermission } from '@/middleware/rbac.middleware.js';
 import { PrismaBrandRepository } from '@/repositories/brand.prisma.repository.js';
 import { BrandService } from '@/services/brand.service.js';
 import { createRestRouter } from '@/shared/rest-router.js';

@@ -97,7 +97,7 @@ approved/rejected là trạng thái cuối, không chuyển tiếp. Chủ sở h
 
 > Hiện chưa triển khai event bus, Notification table hay listener. Hướng triển khai
 > đa kênh và lộ trình In-App → Email → Transactional Outbox được chốt tại
-> [`../modules/notifications.md`](../modules/notifications.md).
+> [`../modules/notifications/spec.md`](../modules/notifications/spec.md).
 
 ## Glossary
 

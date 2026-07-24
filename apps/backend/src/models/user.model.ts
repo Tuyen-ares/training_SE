@@ -1,25 +1,56 @@
-
-export interface User {
+export interface UserRoleDto {
   id: number;
-  department_id: number;
+  name: string;
+}
+
+export interface UserDepartmentDto {
+  id: number;
+  name: string;
+}
+
+export interface UserResponseDto {
+  id: number;
+  departmentId: number;
+  department: UserDepartmentDto;
+  name: string;
+  email: string;
+  phone: string;
+  isActive: boolean;
+  roles: UserRoleDto[];
+}
+
+export interface CreateUserInputDto {
+  departmentId: number;
   name: string;
   email: string;
   phone: string;
   password: string;
+  roleIds?: number[];
 }
 
-export interface CreateUserDto {
-  department_id: number;
-  name: string;
-  email: string;
-  phone: string;
-  password: string;
-}
-
-export interface UpdateUserDto {
- department_id?: number;
+export interface UpdateUserInputDto {
+  departmentId?: number;
   name?: string;
   email?: string;
   phone?: string;
   password?: string;
+  roleIds?: number[];
 }
+
+export interface CreateUserData {
+  departmentId: number;
+  name: string;
+  email: string;
+  phone: string;
+  passwordHash: string;
+}
+
+export interface UpdateUserData {
+  departmentId?: number;
+  name?: string;
+  email?: string;
+  phone?: string;
+  passwordHash?: string;
+}
+
+export type UserStatusFilter = 'active' | 'inactive' | 'all';

@@ -3,6 +3,10 @@
 > Role và permission là dữ liệu hệ thống cố định trong giai đoạn hiện tại.
 > Module chỉ quản lý việc gán/thay đổi role của user và cung cấp dữ liệu quyền.
 > Phần ENFORCE (kiểm quyền trên route) nằm ở `rbac.middleware` — hạ tầng, không thuộc module này.
+>
+> Loại tài liệu: **Spec** — mô tả WHAT/WHY, phạm vi và tiêu chí chấp nhận.
+> Thiết kế triển khai nằm ở [`plan.md`](plan.md); trạng thái code nằm ở
+> [`implementation.md`](implementation.md).
 
 ## 1. Goals
 
@@ -33,7 +37,7 @@
 - Quyền được kiểm theo `permissions.code`, KHÔNG theo role name.
 - Các role hiện hành là `admin`, `staff`, `asset_manager`; không cho client tự tạo
   role name mới.
-- [`permission-registry.md`](../architecture/permission-registry.md) là registry mã
+- [`permission-registry.md`](../../architecture/permission-registry.md) là registry mã
   quyền được ứng dụng hỗ trợ; bảng
   `permissions` là bản runtime được seed/migrate từ registry đó.
 - Thêm/đổi/xóa một permission code phải cập nhật đồng thời registry, constant dùng
@@ -80,35 +84,14 @@
 ## 7. Permission code registry
 
 - Danh sách chuẩn hiện hành:
-  [`permission-registry.md`](../architecture/permission-registry.md).
+  [`permission-registry.md`](../../architecture/permission-registry.md).
 - Runtime authorization đọc quyền đã gán từ bảng `permissions`; spec registry trả
   lời câu hỏi “ứng dụng hỗ trợ những code nào”. Hai vai trò khác nhau, không mâu thuẫn.
 - Route, menu và action phải tham chiếu cùng một code trong registry. FE ẩn/disable
   action chỉ để UX; backend middleware vẫn là nơi quyết định cho phép cuối cùng.
 - Không hỗ trợ wildcard như `asset.*`; mỗi code được lưu và kiểm riêng.
 
-## 8. Trạng thái triển khai hiện tại
-
-Đã triển khai:
-
-- [x] Schema `roles`, `permissions`, `role_permissions`, `user_roles`.
-- [x] Login truy vấn role và làm phẳng `permissions.code`.
-- [x] Access token chứa `permissionCodes`.
-- [x] `requirePermission(code)` bảo vệ các route hiện có.
-
-Chưa triển khai:
-
-- [ ] `RbacService` và repository dành riêng cho việc thay thế role của user.
-- [ ] API admin thay đổi role của user với permission `role.assign`.
-- [ ] Users/Auth gọi `RbacService` khi gán role ban đầu hoặc role mặc định.
-- [ ] Transaction thay thế tập `user_roles`.
-- [ ] Tách `requirePermission` khỏi `auth.middleware.ts` sang `rbac.middleware.ts`.
-- [ ] Automated test cho gán role, role không tồn tại và lỗi 403.
-
-CRUD role/permission và chỉnh `role_permissions` không phải đầu việc đang chờ;
-chúng nằm ngoài phạm vi giai đoạn hiện tại.
-
-## 9. Câu hỏi mở
+## 8. Câu hỏi mở
 
 - [ ] Có role "super admin" bỏ qua mọi check permission không?
 - [x] Cache tập permission của user (hiệu năng) hay query mỗi request?

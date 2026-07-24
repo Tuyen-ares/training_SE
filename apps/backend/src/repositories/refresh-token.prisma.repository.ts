@@ -5,6 +5,7 @@ import type {
   RefreshTokenIdentity,
   RefreshTokenRotationResult,
 } from '@/repositories/refresh-token.repository.js';
+import type { PrismaTransaction } from '@/shared/prisma-transaction.js';
 
 export class PrismaRefreshTokenRepository implements IRefreshTokenRepository {
   constructor(private readonly prisma: PrismaClient) {}
@@ -105,6 +106,17 @@ export class PrismaRefreshTokenRepository implements IRefreshTokenRepository {
   async revokeFamily(familyId: string): Promise<void> {
     await this.prisma.refresh_tokens.updateMany({
       where: { family_id: familyId },
+      data: { is_revoked: true },
+    });
+  }
+
+  async revokeAllByUserId(
+    userId: number,
+    transaction?: PrismaTransaction,
+  ): Promise<void> {
+    const database = transaction ?? this.prisma;
+    await database.refresh_tokens.updateMany({
+      where: { user_id: userId },
       data: { is_revoked: true },
     });
   }

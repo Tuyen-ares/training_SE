@@ -5,6 +5,10 @@
 > Module nhận domain event từ các module nghiệp vụ và chuyển thành thông báo theo
 > từng channel. Phiên bản đầu hỗ trợ In-App; Email và Transactional Outbox là các
 > giai đoạn mở rộng đã định hướng, không nằm trong schema/source hiện tại.
+>
+> Loại tài liệu: **Spec** — mô tả WHAT/WHY, phạm vi và tiêu chí chấp nhận.
+> Thiết kế triển khai nằm ở [`plan.md`](plan.md); trạng thái code nằm ở
+> [`implementation.md`](implementation.md).
 
 ## 1. Goals
 
@@ -231,18 +235,7 @@ người khác.
 Không phải mọi event đều bắt buộc gửi qua tất cả channel. Mapping người nhận,
 template và channel được chốt khi lập feature spec triển khai.
 
-## 10. Đầu việc chưa triển khai
-
-- [ ] In-process Event Bus và event envelope chuẩn.
-- [ ] Prisma model/migration cho `notifications`.
-- [ ] Notification repository/service/controller/routes.
-- [ ] In-App event handlers và template mapping.
-- [ ] Frontend notification center/unread badge.
-- [ ] Email provider và `EmailNotificationChannel`.
-- [ ] `notification_deliveries` và retry policy.
-- [ ] Transactional Outbox + worker khi có yêu cầu delivery guarantee.
-
-## 11. Câu hỏi mở trước khi implement
+## 10. Câu hỏi mở trước khi implement
 
 - [ ] Email provider nào sẽ được dùng?
 - [ ] Event nào gửi In-App, event nào gửi cả Email?

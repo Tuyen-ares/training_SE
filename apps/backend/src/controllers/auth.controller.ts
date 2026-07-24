@@ -106,7 +106,10 @@ export default class AuthController {
         result.refreshToken,
         getRefreshTokenCookieOptions(result.refreshTokenExpiresAt),
       );
-      return ApiResponse.ok(res, { accessToken: result.accessToken });
+      return ApiResponse.ok(res, {
+        accessToken: result.accessToken,
+        user: result.user,
+      });
     } catch (error) {
       if (
         error instanceof AuthError &&

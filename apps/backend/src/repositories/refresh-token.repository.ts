@@ -18,4 +18,9 @@ export interface IRefreshTokenRepository {
     replacement: CreateRefreshTokenData,
   ): Promise<RefreshTokenRotationResult>;
   revokeFamily(familyId: string): Promise<void>;
+  revokeAllByUserId(
+    userId: number,
+    transaction?: PrismaTransaction,
+  ): Promise<void>;
 }
+import type { PrismaTransaction } from '@/shared/prisma-transaction.js';

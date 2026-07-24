@@ -44,3 +44,7 @@ export interface TokenPair {
 export interface LoginResult extends TokenPair {
   user: AuthenticatedUserDto;
 }
+
+export interface RefreshResult extends TokenPair {
+  user: AuthenticatedUserDto;
+}

@@ -1,12 +1,15 @@
 # User Module — Implementation Status
 
-> Đây là ảnh chụp trạng thái triển khai, không phải nguồn yêu cầu chuẩn. Contract hiện hành nằm tại [Users module](../modules/users.md); nếu có khác biệt, tài liệu kiến trúc và module được ưu tiên.
+> Đây là ảnh chụp trạng thái cũ. Contract hiện hành nằm tại
+> [Users spec](../modules/users/spec.md) và trạng thái mới tại
+> [Users implementation](../modules/users/implementation.md).
 
 ## 1. Thông tin tài liệu
 
 - Module: `users`
 - Backend: Express 5, TypeScript, Prisma, MySQL/MariaDB
-- Trạng thái: CRUD cơ bản đã có; security contract chưa hoàn thiện
+- Trạng thái: User/Auth/RBAC security contract đã triển khai; còn UI edit role và
+  database concurrency test nâng cao
 - API prefix: `/api/users`
 - Cập nhật: 2026-07-23
 
@@ -77,7 +80,7 @@ interface CreateUserInputDto {
   email: string;
   phone: string;
   password: string;
-  roleIds: number[];
+  roleIds?: number[];
 }
 ```
 
@@ -100,9 +103,11 @@ interface UpdateUserInputDto {
 interface UserResponseDto {
   id: number;
   departmentId: number;
+  department: { id: number; name: string };
   name: string;
   email: string;
   phone: string;
+  isActive: boolean;
   roles: Array<{ id: number; name: string }>;
 }
 ```
@@ -120,7 +125,6 @@ interface CreateUserData {
   email: string;
   phone: string;
   passwordHash: string;
-  roleIds: number[];
 }
 ```
 
@@ -201,7 +205,8 @@ Quy tắc:
 - Email và phone phải duy nhất.
 - Department phải tồn tại.
 - Mọi `roleId` phải tồn tại.
-- Phải có ít nhất một role.
+- Nếu `roleIds` có phần tử, người gọi phải có `role.assign` và mọi role phải tồn tại.
+- Nếu không gửi hoặc gửi mảng rỗng, backend gán role mặc định `staff`.
 - Password phải được hash bằng bcrypt trước khi repository lưu.
 - Tạo user và các bản ghi `user_roles` trong cùng transaction/nested write.
 
@@ -226,9 +231,9 @@ Quy tắc:
 
 ### 6.5 DELETE `/api/users/:id`
 
-Contract mục tiêu: đặt `is_active=false`, giữ nguyên row và lịch sử, sau đó revoke
-toàn bộ refresh token của user. Hiện code vẫn đang đi qua hard-delete generic nên
-chưa đáp ứng contract này.
+Contract đã triển khai: đặt `is_active=false`, giữ nguyên row và lịch sử, sau đó
+revoke toàn bộ refresh token của user. `PATCH /api/users/:id/activate` dùng để
+kích hoạt lại.
 
 ## 7. Validation
 
@@ -291,28 +296,20 @@ Không trả raw Prisma error hoặc stack trace cho client.
 
 Đã có:
 
-- [x] CRUD route qua `createRestRouter`.
-- [x] Middleware `requireAuth` cho toàn bộ User module.
-- [x] Permission riêng cho view/create/update/delete.
-- [x] Kiểm tra email và phone trùng khi create.
-- [x] Prisma repository cơ bản.
+- [x] Route `requireAuth` và permission riêng cho view/create/update/delete.
+- [x] DTO HTTP camelCase; repository chỉ nhận password hash.
+- [x] Password helper dùng chung cho register và admin create/update.
+- [x] Prisma safe-select và `UserResponseDto` không chứa password/hash.
+- [x] Role tùy chọn; bỏ trống gán `staff`; role chỉ định yêu cầu `role.assign`.
+- [x] `RbacService` sở hữu việc ghi `user_roles` trong transaction.
+- [x] Migration `users.is_active`; deactivate/activate; revoke toàn bộ session.
+- [x] Auth từ chối inactive login/refresh bằng lỗi chung.
+- [x] Unit test và MySQL API integration test cho các contract chính.
 
-Chưa đáp ứng spec mục tiêu:
+Chưa làm:
 
-- [ ] `User`, `CreateUserDto`, `UpdateUserDto` chưa tách model/DTO.
-- [ ] API hiện dùng `department_id` thay vì `departmentId`.
-- [ ] Repository hiện nhận DTO chứa password thô.
-- [ ] UserService chưa hash password khi create/update.
-- [ ] BaseController đang trả trực tiếp `User`, có nguy cơ lộ trường `password`.
-- [ ] Chưa có `UserResponseDto` và response mapper.
-- [ ] User create chưa nhận/gán `roleIds`.
-- [ ] User update chưa quản lý `user_roles`.
-- [ ] Chưa có migration và model cho `users.is_active`.
-- [ ] DELETE vẫn là hard-delete generic, chưa chuyển thành deactivate.
-- [ ] Chưa có luồng kích hoạt lại tài khoản.
-- [ ] Chưa revoke phiên và chưa chặn login/refresh khi user không hoạt động.
-- [ ] Validation hiện chưa áp dụng đầy đủ giới hạn độ dài từ Prisma schema.
-- [ ] Chưa có automated test suite.
+- [ ] Màn hình chỉnh sửa tập role cho user đã tồn tại.
+- [ ] MySQL integration test cho hai refresh request thực sự chạy đồng thời.
 
 ## 12. Acceptance criteria
 

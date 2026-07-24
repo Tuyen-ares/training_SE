@@ -1,22 +1,17 @@
-import bcrypt from 'bcrypt';
 import type {
   AuthenticatedUserDto,
   LoginInputDto,
   LoginResult,
+  RefreshResult,
   RegisterInputDto,
-  TokenPair,
 } from '@/models/auth.model.js';
 import type { AuthUserRecord, IAuthRepository } from '@/repositories/auth.repository.js';
 import type { IRefreshTokenRepository } from '@/repositories/refresh-token.repository.js';
+import type { SessionService } from '@/services/session.service.js';
 import { TokenService } from '@/services/token.service.js';
-import { AuthError } from '@/shared/app-error.js';
-
-const SALT_ROUNDS = 10;
-const DEFAULT_REGISTER_ROLE_NAME = 'staff';
-
-function getDefaultRegisterRoleName(): string {
-  return process.env.DEFAULT_REGISTER_ROLE_NAME?.trim() || DEFAULT_REGISTER_ROLE_NAME;
-}
+import type { UserService } from '@/services/user.service.js';
+import { AuthError, UserError } from '@/shared/app-error.js';
+import { verifyPassword } from '@/shared/security/password-hasher.js';
 
 function toAuthenticatedUserDto(user: AuthUserRecord): AuthenticatedUserDto {
   return {
@@ -35,39 +30,38 @@ export class AuthService {
     private readonly authRepository: IAuthRepository,
     private readonly refreshTokenRepository: IRefreshTokenRepository,
     private readonly tokenService: TokenService,
+    private readonly userService: UserService,
+    private readonly sessionService: SessionService,
   ) {}
 
   async register(input: RegisterInputDto): Promise<void> {
-    const [emailExists, phoneExists, departmentExists, defaultRoleId] = await Promise.all([
-      this.authRepository.emailExists(input.email),
-      this.authRepository.phoneExists(input.phone),
-      this.authRepository.departmentExists(input.departmentId),
-      this.authRepository.findRoleIdByName(getDefaultRegisterRoleName()),
-    ]);
-
-    if (emailExists) throw new AuthError('EMAIL_IN_USE');
-    if (phoneExists) throw new AuthError('PHONE_IN_USE');
-    if (!departmentExists) throw new AuthError('INVALID_DEPARTMENT');
-    if (defaultRoleId === null) {
-      throw new Error(`Default register role "${getDefaultRegisterRoleName()}" does not exist`);
+    try {
+      await this.userService.create({
+        departmentId: input.departmentId,
+        name: input.name,
+        password: input.password,
+        email: input.email,
+        phone: input.phone,
+      });
+    } catch (error) {
+      if (error instanceof UserError) {
+        if (error.code === 'EMAIL_IN_USE') throw new AuthError('EMAIL_IN_USE');
+        if (error.code === 'PHONE_IN_USE') throw new AuthError('PHONE_IN_USE');
+        if (error.code === 'INVALID_DEPARTMENT') {
+          throw new AuthError('INVALID_DEPARTMENT');
+        }
+      }
+      throw error;
     }
-
-    const passwordHash = await bcrypt.hash(input.password, SALT_ROUNDS);
-    await this.authRepository.createUserWithRole({
-      departmentId: input.departmentId,
-      roleId: defaultRoleId,
-      name: input.name,
-      passwordHash,
-      email: input.email,
-      phone: input.phone,
-    });
   }
 
   async login(input: LoginInputDto): Promise<LoginResult> {
     const user = await this.authRepository.findUserByEmail(input.email);
-    if (!user) throw new AuthError('INVALID_CREDENTIALS');
+    if (!user || !user.isActive) {
+      throw new AuthError('INVALID_CREDENTIALS');
+    }
 
-    const passwordMatches = await bcrypt.compare(input.password, user.passwordHash);
+    const passwordMatches = await verifyPassword(input.password, user.passwordHash);
     if (!passwordMatches) throw new AuthError('INVALID_CREDENTIALS');
 
     const authenticatedUser = toAuthenticatedUserDto(user);
@@ -89,7 +83,7 @@ export class AuthService {
     };
   }
 
-  async refresh(refreshToken: string): Promise<TokenPair> {
+  async refresh(refreshToken: string): Promise<RefreshResult> {
     const payload = this.tokenService.verifyRefreshToken(refreshToken);
     if (!payload) throw new AuthError('INVALID_REFRESH_TOKEN');
 
@@ -102,11 +96,13 @@ export class AuthService {
       throw new AuthError('INVALID_REFRESH_TOKEN');
     }
 
-    // Reload the user so the new access token receives current permissions.
     const user = await this.authRepository.findUserById(payload.sub);
     if (!user) throw new AuthError('INVALID_REFRESH_TOKEN');
+    if (!user.isActive) {
+      await this.sessionService.revokeAllForUser(user.id);
+      throw new AuthError('INVALID_REFRESH_TOKEN');
+    }
 
-    // Keep the original session expiration instead of extending it forever.
     const nextRefreshToken = this.tokenService.createRefreshToken(
       user.id,
       payload.familyId,
@@ -138,6 +134,7 @@ export class AuthService {
       accessToken: this.tokenService.createAccessToken(user.id, user.permissionCodes),
       refreshToken: nextRefreshToken.token,
       refreshTokenExpiresAt: nextRefreshToken.expiresAt,
+      user: toAuthenticatedUserDto(user),
     };
   }
 

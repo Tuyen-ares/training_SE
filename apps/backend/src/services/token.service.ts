@@ -6,7 +6,6 @@ import type {
   RefreshTokenPayload,
 } from '@/models/auth.model.js';
 
-const DEFAULT_ACCESS_TOKEN_EXPIRES_IN: SignOptions['expiresIn'] = '15m';
 const DEFAULT_REFRESH_TOKEN_EXPIRES_IN: SignOptions['expiresIn'] = '7d';
 
 const refreshTokenPayloadSchema: z.ZodType<RefreshTokenPayload> = z.object({
@@ -28,8 +27,14 @@ function getRequiredSecret(name: 'JWT_SECRET' | 'REFRESH_TOKEN_SECRET'): string 
   return secret;
 }
 
+function getRequiredAccessTokenExpiresIn(): SignOptions['expiresIn'] {
+  const expiresIn = process.env.JWT_EXPIRES_IN?.trim();
+  if (!expiresIn) throw new Error('JWT_EXPIRES_IN is not configured');
+  return expiresIn as SignOptions['expiresIn'];
+}
+
 function getExpiresIn(
-  name: 'JWT_EXPIRES_IN' | 'REFRESH_TOKEN_EXPIRES_IN',
+  name: 'REFRESH_TOKEN_EXPIRES_IN',
   fallback: SignOptions['expiresIn'],
 ): SignOptions['expiresIn'] {
   return process.env[name]
@@ -54,7 +59,7 @@ export class TokenService {
 
     return jwt.sign(payload, getRequiredSecret('JWT_SECRET'), {
       algorithm: 'HS256',
-      expiresIn: getExpiresIn('JWT_EXPIRES_IN', DEFAULT_ACCESS_TOKEN_EXPIRES_IN),
+      expiresIn: getRequiredAccessTokenExpiresIn(),
     });
   }
 

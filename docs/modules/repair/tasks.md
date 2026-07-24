@@ -1,0 +1,38 @@
+# Tasks — Repair
+
+- [ ] REP-T01 Review schema/index và chiến lược one-open-log.
+  - Depends on: Repair spec
+  - Verify: quyết định được ghi vào spec/plan và migration nếu cần
+- [ ] REP-T02 Tạo Repair DTO/model và validation.
+  - Depends on: REP-T01
+  - Verify: cost âm, date sai, result sai bị từ chối
+- [ ] REP-T03 Tạo repository contract + Prisma implementation.
+  - Depends on: REP-T01
+  - Verify: repository chỉ ghi repair_logs
+- [ ] REP-T04 [REQ-0610, REQ-0630–0633] Implement start repair transaction.
+  - Depends on: REP-T02, REP-T03, AssetService
+  - Verify: log + asset status cùng commit/rollback
+- [ ] REP-T05 [REQ-0611] Implement complete repair transaction.
+  - Depends on: REP-T04
+  - Verify: repaired→available, failed→damaged
+- [ ] REP-T06 Implement list/detail/update log mở.
+  - Depends on: REP-T03
+  - Verify: log đóng là read-only
+- [ ] REP-T07 Tạo controller/routes và permission.
+  - Depends on: REP-T04–T06
+  - Verify: HTTP permission/validation scenarios
+- [ ] REP-T08 Viết unit tests.
+  - Depends on: REP-T04–T06
+  - Verify: toàn bộ business branches
+- [ ] REP-T09 Viết DB integration/concurrency tests.
+  - Depends on: REP-T04–T06
+  - Verify: hai start cùng asset chỉ một thành công
+- [ ] REP-T10 Publish events sau commit.
+  - Depends on: Event Bus phase 1
+  - Verify: rollback không phát event
+- [ ] REP-T11 Implement frontend Repair.
+  - Depends on: REP-T07
+  - Verify: list/start/detail/complete + permission-aware UI
+- [ ] REP-T12 Verification cuối.
+  - Depends on: các task thuộc scope
+  - Verify: backend typecheck/build/tests và frontend build

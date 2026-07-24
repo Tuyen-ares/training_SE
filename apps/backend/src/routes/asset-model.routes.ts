@@ -1,6 +1,7 @@
 import prisma from '@/prisma.js';
 import AssetModelController from '@/controllers/asset-model.controller.js';
-import { requireAuth, requirePermission } from '@/middleware/auth.middleware.js';
+import { requireAuth } from '@/middleware/auth.middleware.js';
+import { requirePermission } from '@/middleware/rbac.middleware.js';
 import { PrismaAssetModelRepository } from '@/repositories/asset-model.prisma.repository.js';
 import { AssetModelService } from '@/services/asset-model.service.js';
 import { createRestRouter } from '@/shared/rest-router.js';

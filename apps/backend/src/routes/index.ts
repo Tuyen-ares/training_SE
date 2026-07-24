@@ -5,6 +5,7 @@ import brandRoutes from '@/routes/brand.routes.js';
 import assetTypeRoutes from '@/routes/asset-type.routes.js';
 import assetModelRoutes from '@/routes/asset-model.routes.js';
 import assetRoutes from '@/routes/asset.routes.js';
+import rbacRoutes from '@/routes/rbac.routes.js';
 import type { Express } from 'express';
 import type { RouteDefinition } from '@/shared/rest-router.js';
 
@@ -15,6 +16,7 @@ const routes: RouteDefinition[] = [
   assetTypeRoutes,
   assetModelRoutes,
   assetRoutes,
+  rbacRoutes,
   authRoutes,
 ];
 export function registerRoutes(app: Express): void {

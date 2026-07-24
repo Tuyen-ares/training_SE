@@ -2,6 +2,10 @@
 
 > Xác thực người dùng: login, cấp JWT, refresh token rotation, logout.
 > KHÁC với module 04 RBAC (phân quyền — "được làm gì"). Đây là "bạn là ai".
+>
+> Loại tài liệu: **Spec** — mô tả WHAT/WHY, phạm vi và tiêu chí chấp nhận.
+> Thiết kế triển khai nằm ở [`plan.md`](plan.md); trạng thái code nằm ở
+> [`implementation.md`](implementation.md).
 
 ## 1. Goals
 
@@ -66,34 +70,14 @@
 
 (không có event nghiệp vụ cần thông báo ở bản này)
 
-## 7. Trạng thái triển khai hiện tại
-
-Đã triển khai:
-
-- [x] Public register với role mặc định `staff`.
-- [x] Login và cấp access token chứa `permissionCodes`.
-- [x] Refresh Token Rotation với `jti` và `family_id`.
-- [x] Phát hiện reuse và revoke token family.
-- [x] Logout revoke family và xóa HttpOnly cookie.
-- [x] `requireAuth` verify access token.
-
-Chưa triển khai:
-
-- [ ] Đọc `users.is_active` trong Auth repository.
-- [ ] Từ chối login khi `is_active=false`.
-- [ ] Từ chối refresh và revoke phiên khi `is_active=false`.
-- [ ] Cung cấp service nội bộ để Users revoke toàn bộ phiên của một user.
-- [ ] Chuyển việc gán role mặc định khi register sang `RbacService`; hiện Auth
-  repository vẫn ghi trực tiếp `user_roles`.
-- [ ] Automated test cho rotation, reuse và hai refresh request đồng thời.
-
-## 8. Câu hỏi mở
+## 7. Câu hỏi mở
 
 - [x] Hạn access / refresh token cụ thể là bao nhiêu?
 =>access = 15p, refresh = 7 days
 - [x] Có giới hạn số phiên (số refresh token active) trên mỗi user không?
 =>không, nhưng có thể revoke toàn bộ family khi phát hiện reuse.
 - [x] Refresh token gửi qua body hay httpOnly cookie?
-=>httpOnly cookie, secure, sameSite=lax, path=/api/auth/refresh
+=>HttpOnly cookie, `secure` ở production, `sameSite=lax`, path `/api/auth` để
+cookie được gửi cho cả refresh và logout.
 - [x] Logout revoke current token hay revoke cả family?
 =>revoke tất cả token cùng family, xóa cookie. Nếu family đã bị revoke, login lại sẽ tạo family mới.

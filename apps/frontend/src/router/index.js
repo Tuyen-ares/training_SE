@@ -30,6 +30,12 @@ const router = createRouter({
       meta: { requiresAuth: true },
     },
     {
+      path: '/users',
+      name: 'users',
+      component: () => import('../views/admin/Users.vue'),
+      meta: { requiresAuth: true, permission: 'user.view' },
+    },
+    {
       path: '/CartItem',
       name: 'CartItem',
       component: () => import('../views/train/components/SearchBar.vue'),
@@ -38,10 +44,11 @@ const router = createRouter({
   ],
 })
 
-router.beforeEach((to) => {
+router.beforeEach(async (to) => {
   const appStore = useAppStore()
   const authStore = useAuthStore()
   appStore.setLoading(true)
+  await authStore.restoreSession()
 
   if (to.meta.requiresAuth && !authStore.isAuthenticated) {
     return {
@@ -51,6 +58,10 @@ router.beforeEach((to) => {
   }
 
   if (to.meta.guestOnly && authStore.isAuthenticated) {
+    return { name: 'dashboard' }
+  }
+
+  if (to.meta.permission && !authStore.hasPermission(to.meta.permission)) {
     return { name: 'dashboard' }
   }
 

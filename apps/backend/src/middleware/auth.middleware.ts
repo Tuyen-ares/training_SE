@@ -38,19 +38,3 @@ export const requireAuth: RequestHandler = (req, res, next): void => {
     ApiResponse.unauthorized(res, 'Invalid or expired access token');
   }
 };
-
-export function requirePermission(requiredCode: string): RequestHandler {
-  return (req, res, next): void => {
-    if (!req.auth) {
-      ApiResponse.unauthorized(res);
-      return;
-    }
-
-    if (!req.auth.permissionCodes.includes(requiredCode)) {
-      ApiResponse.forbidden(res, 'Missing required permission');
-      return;
-    }
-
-    next();
-  };
-}

@@ -1,6 +1,10 @@
 # 03 — Người dùng & phòng ban (Users & Departments)
 
 > Aggregate root: `users`. Module nền, làm sớm vì nhiều module trỏ tới `users`.
+>
+> Loại tài liệu: **Spec** — mô tả WHAT/WHY, phạm vi và tiêu chí chấp nhận.
+> Thiết kế triển khai nằm ở [`plan.md`](plan.md); trạng thái code nằm ở
+> [`implementation.md`](implementation.md).
 
 ## 1. Goals
 - CRUD người dùng (do admin quản lý) và phòng ban.
@@ -14,10 +18,12 @@
   `RbacService`.
 
 ## 3. Data model (Prisma, đã có)
-- `users`: id, department_id, name, password (bcrypt), email (unique), phone (unique).
+- `users`: id, department_id, name, password (bcrypt), email (unique), phone
+  (unique), `is_active` (default `true`).
 - `departments`: id, name (unique).
 
-Không dùng `deleted_at`. Cần migration bổ sung
+Không dùng `deleted_at`. Migration
+`20260723160000_add_user_is_active` bổ sung
 `users.is_active Boolean @default(true)`.
 
 ## 4. Constraints
@@ -67,31 +73,7 @@ Không dùng `deleted_at`. Cần migration bổ sung
 ## 6. Events emitted
 (không có ở bản này)
 
-## 7. Trạng thái triển khai hiện tại
-
-Đã triển khai:
-
-- [x] CRUD route cơ bản cho Users và Departments.
-- [x] Middleware permission cho các route User.
-- [x] Kiểm tra email/phone trùng khi tạo user ở mức service.
-- [x] Chặn xóa Department đang được User tham chiếu.
-
-Chưa triển khai:
-
-- [ ] Migration `users.is_active Boolean @default(true)`.
-- [ ] Cho admin khóa/kích hoạt lại tài khoản qua User API.
-- [ ] Đổi `DELETE /api/users/:id` thành `is_active=false`, không xóa row.
-- [ ] Revoke toàn bộ refresh token của user khi tài khoản bị khóa.
-- [ ] Loại user không hoạt động khỏi query mặc định và hỗ trợ bộ lọc quản trị.
-- [ ] Auth từ chối login/refresh khi `is_active=false`.
-- [ ] Hash password trong luồng admin create/update user.
-- [ ] Response mapper bảo đảm không trả password/password hash.
-- [ ] Validate Department khi admin tạo/cập nhật user.
-- [ ] Nhận role ban đầu và gọi `RbacService` trong transaction.
-- [ ] Admin thay đổi role hiện tại của user bằng `role.assign`.
-- [ ] Automated test cho User CRUD, password safety, `is_active` và role assignment.
-
-## 8. Câu hỏi mở
+## 7. Câu hỏi mở
 
 - [x] Xóa user là xóa cứng hay soft-delete?
   => Không xóa row. Dùng `is_active=false` để ngừng tài khoản và giữ lịch sử.

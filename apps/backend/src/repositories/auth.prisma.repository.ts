@@ -1,7 +1,6 @@
 import type { Prisma, PrismaClient } from '../../generated/prisma/index.js';
 import type {
   AuthUserRecord,
-  CreateAuthUserData,
   IAuthRepository,
 } from '@/repositories/auth.repository.js';
 
@@ -47,6 +46,7 @@ function toAuthUser(user: AuthUserQueryResult): AuthUserRecord {
     passwordHash: user.password,
     email: user.email,
     phone: user.phone,
+    isActive: user.is_active,
     roles,
     permissionCodes,
   };
@@ -54,38 +54,6 @@ function toAuthUser(user: AuthUserQueryResult): AuthUserRecord {
 
 export class PrismaAuthRepository implements IAuthRepository {
   constructor(private readonly prisma: PrismaClient) {}
-
-  async emailExists(email: string): Promise<boolean> {
-    const user = await this.prisma.users.findUnique({
-      where: { email },
-      select: { id: true },
-    });
-    return user !== null;
-  }
-
-  async phoneExists(phone: string): Promise<boolean> {
-    const user = await this.prisma.users.findUnique({
-      where: { phone },
-      select: { id: true },
-    });
-    return user !== null;
-  }
-
-  async departmentExists(departmentId: number): Promise<boolean> {
-    const department = await this.prisma.departments.findUnique({
-      where: { id: departmentId },
-      select: { id: true },
-    });
-    return department !== null;
-  }
-
-  async findRoleIdByName(name: string): Promise<number | null> {
-    const role = await this.prisma.roles.findUnique({
-      where: { name },
-      select: { id: true },
-    });
-    return role?.id ?? null;
-  }
 
   async findUserByEmail(email: string): Promise<AuthUserRecord | null> {
     const user = await this.prisma.users.findUnique({
@@ -101,20 +69,5 @@ export class PrismaAuthRepository implements IAuthRepository {
       include: userAuthorizationInclude,
     });
     return user ? toAuthUser(user) : null;
-  }
-
-  async createUserWithRole(data: CreateAuthUserData): Promise<void> {
-    await this.prisma.users.create({
-      data: {
-        department_id: data.departmentId,
-        name: data.name,
-        password: data.passwordHash,
-        email: data.email,
-        phone: data.phone,
-        user_roles: {
-          create: { role_id: data.roleId },
-        },
-      },
-    });
   }
 }
