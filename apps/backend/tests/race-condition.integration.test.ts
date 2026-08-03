@@ -295,10 +295,10 @@ test('database constraints and conditional updates resolve races in User, Auth, 
 
         const results = await Promise.allSettled([
           prisma.$transaction((transaction) =>
-            service.reserve([asset.id], transaction),
+            service.reserveForApprovedRequest([asset.id], transaction),
           ),
           prisma.$transaction((transaction) =>
-            service.reserve([asset.id], transaction),
+            service.reserveForApprovedRequest([asset.id], transaction),
           ),
         ]);
 

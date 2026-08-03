@@ -172,28 +172,28 @@ test('retire only permits available or damaged assets', async () => {
   }
 });
 
-test('borrow lifecycle follows every valid state transition', async () => {
+test('approval, handover, cancellation, and return follow the asset lifecycle', async () => {
   const repository = new MemoryAssetRepository([
     makeAsset(1, 'available'),
     makeAsset(2, 'available'),
   ]);
   const service = new AssetService(repository);
 
-  await service.reserve([1, 2], transaction);
+  await service.reserveForApprovedRequest([1, 2], transaction);
   assert.equal((await repository.findById(1))?.status, 'reserved');
   assert.equal((await repository.findById(2))?.status, 'reserved');
 
-  await service.releaseReservation([1], transaction);
+  await service.cancelApprovedRequest([1], transaction);
   assert.equal((await repository.findById(1))?.status, 'available');
 
-  await service.markBorrowed([2], transaction);
+  await service.confirmHandover([2], transaction);
   assert.equal((await repository.findById(2))?.status, 'borrowed');
 
   await service.returnAsset(2, 'good', transaction);
   assert.equal((await repository.findById(2))?.status, 'available');
 
-  await service.reserve([2], transaction);
-  await service.markBorrowed([2], transaction);
+  await service.reserveForApprovedRequest([2], transaction);
+  await service.confirmHandover([2], transaction);
   await service.returnAsset(2, 'damaged', transaction);
   assert.equal((await repository.findById(2))?.status, 'damaged');
 });
@@ -225,30 +225,30 @@ test('invalid transitions and an empty asset set are rejected', async () => {
   const service = new AssetService(repository);
 
   await assert.rejects(
-    service.reserve([], transaction),
+    service.reserveForApprovedRequest([], transaction),
     (error) => error instanceof ConflictError,
   );
   await assert.rejects(
-    service.reserve([1], transaction),
+    service.reserveForApprovedRequest([1], transaction),
     (error) => error instanceof InvalidStateTransitionError,
   );
   await assert.rejects(
-    service.markBorrowed([2], transaction),
+    service.confirmHandover([2], transaction),
     (error) => error instanceof InvalidStateTransitionError,
   );
   await assert.rejects(
-    service.reserve([2, 999], transaction),
+    service.reserveForApprovedRequest([2, 999], transaction),
     (error) => error instanceof InvalidStateTransitionError,
   );
 });
 
-test('two concurrent reservations of one asset allow exactly one winner', async () => {
+test('two concurrent approvals of one asset allow exactly one reservation', async () => {
   const repository = new MemoryAssetRepository([makeAsset(1, 'available')]);
   const service = new AssetService(repository);
 
   const results = await Promise.allSettled([
-    service.reserve([1], transaction),
-    service.reserve([1], transaction),
+    service.reserveForApprovedRequest([1], transaction),
+    service.reserveForApprovedRequest([1], transaction),
   ]);
 
   assert.equal(

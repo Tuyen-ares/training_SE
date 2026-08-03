@@ -100,7 +100,11 @@ export class AssetService
     return true;
   }
 
-  reserve(assetIds: number[], transaction: AssetTransaction): Promise<void> {
+  // Call in the same transaction that changes a detail from PENDING to APPROVED.
+  reserveForApprovedRequest(
+    assetIds: number[],
+    transaction: AssetTransaction,
+  ): Promise<void> {
     return this.transitionMany(
       assetIds,
       'available',
@@ -109,7 +113,8 @@ export class AssetService
     );
   }
 
-  markBorrowed(
+  // Confirm the physical handover of assets already held for an approved request.
+  confirmHandover(
     assetIds: number[],
     transaction: AssetTransaction,
   ): Promise<void> {
@@ -121,7 +126,8 @@ export class AssetService
     );
   }
 
-  releaseReservation(
+  // Release an approved request that is cancelled before handover.
+  cancelApprovedRequest(
     assetIds: number[],
     transaction: AssetTransaction,
   ): Promise<void> {

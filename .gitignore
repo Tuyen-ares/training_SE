@@ -24,3 +24,4 @@ _workspace/
 *.tmp
 apps/backend/package-lock.json
 apps/frontend/package-lock.json
+.aider*
