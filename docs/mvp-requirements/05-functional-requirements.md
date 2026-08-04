@@ -9,6 +9,8 @@
 | FR-F01-03 | Hệ thống phải cho phép làm mới phiên bằng refresh token hợp lệ. |
 | FR-F01-04 | Hệ thống phải cho phép user logout và chấm dứt khả năng refresh của phiên. |
 | FR-F01-05 | Hệ thống phải kiểm tra permission trước khi thực hiện hành vi được bảo vệ. |
+| FR-F01-06 | Hệ thống phải cho phép người dùng gửi yêu cầu đăng ký với thông tin cơ bản mà không tự chọn role hoặc department. |
+| FR-F01-07 | Hệ thống phải cho phép user có permission `user_registration.review` duyệt hoặc từ chối yêu cầu đăng ký; khi duyệt, hệ thống tạo tài khoản active và gán role/department theo quyết định review. |
 
 ## F02 – Asset Management
 

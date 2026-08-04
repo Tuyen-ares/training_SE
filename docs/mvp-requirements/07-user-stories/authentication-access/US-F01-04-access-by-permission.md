@@ -2,7 +2,7 @@
 
 ## User Story
 
-Là một **user đã đăng nhập**,  
+Là một **Employee, Asset Manager hoặc Admin**,  
 tôi muốn **chỉ sử dụng các hành vi mà mình được cấp quyền**,  
 để **dữ liệu và nghiệp vụ được bảo vệ đúng trách nhiệm**.
 

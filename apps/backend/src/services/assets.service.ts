@@ -1,6 +1,9 @@
 import { randomUUID } from 'node:crypto';
 import type {
   Asset,
+  AssetDetailRecordDto,
+  AssetListDto,
+  AssetListQuery,
   AssetStatus,
   CreateAssetDto,
   RepairResult,
@@ -30,6 +33,14 @@ export class AssetService
     return this.repo.findById(id);
   }
 
+  getReadPage(query: AssetListQuery): Promise<AssetListDto> {
+    return this.repo.findReadPage(query);
+  }
+
+  getReadDetail(id: number): Promise<AssetDetailRecordDto | null> {
+    return this.repo.findReadDetail(id);
+  }
+
   async create(
     dto: CreateAssetDto,
   ): Promise<{ data?: Asset; error?: string }> {
@@ -45,10 +56,16 @@ export class AssetService
       }
     }
 
+    if (dto.department_id && !(await this.repo.departmentExists(dto.department_id))) {
+      return { error: 'Department does not exist' };
+    }
+
     try {
       const data = await this.repo.create({
         asset_model_id: dto.asset_model_id,
         serial_number: dto.serial_number ?? null,
+        image_url: dto.image_url ?? null,
+        department_id: dto.department_id ?? null,
         qr_code: randomUUID(),
         status: 'available',
       });
@@ -72,6 +89,14 @@ export class AssetService
       throw new ConflictError('Asset model does not exist');
     }
 
+    if (
+      dto.department_id !== undefined &&
+      dto.department_id !== null &&
+      !(await this.repo.departmentExists(dto.department_id))
+    ) {
+      throw new ConflictError('Department does not exist');
+    }
+
     if (dto.serial_number !== undefined && dto.serial_number !== null) {
       const duplicateSerial = await this.repo.findBySerialNumber(dto.serial_number);
       if (duplicateSerial && duplicateSerial.id !== id) {
@@ -90,7 +115,11 @@ export class AssetService
     const asset = await this.repo.findById(id);
     if (!asset) return false;
 
-    if (asset.status !== 'available' && asset.status !== 'damaged') {
+    if (
+      asset.status !== 'available' &&
+      asset.status !== 'damaged' &&
+      asset.status !== 'in_repair'
+    ) {
       throw new InvalidStateTransitionError(
         `Cannot retire asset from status "${asset.status}"`,
       );
@@ -98,6 +127,17 @@ export class AssetService
 
     await this.transitionOne(id, asset.status, 'retired');
     return true;
+  }
+
+  async getReadDetailByQr(qrCode: string): Promise<AssetDetailRecordDto | null> {
+    const asset = await this.repo.findByQrCode(qrCode);
+    return asset ? this.getReadDetail(asset.id) : null;
+  }
+
+  async regenerateQr(id: number): Promise<Asset | null> {
+    const asset = await this.repo.findById(id);
+    if (!asset) return null;
+    return this.repo.updateQrCode(id, randomUUID());
   }
 
   // Call in the same transaction that changes a detail from PENDING to APPROVED.
@@ -152,22 +192,6 @@ export class AssetService
       nextStatus,
       transaction,
     );
-  }
-
-  async reportDamaged(
-    assetId: number,
-    transaction?: AssetTransaction,
-  ): Promise<boolean> {
-    const asset = await this.repo.findById(assetId, transaction);
-    if (!asset) return false;
-
-    await this.transitionOne(
-      assetId,
-      'available',
-      'damaged',
-      transaction,
-    );
-    return true;
   }
 
   startRepair(

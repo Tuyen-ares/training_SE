@@ -2,7 +2,7 @@
 
 ## User Story
 
-Là một **user có quyền từ chối**,  
+Là một **Asset Manager hoặc Admin**,  
 tôi muốn **từ chối một asset đang chờ và ghi lý do**,  
 để **người yêu cầu hiểu quyết định xử lý**.
 

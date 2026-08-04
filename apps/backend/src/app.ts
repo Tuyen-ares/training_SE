@@ -6,8 +6,25 @@ dotenv.config({ path: `${process.cwd()}/.env` });
 import { registerRoutes } from '@/routes/index.js';
 
 const app = express();
+const configuredFrontendOrigins = (process.env.FRONTEND_ORIGIN || '')
+  .split(',')
+  .map((origin) => origin.trim())
+  .filter(Boolean);
+const allowedFrontendOrigins = new Set(
+  configuredFrontendOrigins.length
+    ? configuredFrontendOrigins
+    : ['http://localhost:5173', 'http://localhost:5174', 'http://localhost:5175'],
+);
+
 app.use(cors({
-  origin: process.env.FRONTEND_ORIGIN || 'http://localhost:5173',
+  origin(origin, callback) {
+    if (!origin || allowedFrontendOrigins.has(origin)) {
+      callback(null, true);
+      return;
+    }
+
+    callback(new Error('Origin is not allowed by CORS'));
+  },
   credentials: true,
 }));
 app.use(express.json());

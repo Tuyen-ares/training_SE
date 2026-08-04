@@ -2,7 +2,7 @@
 
 ## User Story
 
-Là một **user có quyền xử lý yêu cầu mượn**,  
+Là một **Asset Manager hoặc Admin**,  
 tôi muốn **xem các phiếu và detail cần xem xét**,  
 để **thực hiện duyệt hoặc từ chối đúng đối tượng**.
 

@@ -2,7 +2,7 @@
 
 ## User Story
 
-Là một **user có quyền xem asset**,  
+Là một **Employee, Asset Manager hoặc Admin**,  
 tôi muốn **xem chi tiết một tài sản**,  
 để **biết chính xác định danh, phân loại, department và trạng thái của nó**.
 

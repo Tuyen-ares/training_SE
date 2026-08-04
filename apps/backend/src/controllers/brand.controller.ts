@@ -6,12 +6,12 @@ import { BaseController } from '@/shared/base.controller.js';
 const brandNameSchema = z.string().trim().min(1).max(30);
 
 class BrandController extends BaseController<Brand, CreateBrandDto, UpdateBrandDto> {
-  protected readonly createSchema: z.ZodType<CreateBrandDto> = z.object({
+  protected readonly createSchema: z.ZodType<CreateBrandDto> = z.strictObject({
     name: brandNameSchema,
   });
 
   protected readonly updateSchema: z.ZodType<UpdateBrandDto> = z
-    .object({
+    .strictObject({
       name: brandNameSchema.optional(),
     })
     .refine((data) => Object.keys(data).length > 0, {

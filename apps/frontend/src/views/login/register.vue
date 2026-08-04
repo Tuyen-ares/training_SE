@@ -1,16 +1,17 @@
 <script setup>
+import { message } from 'ant-design-vue'
 import { reactive, ref } from 'vue'
 import { useRouter } from 'vue-router'
 
 import AuthLayout from '../../components/layout/AuthLayout.vue'
 
 const router = useRouter()
-const showPassword = ref(false)
+const isSubmitting = ref(false)
 
 const registration = reactive({
   fullName: '',
   email: '',
-  username: '',
+  phone: '',
   password: '',
   confirmPassword: '',
   acceptedTerms: false,
@@ -19,7 +20,7 @@ const registration = reactive({
 const errors = reactive({
   fullName: '',
   email: '',
-  username: '',
+  phone: '',
   password: '',
   confirmPassword: '',
   acceptedTerms: '',
@@ -37,272 +38,186 @@ const validateField = (field) => {
   if (field === 'fullName') {
     errors.fullName = registration.fullName.trim().length >= 2
       ? ''
-      : 'Họ và tên cần có ít nhất 2 ký tự.'
+      : 'Enter at least 2 characters.'
   }
 
   if (field === 'email') {
     const emailPattern = /^[^\s@]+@[^\s@]+\.[^\s@]+$/
     errors.email = emailPattern.test(registration.email.trim())
       ? ''
-      : 'Vui lòng nhập địa chỉ email hợp lệ.'
+      : 'Enter a valid email address.'
   }
 
-  if (field === 'username') {
-    const username = registration.username.trim()
-
-    if (username.length < 4) {
-      errors.username = 'Tên đăng nhập cần có ít nhất 4 ký tự.'
-    } else if (!/^[A-Za-z0-9._-]+$/.test(username)) {
-      errors.username = 'Chỉ dùng chữ, số, dấu chấm, gạch dưới hoặc gạch ngang.'
-    } else {
-      errors.username = ''
-    }
+  if (field === 'phone') {
+    errors.phone = /^\d{10}$/.test(registration.phone.trim())
+      ? ''
+      : 'Enter a 10-digit phone number.'
   }
 
   if (field === 'password') {
     errors.password = registration.password.length >= 6
       ? ''
-      : 'Mật khẩu cần có ít nhất 6 ký tự.'
+      : 'Use at least 6 characters.'
   }
 
   if (field === 'confirmPassword') {
     errors.confirmPassword = registration.confirmPassword === registration.password
       && registration.confirmPassword
       ? ''
-      : 'Mật khẩu xác nhận chưa khớp.'
+      : 'Passwords do not match.'
   }
 
   if (field === 'acceptedTerms') {
     errors.acceptedTerms = registration.acceptedTerms
       ? ''
-      : 'Bạn cần xác nhận điều khoản sử dụng nội bộ.'
+      : 'Confirm that the information is accurate.'
   }
 }
 
-const handleRegister = () => {
+const handleRegister = async () => {
   const fields = [
     'fullName',
     'email',
-    'username',
+    'phone',
     'password',
     'confirmPassword',
     'acceptedTerms',
   ]
 
   fields.forEach(validateField)
-
   if (fields.some((field) => errors[field])) return
 
-  router.push({
-    name: 'login',
-    query: { registered: '1' },
-  })
+  isSubmitting.value = true
+  try {
+    message.success('Your registration request is ready for review.')
+    await router.push({
+      name: 'login',
+      query: { registration: 'pending' },
+    })
+  } finally {
+    isSubmitting.value = false
+  }
 }
 </script>
 
 <template>
-  <AuthLayout wide>
-    <div class="auth-panel">
-      <header class="auth-heading">
-        <p class="auth-heading__eyebrow">Tạo hồ sơ nội bộ</p>
-        <h2>Đăng ký tài khoản</h2>
-        <p class="auth-heading__description">
-          Hoàn tất thông tin cơ bản. Dữ liệu hiện chỉ được kiểm tra trên giao
-          diện và chưa gửi tới backend.
-        </p>
-      </header>
+  <AuthLayout>
+    <div>
+      <a-typography-title :level="2" class="auth-page__title">Create an Account</a-typography-title>
+      <a-typography-paragraph type="secondary" class="auth-page__intro">
+        Submit your details for review. Access is assigned after approval.
+      </a-typography-paragraph>
 
-      <form class="auth-form" novalidate @submit.prevent="handleRegister">
-        <div class="auth-form-grid">
-          <div class="auth-field">
-            <label class="auth-field__label" for="register-full-name">
-              Họ và tên
-            </label>
-            <div class="auth-field__control">
-              <input
-                id="register-full-name"
-                v-model="registration.fullName"
-                class="auth-field__input"
-                type="text"
-                name="name"
-                autocomplete="name"
-                placeholder="Nguyễn Văn An"
-                :aria-invalid="Boolean(errors.fullName)"
-                aria-describedby="register-full-name-message"
-                @blur="validateField('fullName')"
-                @input="clearFieldError('fullName')"
-              />
-            </div>
-            <p
-              id="register-full-name-message"
-              class="auth-field__message"
-              aria-live="polite"
-            >
-              {{ errors.fullName }}
-            </p>
-          </div>
+      <a-form layout="vertical" @submit.prevent="handleRegister">
+        <div class="auth-page__fields">
+          <a-form-item
+            label="Full name"
+            :validate-status="errors.fullName ? 'error' : undefined"
+            :help="errors.fullName || undefined"
+          >
+            <a-input
+              v-model:value="registration.fullName"
+              autocomplete="name"
+              placeholder="Alex Morgan"
+              @blur="validateField('fullName')"
+              @input="clearFieldError('fullName')"
+            />
+          </a-form-item>
 
-          <div class="auth-field">
-            <label class="auth-field__label" for="register-email">Email</label>
-            <div class="auth-field__control">
-              <input
-                id="register-email"
-                v-model="registration.email"
-                class="auth-field__input"
-                type="email"
-                name="email"
-                autocomplete="email"
-                placeholder="an@bigin.vn"
-                :aria-invalid="Boolean(errors.email)"
-                aria-describedby="register-email-message"
-                @blur="validateField('email')"
-                @input="clearFieldError('email')"
-              />
-            </div>
-            <p
-              id="register-email-message"
-              class="auth-field__message"
-              aria-live="polite"
-            >
-              {{ errors.email }}
-            </p>
-          </div>
+          <a-form-item
+            label="Work email"
+            :validate-status="errors.email ? 'error' : undefined"
+            :help="errors.email || undefined"
+          >
+            <a-input
+              v-model:value="registration.email"
+              autocomplete="email"
+              placeholder="alex@company.com"
+              @blur="validateField('email')"
+              @input="clearFieldError('email')"
+            />
+          </a-form-item>
 
-          <div class="auth-field auth-field--full">
-            <label class="auth-field__label" for="register-username">
-              Tên đăng nhập
-            </label>
-            <div class="auth-field__control">
-              <input
-                id="register-username"
-                v-model="registration.username"
-                class="auth-field__input"
-                type="text"
-                name="username"
-                autocomplete="username"
-                placeholder="Ví dụ: nguyenvanan"
-                :aria-invalid="Boolean(errors.username)"
-                aria-describedby="register-username-message"
-                @blur="validateField('username')"
-                @input="clearFieldError('username')"
-              />
-            </div>
-            <p
-              id="register-username-message"
-              class="auth-field__message"
-              aria-live="polite"
-            >
-              {{ errors.username }}
-            </p>
-          </div>
+          <a-form-item
+            label="Phone number"
+            :validate-status="errors.phone ? 'error' : undefined"
+            :help="errors.phone || undefined"
+          >
+            <a-input
+              v-model:value="registration.phone"
+              autocomplete="tel"
+              inputmode="numeric"
+              placeholder="0123456789"
+              @blur="validateField('phone')"
+              @input="clearFieldError('phone')"
+            />
+          </a-form-item>
 
-          <div class="auth-field">
-            <label class="auth-field__label" for="register-password">
-              Mật khẩu
-            </label>
-            <div class="auth-field__control">
-              <input
-                id="register-password"
-                v-model="registration.password"
-                class="auth-field__input auth-field__input--password"
-                :type="showPassword ? 'text' : 'password'"
-                name="new-password"
-                autocomplete="new-password"
-                placeholder="Tối thiểu 6 ký tự"
-                :aria-invalid="Boolean(errors.password)"
-                aria-describedby="register-password-message"
-                @blur="validateField('password')"
-                @input="clearFieldError('password')"
-              />
-              <button
-                class="auth-field__toggle"
-                type="button"
-                :aria-label="showPassword ? 'Ẩn mật khẩu' : 'Hiện mật khẩu'"
-                :aria-pressed="showPassword"
-                @click="showPassword = !showPassword"
-              >
-                {{ showPassword ? 'Ẩn' : 'Hiện' }}
-              </button>
-            </div>
-            <p
-              id="register-password-message"
-              class="auth-field__message"
-              aria-live="polite"
-            >
-              {{ errors.password }}
-            </p>
-          </div>
+          <a-form-item
+            label="Password"
+            :validate-status="errors.password ? 'error' : undefined"
+            :help="errors.password || undefined"
+          >
+            <a-input-password
+              v-model:value="registration.password"
+              autocomplete="new-password"
+              placeholder="Create a password"
+              @blur="validateField('password')"
+              @input="clearFieldError('password')"
+            />
+          </a-form-item>
 
-          <div class="auth-field">
-            <label class="auth-field__label" for="register-confirm-password">
-              Xác nhận mật khẩu
-            </label>
-            <div class="auth-field__control">
-              <input
-                id="register-confirm-password"
-                v-model="registration.confirmPassword"
-                class="auth-field__input auth-field__input--password"
-                :type="showPassword ? 'text' : 'password'"
-                name="confirm-password"
-                autocomplete="new-password"
-                placeholder="Nhập lại mật khẩu"
-                :aria-invalid="Boolean(errors.confirmPassword)"
-                aria-describedby="register-confirm-password-message"
-                @blur="validateField('confirmPassword')"
-                @input="clearFieldError('confirmPassword')"
-              />
-              <button
-                class="auth-field__toggle"
-                type="button"
-                :aria-label="showPassword ? 'Ẩn mật khẩu xác nhận' : 'Hiện mật khẩu xác nhận'"
-                :aria-pressed="showPassword"
-                @click="showPassword = !showPassword"
-              >
-                {{ showPassword ? 'Ẩn' : 'Hiện' }}
-              </button>
-            </div>
-            <p
-              id="register-confirm-password-message"
-              class="auth-field__message"
-              aria-live="polite"
-            >
-              {{ errors.confirmPassword }}
-            </p>
-          </div>
-
-          <div class="auth-field auth-field--full">
-            <label class="auth-checkbox">
-              <input
-                v-model="registration.acceptedTerms"
-                type="checkbox"
-                :aria-invalid="Boolean(errors.acceptedTerms)"
-                aria-describedby="register-terms-message"
-                @change="clearFieldError('acceptedTerms')"
-              />
-              <span>
-                Tôi xác nhận thông tin trên là chính xác và đồng ý tuân thủ quy
-                định sử dụng hệ thống nội bộ.
-              </span>
-            </label>
-            <p
-              id="register-terms-message"
-              class="auth-field__message"
-              aria-live="polite"
-            >
-              {{ errors.acceptedTerms }}
-            </p>
-          </div>
+          <a-form-item
+            label="Confirm password"
+            :validate-status="errors.confirmPassword ? 'error' : undefined"
+            :help="errors.confirmPassword || undefined"
+          >
+            <a-input-password
+              v-model:value="registration.confirmPassword"
+              autocomplete="new-password"
+              placeholder="Enter your password again"
+              @blur="validateField('confirmPassword')"
+              @input="clearFieldError('confirmPassword')"
+            />
+          </a-form-item>
         </div>
 
-        <button class="auth-submit" type="submit">Hoàn tất đăng ký</button>
-      </form>
+        <p class="auth-page__password-hint">Use at least 6 characters.</p>
 
-      <p class="auth-switch">
-        Đã có tài khoản?
-        <RouterLink class="auth-link" :to="{ name: 'login' }">
-          Quay lại đăng nhập
-        </RouterLink>
-      </p>
+        <a-form-item
+          :validate-status="errors.acceptedTerms ? 'error' : undefined"
+          :help="errors.acceptedTerms || undefined"
+        >
+          <a-checkbox
+            v-model:checked="registration.acceptedTerms"
+            @change="clearFieldError('acceptedTerms')"
+          >
+            I confirm that this information is accurate and I will follow the
+            internal system-use policy.
+          </a-checkbox>
+        </a-form-item>
+
+        <a-button type="primary" html-type="submit" block :loading="isSubmitting">
+          Sign Up
+        </a-button>
+      </a-form>
+
+      <a-typography-paragraph class="auth-page__switch">
+        Already have an account?
+        <RouterLink :to="{ name: 'login' }">Login now</RouterLink>
+      </a-typography-paragraph>
+      <a-typography-paragraph type="secondary" class="auth-page__legal">
+        © BigIn Asset Management
+      </a-typography-paragraph>
     </div>
   </AuthLayout>
 </template>
+
+<style scoped>
+.auth-page__title { font-size: 24px; line-height: 32px; margin-bottom: 2px !important; }
+.auth-page__intro { font-size: 12px; line-height: 18px; margin-bottom: 20px; }
+.auth-page__fields { display: block; }
+.auth-page__password-hint { color: var(--ant-color-text-secondary); font-size: 11px; line-height: 16px; margin: -16px 0 16px; }
+.auth-page__switch { font-size: 12px; margin-top: 24px; text-align: center; }
+.auth-page__legal { font-size: 10px; margin-top: 28px; text-align: center; }
+</style>

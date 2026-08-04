@@ -7,6 +7,9 @@ import type {
 } from '../src/repositories/asset.repository.js';
 import type {
   Asset,
+  AssetDetailRecordDto,
+  AssetListDto,
+  AssetListQuery,
   AssetStatus,
   UpdateAssetDto,
 } from '../src/models/asset.model.js';
@@ -47,6 +50,41 @@ class MemoryAssetRepository implements IAssetRepository {
   async findById(id: number): Promise<Asset | null> {
     const asset = this.assets.get(id);
     return asset ? structuredClone(asset) : null;
+  }
+
+  async findReadPage(query: AssetListQuery): Promise<AssetListDto> {
+    const matching = [...this.assets.values()]
+      .filter((asset) => !query.status || asset.status === query.status)
+      .slice((query.page - 1) * query.pageSize, query.page * query.pageSize);
+    return {
+      items: matching.map((asset) => ({
+        id: asset.id,
+        serialNumber: asset.serial_number,
+        qrCode: asset.qr_code,
+        status: asset.status.toUpperCase(),
+        model: { id: asset.asset_model_id, name: 'Test model' },
+      })),
+      page: query.page,
+      pageSize: query.pageSize,
+      total: this.assets.size,
+    };
+  }
+
+  async findReadDetail(id: number): Promise<AssetDetailRecordDto | null> {
+    const asset = await this.findById(id);
+    if (!asset) return null;
+    const model = { id: asset.asset_model_id, name: 'Test model' };
+    return {
+      id: asset.id,
+      serialNumber: asset.serial_number,
+      qrCode: asset.qr_code,
+      imageUrl: null,
+      status: asset.status.toUpperCase(),
+      model,
+      brand: { id: 1, name: 'Test brand' },
+      type: { id: 1, name: 'Test type' },
+      department: null,
+    };
   }
 
   async create(data: CreateAssetData): Promise<Asset> {
@@ -147,7 +185,7 @@ test('update rejects an invalid model and another asset serial number', async ()
   assert.equal(await service.update(999, { serial_number: 'UNKNOWN' }), null);
 });
 
-test('retire only permits available or damaged assets', async () => {
+test('retire permits available, damaged or in-repair assets only', async () => {
   const repository = new MemoryAssetRepository([
     makeAsset(1, 'available'),
     makeAsset(2, 'damaged'),
@@ -160,11 +198,13 @@ test('retire only permits available or damaged assets', async () => {
 
   assert.equal(await service.retire(1), true);
   assert.equal(await service.retire(2), true);
+  assert.equal(await service.retire(5), true);
   assert.equal((await repository.findById(1))?.status, 'retired');
   assert.equal((await repository.findById(2))?.status, 'retired');
+  assert.equal((await repository.findById(5))?.status, 'retired');
   assert.equal(await service.retire(999), false);
 
-  for (const id of [3, 4, 5, 6]) {
+  for (const id of [3, 4, 6]) {
     await assert.rejects(
       service.retire(id),
       (error) => error instanceof InvalidStateTransitionError,
@@ -198,15 +238,12 @@ test('approval, handover, cancellation, and return follow the asset lifecycle', 
   assert.equal((await repository.findById(2))?.status, 'damaged');
 });
 
-test('damage and repair lifecycle supports success and failure', async () => {
+test('repair lifecycle supports success and failure from pre-existing damaged assets', async () => {
   const repository = new MemoryAssetRepository([
-    makeAsset(1, 'available'),
+    makeAsset(1, 'damaged'),
     makeAsset(2, 'in_repair'),
   ]);
   const service = new AssetService(repository);
-
-  assert.equal(await service.reportDamaged(1), true);
-  assert.equal((await repository.findById(1))?.status, 'damaged');
 
   await service.startRepair(1, transaction);
   await service.completeRepair(1, 'repaired', transaction);
@@ -214,7 +251,6 @@ test('damage and repair lifecycle supports success and failure', async () => {
 
   await service.completeRepair(2, 'failed', transaction);
   assert.equal((await repository.findById(2))?.status, 'damaged');
-  assert.equal(await service.reportDamaged(999), false);
 });
 
 test('invalid transitions and an empty asset set are rejected', async () => {

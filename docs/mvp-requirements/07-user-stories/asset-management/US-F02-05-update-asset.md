@@ -2,7 +2,7 @@
 
 ## User Story
 
-Là một **user có quyền quản lý asset**,  
+Là một **Asset Manager hoặc Admin**,  
 tôi muốn **cập nhật thông tin và department quản lý tài sản**,  
 để **dữ liệu phản ánh đúng hiện trạng quản lý**.
 

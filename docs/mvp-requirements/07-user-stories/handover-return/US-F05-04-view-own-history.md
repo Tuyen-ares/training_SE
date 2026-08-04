@@ -2,7 +2,7 @@
 
 ## User Story
 
-Là một **nhân viên**,  
+Là một **Employee**,  
 tôi muốn **xem lịch sử các asset mình đã mượn và trả**,  
 để **đối chiếu quá trình sử dụng thiết bị của bản thân**.
 

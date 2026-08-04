@@ -2,7 +2,7 @@
 
 ## User Story
 
-Là một **nhân viên**,  
+Là một **Employee**,  
 tôi muốn **tạo phiếu yêu cầu một hoặc nhiều asset**,  
 để **đề nghị cấp thiết bị phục vụ công việc**.
 

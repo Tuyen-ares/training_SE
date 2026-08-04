@@ -43,6 +43,7 @@ function toAuthUser(user: AuthUserQueryResult): AuthUserRecord {
     id: user.id,
     departmentId: user.department_id,
     name: user.name,
+    avatarUrl: user.avatar_url,
     passwordHash: user.password,
     email: user.email,
     phone: user.phone,

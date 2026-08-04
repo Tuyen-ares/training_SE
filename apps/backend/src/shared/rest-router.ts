@@ -19,7 +19,7 @@ export interface RouterOptions {
   getById?: RequestHandler[]
   create?: RequestHandler[]
   update?: RequestHandler[]
-  delete?: RequestHandler[]
+  delete?: RequestHandler[] | false
 }
 
 export function createRestRouter(controller: IRestController, options?: RouterOptions) {
@@ -30,13 +30,15 @@ export function createRestRouter(controller: IRestController, options?: RouterOp
   const getByIdMw = options?.getById ?? []
   const createMw = options?.create ?? []
   const updateMw = options?.update ?? []
-  const deleteMw = options?.delete ?? []
+  const deleteMw = options?.delete === false ? false : (options?.delete ?? [])
 
   router.get('/', ...globalMiddleware, ...getAllMw, controller.getAll)
   router.get('/:id', ...globalMiddleware, ...getByIdMw, controller.getById)
   router.post('/', ...globalMiddleware, ...createMw, controller.create)
   router.patch('/:id', ...globalMiddleware, ...updateMw, controller.update)
-  router.delete('/:id', ...globalMiddleware, ...deleteMw, controller.delete)
+  if (deleteMw !== false) {
+    router.delete('/:id', ...globalMiddleware, ...deleteMw, controller.delete)
+  }
 
   return router
 }

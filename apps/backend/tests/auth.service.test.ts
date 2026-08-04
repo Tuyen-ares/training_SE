@@ -88,7 +88,7 @@ async function createAuthHarness(
     email: 'vana@example.com',
     phone: '0912345678',
     isActive,
-    roles: [{ id: 2, name: 'staff' }],
+    roles: [{ id: 2, name: 'employee' }],
     permissionCodes: ['dashboard.view'],
   };
 

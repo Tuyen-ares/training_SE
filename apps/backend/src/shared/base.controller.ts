@@ -17,10 +17,14 @@ export abstract class BaseController<TEntity, TCreateDto, TUpdateDto>
     protected readonly service: IBaseService<TEntity, TCreateDto, TUpdateDto>
   ) {}
 
+  protected serialize(item: TEntity): unknown {
+    return item
+  }
+
   getAll = async (_req: Request, res: Response): Promise<void> => {
     try {
       const items = await this.service.getAll()
-      return ApiResponse.ok(res, items)
+      return ApiResponse.ok(res, items.map((item) => this.serialize(item)))
     } catch {
       return ApiResponse.internalError(res)
     }
@@ -31,7 +35,7 @@ export abstract class BaseController<TEntity, TCreateDto, TUpdateDto>
       const id = Number(req.params.id)
       const item = await this.service.getById(id)
       if (!item) return ApiResponse.notFound(res, `${this.resourceName} not found`)
-      return ApiResponse.ok(res, item)
+      return ApiResponse.ok(res, this.serialize(item))
     } catch {
       return ApiResponse.internalError(res)
     }
@@ -43,7 +47,7 @@ export abstract class BaseController<TEntity, TCreateDto, TUpdateDto>
       if (parsed.success === false) return ApiResponse.badRequest(res, parsed.errors)
       const result = await this.service.create(parsed.data)
       if (result.error || !result.data) return ApiResponse.conflict(res, result.error)
-      return ApiResponse.created(res, result.data)
+      return ApiResponse.created(res, this.serialize(result.data))
     } catch {
       return ApiResponse.internalError(res)
     }
@@ -56,7 +60,7 @@ export abstract class BaseController<TEntity, TCreateDto, TUpdateDto>
       const id = Number(req.params.id)
       const item = await this.service.update(id, parsed.data)
       if (!item) return ApiResponse.notFound(res, `${this.resourceName} not found`)
-      return ApiResponse.ok(res, item)
+      return ApiResponse.ok(res, this.serialize(item))
     } 
     catch(error) {
      if (error instanceof ConflictError) {

@@ -49,6 +49,7 @@ export class UserService {
         {
           departmentId: input.departmentId,
           name: input.name,
+          avatarUrl: input.avatarUrl,
           email: input.email,
           phone: input.phone,
           passwordHash,
@@ -97,6 +98,7 @@ export class UserService {
         ? { departmentId: input.departmentId }
         : {}),
       ...(input.name !== undefined ? { name: input.name } : {}),
+      ...(input.avatarUrl !== undefined ? { avatarUrl: input.avatarUrl } : {}),
       ...(input.email !== undefined ? { email: input.email } : {}),
       ...(input.phone !== undefined ? { phone: input.phone } : {}),
       ...(input.password !== undefined

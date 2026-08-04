@@ -2,7 +2,7 @@
 
 ## User Story
 
-Là một **nhân viên**,  
+Là một **Employee**,  
 tôi muốn **xem các asset hiện đang được bàn giao cho mình**,  
 để **biết trách nhiệm hoàn trả hiện tại**.
 

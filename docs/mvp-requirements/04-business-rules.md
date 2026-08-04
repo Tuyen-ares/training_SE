@@ -6,6 +6,8 @@
 - **BR-AUTH-02:** Đăng nhập sai không được tiết lộ email hay mật khẩu là phần không hợp lệ.
 - **BR-AUTH-03:** Refresh token đã dùng, bị thu hồi hoặc hết hạn không được cấp phiên mới.
 - **BR-AUTH-04:** Logout phải kết thúc khả năng tiếp tục refresh của phiên tương ứng.
+- **BR-AUTH-05:** Đăng ký công khai chỉ tạo yêu cầu `PENDING`; yêu cầu này không tạo phiên và không được đăng nhập trước khi được duyệt.
+- **BR-AUTH-06:** Người có permission `user_registration.review` có thể duyệt hoặc từ chối yêu cầu; mapping khởi tạo cấp permission này cho `admin` và `asset_manager`, nhưng runtime chỉ kiểm tra permission code. Khi duyệt phải gán một role có sẵn, mặc định là `employee` nếu không chọn role khác, và có thể chọn department hoặc để trống.
 - **BR-RBAC-01:** Quyền thực tế được suy ra từ permission gán cho các role của user.
 - **BR-RBAC-02:** Không có role hierarchy hoặc role inheritance.
 - **BR-RBAC-03:** Admin muốn làm nghiệp vụ Manager phải được gán permission tương ứng.

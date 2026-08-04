@@ -2,7 +2,7 @@
 
 ## User Story
 
-Là một **user có quyền xem asset**,  
+Là một **Employee, Asset Manager hoặc Admin**,  
 tôi muốn **xem và lọc danh sách tài sản**,  
 để **tìm được thiết bị cần theo dõi hoặc xử lý**.
 

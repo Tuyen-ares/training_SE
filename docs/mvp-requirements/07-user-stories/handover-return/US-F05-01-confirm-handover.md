@@ -2,7 +2,7 @@
 
 ## User Story
 
-Là một **user có quyền bàn giao**,  
+Là một **Asset Manager hoặc Admin**,  
 tôi muốn **xác nhận đã giao asset được giữ chỗ**,  
 để **ghi nhận người mượn đã thực sự nhận thiết bị**.
 

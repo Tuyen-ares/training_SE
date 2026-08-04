@@ -2,7 +2,7 @@
 
 ## User Story
 
-Là một **user thuộc đối tượng được phép báo sự cố**,  
+Là một **Employee, Asset Manager hoặc Admin**,  
 tôi muốn **ghi nhận vấn đề của một asset**,  
 để **người phụ trách có thể xác minh và xử lý**.
 

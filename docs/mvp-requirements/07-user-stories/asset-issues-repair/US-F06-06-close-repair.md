@@ -2,7 +2,7 @@
 
 ## User Story
 
-Là một **user có quyền quản lý sửa chữa**,  
+Là một **Asset Manager hoặc Admin**,  
 tôi muốn **ghi nhận kết quả cuối của việc sửa**,  
 để **asset có trạng thái vận hành phù hợp với kết quả**.
 

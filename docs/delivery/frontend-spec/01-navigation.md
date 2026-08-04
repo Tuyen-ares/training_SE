@@ -8,7 +8,7 @@ Backend vẫn là nơi quyết định authorization. Việc ẩn menu/action ch
 
 ## Dashboard chung theo permission
 
-`SCR-APP-01` là dashboard vận hành chung, không phải dashboard theo role và không chỉ là shortcut launcher. Ngoài shortcut, Dashboard có thể gồm personal operational summary của user hiện tại, operational summary theo permission và work queue theo permission. Mọi nội dung đều dùng hợp permission của các role được gán trực tiếp; không hard-code Staff, Manager hoặc Admin.
+`SCR-APP-01` là dashboard vận hành chung, không phải dashboard theo role và không chỉ là shortcut launcher. Ngoài shortcut, Dashboard có thể gồm personal operational summary của user hiện tại, operational summary theo permission và work queue theo permission. Mọi nội dung đều dùng hợp permission của các role được gán trực tiếp; không hard-code Employee, Manager hoặc Admin.
 
 | Loại nội dung | Phạm vi |
 | --- | --- |

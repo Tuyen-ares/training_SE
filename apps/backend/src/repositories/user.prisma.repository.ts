@@ -12,6 +12,7 @@ const userResponseSelect = {
   id: true,
   department_id: true,
   name: true,
+  avatar_url: true,
   email: true,
   phone: true,
   is_active: true,
@@ -45,6 +46,7 @@ function toUserResponseDto(user: UserQueryResult): UserResponseDto {
     departmentId: user.department_id,
     department: user.department,
     name: user.name,
+    avatarUrl: user.avatar_url,
     email: user.email,
     phone: user.phone,
     isActive: user.is_active,
@@ -59,9 +61,15 @@ function mapUniqueConstraintError(error: unknown): never {
   };
 
   if (prismaError.code === 'P2002') {
-    const target = Array.isArray(prismaError.meta?.target)
+    const directTarget = Array.isArray(prismaError.meta?.target)
       ? prismaError.meta.target.join(',')
       : String(prismaError.meta?.target ?? '');
+    const adapterTarget = (
+      prismaError.meta as {
+        driverAdapterError?: { cause?: { constraint?: { index?: unknown } } };
+      } | undefined
+    )?.driverAdapterError?.cause?.constraint?.index;
+    const target = `${directTarget},${String(adapterTarget ?? '')}`;
 
     if (target.includes('email')) throw new UserError('EMAIL_IN_USE');
     if (target.includes('phone')) throw new UserError('PHONE_IN_USE');
@@ -133,6 +141,7 @@ export class PrismaUserRepository implements IUserRepository {
         data: {
           department_id: data.departmentId,
           name: data.name,
+          avatar_url: data.avatarUrl,
           email: data.email,
           phone: data.phone,
           password: data.passwordHash,
@@ -158,6 +167,7 @@ export class PrismaUserRepository implements IUserRepository {
             ? { department_id: data.departmentId }
             : {}),
           ...(data.name !== undefined ? { name: data.name } : {}),
+          ...(data.avatarUrl !== undefined ? { avatar_url: data.avatarUrl } : {}),
           ...(data.email !== undefined ? { email: data.email } : {}),
           ...(data.phone !== undefined ? { phone: data.phone } : {}),
           ...(data.passwordHash !== undefined

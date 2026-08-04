@@ -2,7 +2,7 @@
 
 ## User Story
 
-Là một **Admin có quyền quản lý user**,  
+Là một **Admin**,  
 tôi muốn **xem và tìm tài khoản trong công ty**,  
 để **thực hiện quản trị đúng người dùng**.
 

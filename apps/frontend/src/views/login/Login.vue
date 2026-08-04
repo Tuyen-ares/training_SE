@@ -1,4 +1,5 @@
 <script setup>
+import { LockOutlined, MailOutlined } from '@ant-design/icons-vue'
 import { computed, reactive, ref } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 
@@ -20,11 +21,10 @@ const errors = reactive({
   form: '',
 })
 
-const showPassword = ref(false)
-const showRecoveryHint = ref(false)
 const isSubmitting = ref(false)
-
-const registrationSuccess = computed(() => route.query.registered === '1')
+const showRecoveryHint = ref(false)
+const rememberMe = ref(false)
+const registrationPending = computed(() => route.query.registration === 'pending')
 
 const clearFieldError = (field) => {
   errors[field] = ''
@@ -36,11 +36,11 @@ const validateField = (field) => {
     const emailPattern = /^[^\s@]+@[^\s@]+\.[^\s@]+$/
     errors.email = emailPattern.test(loginUser.email.trim())
       ? ''
-      : 'Vui lòng nhập địa chỉ email hợp lệ.'
+      : 'Enter a valid email address.'
   }
 
   if (field === 'password') {
-    errors.password = loginUser.password ? '' : 'Vui lòng nhập mật khẩu.'
+    errors.password = loginUser.password ? '' : 'Enter your password.'
   }
 }
 
@@ -64,8 +64,8 @@ const handleLogin = async () => {
     await router.push(redirect || { name: 'dashboard' })
   } catch (error) {
     errors.form = error.status === 401
-      ? 'Email hoặc mật khẩu không đúng, hoặc tài khoản đã ngừng hoạt động.'
-      : 'Không thể đăng nhập lúc này. Vui lòng thử lại.'
+      ? 'Your email, password, or account status could not be verified.'
+      : 'We could not sign you in right now. Please try again.'
   } finally {
     isSubmitting.value = false
   }
@@ -74,129 +74,111 @@ const handleLogin = async () => {
 
 <template>
   <AuthLayout>
-    <div class="auth-panel">
-      <header class="auth-heading">
-        <p class="auth-heading__eyebrow">Chào mừng trở lại</p>
-        <h2>Đăng nhập</h2>
-        <p class="auth-heading__description">
-          Sử dụng tài khoản nội bộ để tiếp tục vào hệ thống.
-        </p>
-      </header>
+    <div>
+      <a-typography-title :level="2" class="auth-page__title">Login</a-typography-title>
+      <a-typography-paragraph type="secondary" class="auth-page__intro">
+        Access your asset management system.
+      </a-typography-paragraph>
 
-      <div
-        v-if="registrationSuccess"
-        class="auth-alert auth-alert--success"
-        role="status"
-      >
-        Thông tin đăng ký đã được ghi nhận trên giao diện. Bạn có thể dùng tài
-        khoản demo để đăng nhập.
-      </div>
-
-      <div
+      <a-alert
+        v-if="registrationPending"
+        class="auth-page__alert"
+        type="success"
+        show-icon
+        message="Registration request submitted"
+        description="Your request is pending review. You can sign in after it has been approved."
+      />
+      <a-alert
         v-if="errors.form"
-        class="auth-alert auth-alert--error"
-        role="alert"
-      >
-        {{ errors.form }}
-      </div>
+        class="auth-page__alert"
+        type="error"
+        show-icon
+        :message="errors.form"
+      />
 
-      <form class="auth-form" novalidate @submit.prevent="handleLogin">
-        <div class="auth-field">
-          <label class="auth-field__label" for="login-email">
-            Email
-          </label>
-          <div class="auth-field__control">
-            <input
-              id="login-email"
-              v-model="loginUser.email"
-              class="auth-field__input"
-              type="email"
-              name="email"
-              autocomplete="email"
-              placeholder="you@company.com"
-              :aria-invalid="Boolean(errors.email)"
-              aria-describedby="login-email-message"
-              @blur="validateField('email')"
-              @input="clearFieldError('email')"
-            />
-          </div>
-          <p
-            id="login-email-message"
-            class="auth-field__message"
-            aria-live="polite"
-          >
-            {{ errors.email }}
-          </p>
-        </div>
-
-        <div class="auth-field">
-          <label class="auth-field__label" for="login-password">
-            Mật khẩu
-          </label>
-          <div class="auth-field__control">
-            <input
-              id="login-password"
-              v-model="loginUser.password"
-              class="auth-field__input auth-field__input--password"
-              :type="showPassword ? 'text' : 'password'"
-              name="password"
-              autocomplete="current-password"
-              placeholder="Nhập mật khẩu"
-              :aria-invalid="Boolean(errors.password)"
-              aria-describedby="login-password-message"
-              @blur="validateField('password')"
-              @input="clearFieldError('password')"
-            />
-            <button
-              class="auth-field__toggle"
-              type="button"
-              :aria-label="showPassword ? 'Ẩn mật khẩu' : 'Hiện mật khẩu'"
-              :aria-pressed="showPassword"
-              @click="showPassword = !showPassword"
-            >
-              {{ showPassword ? 'Ẩn' : 'Hiện' }}
-            </button>
-          </div>
-          <p
-            id="login-password-message"
-            class="auth-field__message"
-            aria-live="polite"
-          >
-            {{ errors.password }}
-          </p>
-        </div>
-
-        <div class="auth-form__options">
-          <button
-            class="auth-link--button"
-            type="button"
-            :aria-expanded="showRecoveryHint"
-            @click="showRecoveryHint = !showRecoveryHint"
-          >
-            Quên mật khẩu?
-          </button>
-        </div>
-
-        <div
-          v-if="showRecoveryHint"
-          class="auth-alert auth-alert--info"
-          role="status"
+      <a-form layout="vertical" @submit.prevent="handleLogin">
+        <a-form-item
+          label="Email"
+          :validate-status="errors.email ? 'error' : undefined"
+          :help="errors.email || undefined"
         >
-          Bản giao diện hiện chưa kết nối backend. Vui lòng liên hệ quản trị viên
-          để được cấp lại mật khẩu.
+          <a-input
+            v-model:value="loginUser.email"
+            autocomplete="email"
+            placeholder="Enter your email"
+            @blur="validateField('email')"
+            @input="clearFieldError('email')"
+          >
+            <template #prefix><MailOutlined /></template>
+          </a-input>
+        </a-form-item>
+
+        <a-form-item
+          :validate-status="errors.password ? 'error' : undefined"
+          :help="errors.password || undefined"
+        >
+          <template #label>
+            <div class="auth-page__password-label">
+              <span>Password</span>
+              <a-button type="link" html-type="button" @click="showRecoveryHint = !showRecoveryHint">Forgot password?</a-button>
+            </div>
+          </template>
+          <a-input-password
+            v-model:value="loginUser.password"
+            autocomplete="current-password"
+            placeholder="Enter password"
+            @blur="validateField('password')"
+            @input="clearFieldError('password')"
+          >
+            <template #prefix><LockOutlined /></template>
+          </a-input-password>
+        </a-form-item>
+
+        <div class="auth-page__actions">
+          <a-checkbox v-model:checked="rememberMe">Remember me</a-checkbox>
         </div>
 
-        <button class="auth-submit" type="submit" :disabled="isSubmitting">
-          {{ isSubmitting ? 'Đang đăng nhập…' : 'Đăng nhập' }}
-        </button>
-      </form>
+        <a-alert
+          v-if="showRecoveryHint"
+          class="auth-page__alert"
+          type="info"
+          show-icon
+          message="Contact an administrator to reset your password."
+        />
 
-      <p class="auth-switch">
-        Chưa có tài khoản?
-        <RouterLink class="auth-link" :to="{ name: 'register' }">
-          Đăng ký
-        </RouterLink>
-      </p>
+        <div class="auth-page__submit">
+          <a-button type="primary" html-type="submit" block :loading="isSubmitting">
+            Login
+          </a-button>
+        </div>
+      </a-form>
+
+      <a-typography-paragraph class="auth-page__switch">
+        Don't have an account?
+        <RouterLink :to="{ name: 'register' }">Sign up now</RouterLink>
+      </a-typography-paragraph>
+      <a-typography-paragraph type="secondary" class="auth-page__legal">
+        ©  BigIn Asset Management
+      </a-typography-paragraph>
     </div>
   </AuthLayout>
 </template>
+
+<style scoped>
+.auth-page__intro { font-size: 12px; line-height: 18px; margin-bottom: 24px; }
+.auth-page__title { font-size: 24px; line-height: 32px; margin-bottom: 2px !important; }
+
+.auth-page__alert {
+  margin-bottom: 1rem;
+}
+
+.auth-page__actions { display: flex; margin-top: 2px; }
+
+.auth-page__password-label { align-items: center; display: flex; gap: 12px; justify-content: space-between; width: 100%; }
+.auth-page__password-label :deep(.ant-btn) { font-size: 12px; font-weight: 600; height: auto; line-height: 18px; padding: 0; }
+.auth-page__submit { margin-top: 18px; }
+
+.auth-page__switch { font-size: 12px; margin-top: 24px; text-align: center; }
+
+.auth-page__legal { font-size: 10px; margin-top: 44px; text-align: center; }
+</style>

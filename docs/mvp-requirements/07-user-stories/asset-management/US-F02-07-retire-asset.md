@@ -2,7 +2,7 @@
 
 ## User Story
 
-Là một **user có thẩm quyền**,  
+Là một **Asset Manager hoặc Admin**,  
 tôi muốn **chuyển tài sản không còn phù hợp sang ngừng sử dụng**,  
 để **ngăn tài sản tiếp tục tham gia nghiệp vụ vận hành**.
 

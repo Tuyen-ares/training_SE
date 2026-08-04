@@ -13,6 +13,7 @@ export interface UserResponseDto {
   departmentId: number;
   department: UserDepartmentDto;
   name: string;
+  avatarUrl: string | null;
   email: string;
   phone: string;
   isActive: boolean;
@@ -22,6 +23,7 @@ export interface UserResponseDto {
 export interface CreateUserInputDto {
   departmentId: number;
   name: string;
+  avatarUrl?: string | null;
   email: string;
   phone: string;
   password: string;
@@ -31,6 +33,7 @@ export interface CreateUserInputDto {
 export interface UpdateUserInputDto {
   departmentId?: number;
   name?: string;
+  avatarUrl?: string | null;
   email?: string;
   phone?: string;
   password?: string;
@@ -40,6 +43,7 @@ export interface UpdateUserInputDto {
 export interface CreateUserData {
   departmentId: number;
   name: string;
+  avatarUrl?: string | null;
   email: string;
   phone: string;
   passwordHash: string;
@@ -48,6 +52,7 @@ export interface CreateUserData {
 export interface UpdateUserData {
   departmentId?: number;
   name?: string;
+  avatarUrl?: string | null;
   email?: string;
   phone?: string;
   passwordHash?: string;

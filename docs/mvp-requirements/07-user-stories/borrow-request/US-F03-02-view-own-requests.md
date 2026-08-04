@@ -2,7 +2,7 @@
 
 ## User Story
 
-Là một **nhân viên**,  
+Là một **Employee**,  
 tôi muốn **xem các phiếu do mình tạo**,  
 để **theo dõi tiến độ nhu cầu mượn**.
 

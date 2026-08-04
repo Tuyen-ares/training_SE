@@ -2,7 +2,7 @@
 
 ## User Story
 
-Là một **user đã đăng nhập**,  
+Là một **Employee, Asset Manager hoặc Admin**,  
 tôi muốn **làm mới phiên hợp lệ**,  
 để **tiếp tục làm việc mà không phải đăng nhập lại liên tục**.
 

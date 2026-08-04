@@ -17,9 +17,15 @@ const roleIdsSchema = z
     message: 'Role IDs must be unique',
   });
 
+const avatarUrlSchema = z
+  .url()
+  .max(500)
+  .nullable();
+
 const createUserSchema: z.ZodType<CreateUserInputDto> = z.strictObject({
   departmentId: z.number().int().positive(),
   name: z.string().trim().min(1).max(30),
+  avatarUrl: avatarUrlSchema.optional(),
   email: z.email().max(40),
   phone: z.string().trim().regex(/^\d{10}$/, 'Phone must contain exactly 10 digits'),
   password: z.string().min(6).max(72),
@@ -30,6 +36,7 @@ const updateUserSchema: z.ZodType<UpdateUserInputDto> = z
   .strictObject({
     departmentId: z.number().int().positive().optional(),
     name: z.string().trim().min(1).max(30).optional(),
+    avatarUrl: avatarUrlSchema.optional(),
     email: z.email().max(40).optional(),
     phone: z
       .string()

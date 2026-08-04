@@ -2,7 +2,7 @@
 
 ## User Story
 
-Là một **nhân viên**,  
+Là một **Employee**,  
 tôi muốn **thu hồi toàn bộ phiếu chưa có asset nào được bàn giao**,  
 để **hủy nhu cầu mượn không còn cần thiết**.
 

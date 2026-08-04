@@ -14,8 +14,8 @@ test('User API creates safe responses, enforces role.assign and deactivates inst
   const department = await prisma.departments.findFirst({
     select: { id: true },
   });
-  const staffRole = await prisma.roles.findUnique({
-    where: { name: 'staff' },
+  const employeeRole = await prisma.roles.findUnique({
+    where: { name: 'employee' },
     select: { id: true },
   });
   const managerRole = await prisma.roles.findUnique({
@@ -24,7 +24,7 @@ test('User API creates safe responses, enforces role.assign and deactivates inst
   });
 
   assert.ok(department, 'A department seed is required');
-  assert.ok(staffRole, 'The staff role seed is required');
+  assert.ok(employeeRole, 'The employee role seed is required');
   assert.ok(managerRole, 'The asset_manager role seed is required');
 
   const server: Server = app.listen(0);
@@ -147,15 +147,15 @@ test('User API creates safe responses, enforces role.assign and deactivates inst
     method: 'POST',
     body: JSON.stringify({
       departmentId: department.id,
-      name: 'Codex Staff Test',
-      email: `staff.${suffix}@test.local`,
+      name: 'Codex Employee Test',
+      email: `employee.${suffix}@test.local`,
       phone: `09${suffix}`,
       password: '123456',
     }),
   });
   assert.equal(defaultRoleResponse.status, 201);
   createdUserIds.push(defaultRoleResponse.body.data.id);
-  assert.equal(defaultRoleResponse.body.data.roles[0].id, staffRole.id);
+  assert.equal(defaultRoleResponse.body.data.roles[0].id, employeeRole.id);
 
   const refreshJti = randomUUID();
   await prisma.refresh_tokens.create({

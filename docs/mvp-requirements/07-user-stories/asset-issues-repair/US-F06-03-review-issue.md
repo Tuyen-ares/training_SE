@@ -2,7 +2,7 @@
 
 ## User Story
 
-Là một **user có quyền xác minh issue**,  
+Là một **Asset Manager hoặc Admin**,  
 tôi muốn **xác nhận hoặc từ chối báo cáo đang chờ**,  
 để **chỉ sự cố có thật mới ảnh hưởng trạng thái asset**.
 

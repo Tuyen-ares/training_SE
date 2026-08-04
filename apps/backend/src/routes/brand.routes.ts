@@ -18,6 +18,6 @@ export default {
     getById: [requirePermission('brand.view')],
     create: [requirePermission('brand.create')],
     update: [requirePermission('brand.update')],
-    delete: [requirePermission('brand.delete')],
+    delete: false,
   }),
 };

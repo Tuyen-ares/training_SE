@@ -48,6 +48,10 @@ asset.qr_generate
 asset.checkout
 asset.checkin
 
+## Asset issues
+
+asset_issue.report
+
 ## Borrow requests
 
 borrow_request.create

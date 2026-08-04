@@ -18,6 +18,6 @@ export default {
     getById: [requirePermission('asset_type.view')],
     create: [requirePermission('asset_type.create')],
     update: [requirePermission('asset_type.update')],
-    delete: [requirePermission('asset_type.delete')],
+    delete: false,
   }),
 };

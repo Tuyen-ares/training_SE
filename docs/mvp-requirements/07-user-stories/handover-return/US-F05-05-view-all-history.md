@@ -2,7 +2,7 @@
 
 ## User Story
 
-Là một **user có quyền xem toàn bộ lịch sử**,  
+Là một **Asset Manager hoặc Admin**,  
 tôi muốn **tra cứu lịch sử mượn/trả trong phạm vi được cấp**,  
 để **hỗ trợ quản lý và đối chiếu tài sản**.
 

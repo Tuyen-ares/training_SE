@@ -50,6 +50,7 @@ function createHarness(options: HarnessOptions = {}) {
         departmentId: data.departmentId,
         department: { id: data.departmentId, name: 'IT' },
         name: data.name,
+        avatarUrl: data.avatarUrl ?? null,
         email: data.email,
         phone: data.phone,
         isActive: true,
@@ -69,6 +70,7 @@ function createHarness(options: HarnessOptions = {}) {
             }
           : {}),
         ...(data.name ? { name: data.name } : {}),
+        ...(data.avatarUrl !== undefined ? { avatarUrl: data.avatarUrl } : {}),
         ...(data.email ? { email: data.email } : {}),
         ...(data.phone ? { phone: data.phone } : {}),
       };
@@ -104,7 +106,7 @@ function createHarness(options: HarnessOptions = {}) {
           ...user,
           roles: roleIds.map((id) => ({
             id,
-            name: id === 2 ? 'staff' : 'asset_manager',
+            name: id === 2 ? 'employee' : 'asset_manager',
           })),
         };
       }
@@ -139,18 +141,20 @@ function createHarness(options: HarnessOptions = {}) {
   };
 }
 
-test('create hashes password, assigns staff by default and never returns password', async () => {
+test('create hashes password, assigns employee by default and never returns password', async () => {
   const harness = createHarness();
   const result = await harness.service.create({
     departmentId: 1,
     name: 'Nguyen Van A',
+    avatarUrl: 'https://images.example.com/users/nguyen-van-a.jpg',
     email: 'vana@example.com',
     phone: '0912345678',
     password: '123456',
   });
 
   assert.deepEqual(harness.getAssignedRoleIds(), [2]);
-  assert.equal(result.roles[0]?.name, 'staff');
+  assert.equal(result.roles[0]?.name, 'employee');
+  assert.equal(result.avatarUrl, 'https://images.example.com/users/nguyen-van-a.jpg');
   assert.equal('password' in result, false);
   assert.equal('passwordHash' in result, false);
   assert.equal(
@@ -159,7 +163,7 @@ test('create hashes password, assigns staff by default and never returns passwor
   );
 });
 
-test('create assigns explicitly selected roles instead of the staff default', async () => {
+test('create assigns explicitly selected roles instead of the employee default', async () => {
   const harness = createHarness();
   const result = await harness.service.create({
     departmentId: 1,
@@ -244,11 +248,13 @@ test('partial update changes only supplied fields, rehashes password and replace
 
   const updated = await harness.service.update(original.id, {
     name: 'Nguyen Van A Updated',
+    avatarUrl: null,
     password: 'new-password',
     roleIds: [3, 3],
   });
 
   assert.equal(updated?.name, 'Nguyen Van A Updated');
+  assert.equal(updated?.avatarUrl, null);
   assert.equal(updated?.email, original.email);
   assert.equal(updated?.phone, original.phone);
   assert.deepEqual(updated?.roles, [{ id: 3, name: 'asset_manager' }]);

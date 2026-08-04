@@ -29,7 +29,7 @@ Hiện chưa còn câu hỏi nghiệp vụ bắt buộc để viết bộ Requir
 | D-03 | Một số tài liệu dùng repair_logs. | Baseline hiện tại dùng asset_issues. |
 | D-04 | ERD/SRS cũ đề xuất inventory, location và asset history. | Các module/bảng này ngoài MVP và không được thêm vào schema. |
 | D-05 | Permission registry cũ dùng nhóm code repair_log.*. | Tên permission issue/repair cần được thống nhất khi implementation; requirement dùng hành vi, không phụ thuộc code cũ. |
-| D-06 | Auth spec cũ có public registration. | MVP chỉ dùng tài khoản nội bộ do Admin quản lý; public registration ngoài phạm vi. |
+| D-06 | Auth spec cũ tạo trực tiếp tài khoản active từ public registration. | Registration tạo yêu cầu `PENDING`; reviewer có permission duyệt/từ chối trước khi tài khoản được tạo và active. |
 | D-07 | Spec cũ mô tả khác nhau về CRUD role/permission. | MVP chỉ cho gán/gỡ role có sẵn; không CRUD role hoặc permission code. |
 
 ## Quy tắc xử lý

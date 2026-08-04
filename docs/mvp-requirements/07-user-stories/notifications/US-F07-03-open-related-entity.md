@@ -2,7 +2,7 @@
 
 ## User Story
 
-Là một **user nhận notification**,  
+Là một **Employee, Asset Manager hoặc Admin**,  
 tôi muốn **mở đối tượng nghiệp vụ liên quan**,  
 để **xem ngữ cảnh đầy đủ của thông báo**.
 

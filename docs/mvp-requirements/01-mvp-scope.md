@@ -19,7 +19,7 @@
 - Procurement, purchase, depreciation/accounting và lịch bảo trì định kỳ.
 - Email, SMS, mobile push hoặc dashboard analytics nâng cao.
 - Role inheritance, wildcard permission, CRUD role và CRUD permission code.
-- Public registration và tự chọn role.
+- Tự chọn role khi đăng ký; role được reviewer gán sau khi duyệt.
 - Bảng handover hoặc event-history mới ngoài baseline.
 
 QR hiện là thuộc tính nhận diện asset. Việc quét QR để mở chi tiết vẫn là câu hỏi mở; không được hiểu thành module kiểm kê.

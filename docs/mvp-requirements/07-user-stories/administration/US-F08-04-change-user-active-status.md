@@ -2,7 +2,7 @@
 
 ## User Story
 
-Là một **Admin có quyền quản lý user**,  
+Là một **Admin**,  
 tôi muốn **kích hoạt hoặc vô hiệu hóa tài khoản**,  
 để **kiểm soát quyền truy cập mà vẫn giữ lịch sử nghiệp vụ**.
 

@@ -2,7 +2,7 @@
 
 ## User Story
 
-Là một **user có quyền xử lý issue**,  
+Là một **Asset Manager hoặc Admin**,  
 tôi muốn **xem các báo cáo và thông tin xử lý**,  
 để **ưu tiên và theo dõi công việc sửa chữa**.
 

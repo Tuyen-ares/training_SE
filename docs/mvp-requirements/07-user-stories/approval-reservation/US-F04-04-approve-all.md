@@ -2,7 +2,7 @@
 
 ## User Story
 
-Là một **user có quyền duyệt**,  
+Là một **Asset Manager hoặc Admin**,  
 tôi muốn **duyệt hàng loạt các detail đang chờ đủ điều kiện**,  
 để **xử lý phiếu nhanh nhưng không cấp trùng tài sản**.
 

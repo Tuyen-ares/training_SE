@@ -14,7 +14,7 @@ import type { PrismaTransaction } from '../src/shared/prisma-transaction.js';
 class MemoryRbacRepository implements IRbacRepository {
   readonly roles: RoleOptionDto[] = [
     { id: 1, name: 'admin' },
-    { id: 2, name: 'staff' },
+  { id: 2, name: 'employee' },
     { id: 3, name: 'asset_manager' },
   ];
   readonly users = new Set([10]);
@@ -41,7 +41,7 @@ class MemoryRbacRepository implements IRbacRepository {
   }
 }
 
-test('listRoles returns role options and missing input resolves to staff', async () => {
+test('listRoles returns role options and missing input resolves to employee', async () => {
   const repository = new MemoryRbacRepository();
   const service = new RbacService(repository);
 
@@ -69,7 +69,7 @@ test('role validation removes duplicate IDs and rejects an invalid or empty set'
 test('missing configured default role is reported explicitly', async () => {
   const repository = new MemoryRbacRepository();
   repository.roles.splice(
-    repository.roles.findIndex((role) => role.name === 'staff'),
+  repository.roles.findIndex((role) => role.name === 'employee'),
     1,
   );
   const service = new RbacService(repository);

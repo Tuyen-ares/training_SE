@@ -2,7 +2,7 @@
 
 ## User Story
 
-Là một **nhân viên**,  
+Là một **Employee**,  
 tôi muốn **xem trạng thái từng asset trong phiếu của mình**,  
 để **biết asset nào đang chờ, được duyệt hay bị từ chối**.
 

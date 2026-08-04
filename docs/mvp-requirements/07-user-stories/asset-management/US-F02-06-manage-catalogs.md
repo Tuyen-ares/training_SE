@@ -2,7 +2,7 @@
 
 ## User Story
 
-Là một **user có quyền quản lý danh mục asset**,  
+Là một **Asset Manager hoặc Admin**,  
 tôi muốn **xem, tạo và cập nhật brand, type và model**,  
 để **asset được phân loại thống nhất**.
 

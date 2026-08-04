@@ -5,6 +5,7 @@ Trạng thái Stitch chỉ mô tả mức độ phù hợp về nội dung/flow 
 | ID | Screen Name | Feature | Actor / Permission | Related User Stories | Main Purpose | Main Entry Point | Main Actions | Existing Stitch Screen | Stitch Status |
 | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- |
 | SCR-SYS-01 | Login | F01 | User có tài khoản | US-F01-01..03 | Xác thực user nội bộ và bắt đầu phiên. | Root/guest entry. | Đăng nhập; hiển thị lỗi xác thực chung. | AUTH-01 | NEEDS_UPDATE |
+| SCR-SYS-03 | Registration Request | F01 | Guest | US-F01-05 | Gửi yêu cầu đăng ký để reviewer xét duyệt; không cho guest tự chọn role/department. | Login entry. | Nhập thông tin cơ bản; gửi request; xem thông báo chờ duyệt. | AUTH-02 | NEEDS_UPDATE |
 | SCR-APP-01 | Workspace Dashboard | App/F01 | User đã đăng nhập; nội dung theo effective permissions | US-F01-04; shortcut đến F02–F08 | Dashboard vận hành chung: personal summary, operational summary/queue theo permission và quick access; không tạo role dashboard hoặc analytics mới. | Sau login; logo/breadcrumb. | Mở khu vực được cấp quyền; xem summary/queue được phép. | Workspace Dashboard; DASH-01, DASH-02, DASH-03 | NEEDS_UPDATE |
 | SCR-SYS-02 | Access & Resource Result | System | Mọi user | US-F01-04; AC not-found/forbidden xuyên suốt | Biểu đạt forbidden hoặc resource không tồn tại an toàn. | Protected route/resource entry. | Quay về Dashboard hoặc list an toàn. | SYS-403 | NEEDS_UPDATE |
 | SCR-F02-01 | Asset List | F02/F03 | Permission xem asset; nhân viên chọn asset | US-F02-01, US-F02-03, US-F02-08, US-F03-01 | Tra cứu/lọc asset; tái dùng mode chọn asset cho phiếu mượn. | Navigation Thiết bị; Dashboard; Create Request. | Search/filter; mở detail; quét/nhập QR; chọn asset khi ở selection mode. | AST-01, AST-02 | NEEDS_UPDATE |
@@ -37,7 +38,7 @@ Trạng thái Stitch chỉ mô tả mức độ phù hợp về nội dung/flow 
 
 ## SCR-APP-01 — Workspace Dashboard
 
-`SCR-APP-01` là một logical dashboard duy nhất, không phải shortcut launcher thuần túy và không phân theo Staff/Manager/Admin. Nội dung được dựng từ hợp (effective permissions) của mọi role được gán; section không đủ capability không render và các section còn lại tự reflow, không để placeholder trống hoặc block chồng lên nhau.
+`SCR-APP-01` là một logical dashboard duy nhất, không phải shortcut launcher thuần túy và không phân theo Employee/Manager/Admin. Nội dung được dựng từ hợp (effective permissions) của mọi role được gán; section không đủ capability không render và các section còn lại tự reflow, không để placeholder trống hoặc block chồng lên nhau.
 
 | Section | Nội dung được phép | Điều kiện hiển thị | Screen/queue đích |
 | --- | --- | --- | --- |
@@ -56,4 +57,4 @@ Mọi metric hoặc queue phải trace được tới dữ liệu domain và scr
 - Refresh session, logout và permission check là application behavior.
 - Reject detail, Approve All result, retire asset, handover, return, report issue, confirm/reject issue, start/update/close repair, activate/deactivate user là workflow state có context.
 - QR scan là entry/capture mechanism vào Asset Detail, không phải module inventory.
-- Department CRUD, role CRUD, permission CRUD, registration và dashboard theo role đều ngoài MVP.
+- Department CRUD, role CRUD, permission CRUD và dashboard theo role đều ngoài MVP.

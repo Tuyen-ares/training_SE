@@ -3,7 +3,7 @@ import type { IRbacRepository } from '@/repositories/rbac.repository.js';
 import { RbacError } from '@/shared/app-error.js';
 import type { PrismaTransaction } from '@/shared/prisma-transaction.js';
 
-const DEFAULT_ROLE_NAME = 'staff';
+const DEFAULT_ROLE_NAME = 'employee';
 
 function uniqueRoleIds(roleIds: number[]): number[] {
   return [...new Set(roleIds)];

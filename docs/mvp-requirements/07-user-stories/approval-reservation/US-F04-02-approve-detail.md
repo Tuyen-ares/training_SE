@@ -2,7 +2,7 @@
 
 ## User Story
 
-Là một **user có quyền duyệt**,  
+Là một **Asset Manager hoặc Admin**,  
 tôi muốn **duyệt một asset đang chờ trong phiếu**,  
 để **giữ thiết bị đó cho người yêu cầu trước khi bàn giao**.
 

@@ -1,18 +1,30 @@
+import axios from 'axios'
 import { computed, ref } from 'vue'
 import { defineStore } from 'pinia'
 
 const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || 'http://localhost:3000/api'
 
-async function readResponse(response) {
-  if (response.status === 204) return null
-  const payload = await response.json().catch(() => null)
-  if (!response.ok) {
-    const error = new Error(payload?.error || 'Yêu cầu không thành công')
-    error.status = response.status
-    error.details = payload?.details
-    throw error
+const http = axios.create({
+  baseURL: API_BASE_URL,
+  withCredentials: true,
+})
+
+function toAppError(error) {
+  if (!axios.isAxiosError(error)) return error
+
+  const appError = new Error(error.response?.data?.error || 'The request could not be completed.')
+  appError.status = error.response?.status
+  appError.details = error.response?.data?.details
+  return appError
+}
+
+async function unwrap(request) {
+  try {
+    const response = await request
+    return response.status === 204 ? null : response.data?.data
+  } catch (error) {
+    throw toAppError(error)
   }
-  return payload?.data
 }
 
 export const useAuthStore = defineStore('auth', () => {
@@ -32,24 +44,14 @@ export const useAuthStore = defineStore('auth', () => {
   }
 
   const login = async ({ email, password }) => {
-    const response = await fetch(`${API_BASE_URL}/auth/login`, {
-      method: 'POST',
-      credentials: 'include',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ email, password }),
-    })
-    const data = await readResponse(response)
+    const data = await unwrap(http.post('/auth/login', { email, password }))
     accessToken.value = data.accessToken
     user.value = data.user
     initialized.value = true
   }
 
   const performRefresh = async () => {
-    const response = await fetch(`${API_BASE_URL}/auth/refresh`, {
-      method: 'POST',
-      credentials: 'include',
-    })
-    const data = await readResponse(response)
+    const data = await unwrap(http.post('/auth/refresh'))
     accessToken.value = data.accessToken
     user.value = data.user
   }
@@ -75,38 +77,32 @@ export const useAuthStore = defineStore('auth', () => {
   }
 
   const api = async (path, options = {}, retryAfterRefresh = true) => {
-    const headers = new Headers(options.headers)
-    if (options.body && !headers.has('Content-Type')) {
-      headers.set('Content-Type', 'application/json')
-    }
-    if (accessToken.value) {
-      headers.set('Authorization', `Bearer ${accessToken.value}`)
-    }
+    try {
+      return await unwrap(http.request({
+        url: path,
+        method: options.method || 'GET',
+        data: options.body,
+        headers: {
+          ...options.headers,
+          ...(accessToken.value ? { Authorization: `Bearer ${accessToken.value}` } : {}),
+        },
+      }))
+    } catch (error) {
+      if (error.status !== 401 || !retryAfterRefresh) throw error
 
-    const response = await fetch(`${API_BASE_URL}${path}`, {
-      ...options,
-      credentials: 'include',
-      headers,
-    })
-
-    if (response.status === 401 && retryAfterRefresh) {
       try {
         await refresh()
         return api(path, options, false)
       } catch {
         clearSession()
+        throw error
       }
     }
-
-    return readResponse(response)
   }
 
   const logout = async () => {
     try {
-      await fetch(`${API_BASE_URL}/auth/logout`, {
-        method: 'POST',
-        credentials: 'include',
-      })
+      await unwrap(http.post('/auth/logout'))
     } finally {
       clearSession()
       initialized.value = true

@@ -2,7 +2,7 @@
 
 ## User Story
 
-Là một **Admin có quyền cập nhật user**,  
+Là một **Admin**,  
 tôi muốn **chỉnh sửa thông tin tài khoản nội bộ**,  
 để **dữ liệu nhân sự luôn chính xác**.
 

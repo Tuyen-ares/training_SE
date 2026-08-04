@@ -2,7 +2,7 @@
 
 ## User Story
 
-Là một **user có quyền xem asset**,  
+Là một **Employee, Asset Manager hoặc Admin**,  
 tôi muốn **quét QR của thiết bị**,  
 để **mở nhanh trang chi tiết đúng asset**.
 

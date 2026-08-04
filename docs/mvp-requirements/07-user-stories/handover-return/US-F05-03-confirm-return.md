@@ -2,7 +2,7 @@
 
 ## User Story
 
-Là một **user có quyền nhận trả**,  
+Là một **Asset Manager hoặc Admin**,  
 tôi muốn **xác nhận asset được hoàn trả**,  
 để **kết thúc lượt mượn và đưa thiết bị về khả dụng**.
 

@@ -2,7 +2,7 @@
 
 ## User Story
 
-Là một **Admin có quyền tạo user**,  
+Là một **Admin**,  
 tôi muốn **tạo tài khoản nội bộ**,  
 để **nhân sự có thể truy cập hệ thống theo vai trò được cấp**.
 

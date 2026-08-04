@@ -2,7 +2,7 @@
 
 ## User Story
 
-Là một **user**,  
+Là một **Employee, Asset Manager hoặc Admin**,  
 tôi muốn **xem notification liên quan đến mình**,  
 để **không bỏ lỡ thay đổi nghiệp vụ quan trọng**.
 

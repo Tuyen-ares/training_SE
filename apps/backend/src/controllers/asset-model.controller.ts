@@ -14,26 +14,46 @@ class AssetModelController extends BaseController<
   CreateAssetModelDto,
   UpdateAssetModelDto
 > {
-  protected readonly createSchema: z.ZodType<CreateAssetModelDto> = z.object({
-    brand_id: z.number().int().positive(),
-    asset_type_id: z.number().int().positive(),
-    name: assetModelNameSchema,
-  });
+  protected readonly createSchema: z.ZodType<CreateAssetModelDto> = z
+    .strictObject({
+      brandId: z.number().int().positive(),
+      assetTypeId: z.number().int().positive(),
+      name: assetModelNameSchema,
+    })
+    .transform((data) => ({
+      brand_id: data.brandId,
+      asset_type_id: data.assetTypeId,
+      name: data.name,
+    }));
 
   protected readonly updateSchema: z.ZodType<UpdateAssetModelDto> = z
-    .object({
-      brand_id: z.number().int().positive().optional(),
-      asset_type_id: z.number().int().positive().optional(),
+    .strictObject({
+      brandId: z.number().int().positive().optional(),
+      assetTypeId: z.number().int().positive().optional(),
       name: assetModelNameSchema.optional(),
     })
     .refine((data) => Object.keys(data).length > 0, {
       message: 'At least one asset model field is required',
-    });
+    })
+    .transform((data) => ({
+      brand_id: data.brandId,
+      asset_type_id: data.assetTypeId,
+      name: data.name,
+    }));
 
   protected readonly resourceName = 'Asset model';
 
   constructor(service: AssetModelService) {
     super(service);
+  }
+
+  protected override serialize(assetModel: AssetModel): unknown {
+    return {
+      id: assetModel.id,
+      brandId: assetModel.brand_id,
+      assetTypeId: assetModel.asset_type_id,
+      name: assetModel.name,
+    };
   }
 }
 

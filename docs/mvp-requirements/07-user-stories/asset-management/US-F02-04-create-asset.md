@@ -2,7 +2,7 @@
 
 ## User Story
 
-Là một **user có quyền quản lý asset**,  
+Là một **Asset Manager hoặc Admin**,  
 tôi muốn **tạo một tài sản với thông tin nhận diện hợp lệ**,  
 để **đưa thiết bị mới vào danh mục quản lý**.
 

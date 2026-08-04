@@ -7,7 +7,7 @@ Tài liệu này mô tả **cách người dùng đi qua giao diện** để th�
 1. [Frontend context](00-frontend-context.md).
 2. [Navigation](01-navigation.md) và [Screen Inventory](02-screen-inventory.md).
 3. Các tài liệu trong [User Flows](03-user-flows/).
-4. [Stitch review](04-stitch-review.md) và [Frontend Open Questions](05-frontend-open-questions.md).
+4. [Stitch review](04-stitch-review.md), [quy ước nhãn Stitch](06-stitch-screen-naming.md) và [Frontend Open Questions](05-frontend-open-questions.md).
 
 ## Nguồn sự thật
 

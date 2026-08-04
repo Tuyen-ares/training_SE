@@ -2,7 +2,7 @@
 
 ## User Story
 
-Là một **user đã đăng nhập**,  
+Là một **Employee, Asset Manager hoặc Admin**,  
 tôi muốn **đăng xuất khỏi phiên hiện tại**,  
 để **ngăn phiên đó tiếp tục truy cập tài khoản của tôi**.
 

@@ -12,6 +12,15 @@ export class InvalidStateTransitionError extends ConflictError {
   }
 }
 
+export type AssetIssueErrorCode = 'ASSET_NOT_FOUND' | 'REPORT_FORBIDDEN';
+
+export class AssetIssueError extends Error {
+  constructor(public readonly code: AssetIssueErrorCode) {
+    super(code);
+    this.name = 'AssetIssueError';
+  }
+}
+
 export type AuthErrorCode =
   | 'EMAIL_IN_USE'
   | 'PHONE_IN_USE'
@@ -50,5 +59,17 @@ export class RbacError extends Error {
   constructor(public readonly code: RbacErrorCode) {
     super(code);
     this.name = 'RbacError';
+  }
+}
+
+export type BorrowErrorCode =
+  | 'REQUEST_NOT_FOUND'
+  | 'REQUEST_FORBIDDEN'
+  | 'INVALID_ASSET_SELECTION';
+
+export class BorrowError extends Error {
+  constructor(public readonly code: BorrowErrorCode) {
+    super(code);
+    this.name = 'BorrowError';
   }
 }

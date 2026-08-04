@@ -19,4 +19,4 @@ Các câu hỏi dưới đây không thay đổi Business Rule hoặc Functional
 - Không có role hierarchy.
 - Return damaged ghi return, tạo issue `CONFIRMED` và đưa asset về `DAMAGED` theo BR-ISS-08.
 - QR chỉ mở Asset Detail, không tạo inventory/stocktake.
-- Không hỗ trợ public registration, role CRUD hoặc permission CRUD trong MVP.
+- Registration không cho guest tự chọn role/department; chỉ reviewer có permission mới gán khi duyệt. Role CRUD hoặc permission CRUD vẫn ngoài MVP.

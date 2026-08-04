@@ -122,7 +122,7 @@ routes → controllers → services → repositories → Prisma → MySQL
   được tự phát minh permission ngoài registry.
 - Không tự viết logic verify JWT rải rác — chỉ ở `auth.middleware`.
 - Hệ thống hiện hỗ trợ public register. Public register chỉ tạo tài khoản thường với
-  role mặc định `staff`, KHÔNG cho client tự chọn role.
+role mặc định `employee`, KHÔNG cho client tự chọn role.
 - Admin tạo user đi qua `POST /api/users`, phải có `user.create`, và admin được chọn
   role ban đầu cho user nếu có thêm quyền `role.assign`.
 - Bảng `user_roles` thuộc RBAC. Module Users/Auth KHÔNG tự ghi trực tiếp

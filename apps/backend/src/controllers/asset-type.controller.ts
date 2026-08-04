@@ -14,12 +14,12 @@ class AssetTypeController extends BaseController<
   CreateAssetTypeDto,
   UpdateAssetTypeDto
 > {
-  protected readonly createSchema: z.ZodType<CreateAssetTypeDto> = z.object({
+  protected readonly createSchema: z.ZodType<CreateAssetTypeDto> = z.strictObject({
     name: assetTypeNameSchema,
   });
 
   protected readonly updateSchema: z.ZodType<UpdateAssetTypeDto> = z
-    .object({
+    .strictObject({
       name: assetTypeNameSchema.optional(),
     })
     .refine((data) => Object.keys(data).length > 0, {

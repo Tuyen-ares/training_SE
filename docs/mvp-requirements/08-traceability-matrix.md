@@ -4,7 +4,7 @@ Ma trận truy vết ở mức Business Requirement → Functional Requirement �
 
 | Business Requirement | Functional Requirements | Feature | User Stories |
 |---|---|---|---|
-| BREQ-01 | FR-F01-01..05 | F01 | US-F01-01..04 |
+| BREQ-01 | FR-F01-01..07 | F01 | US-F01-01..05 |
 | BREQ-02 | FR-F02-01..09 | F02 | US-F02-01..08 |
 | BREQ-03 | FR-F03-01..05 | F03 | US-F03-01..04 |
 | BREQ-04 | FR-F04-01..06 | F04 | US-F04-01..04 |

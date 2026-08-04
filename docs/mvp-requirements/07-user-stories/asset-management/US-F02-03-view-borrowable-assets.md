@@ -2,7 +2,7 @@
 
 ## User Story
 
-Là một **nhân viên**,  
+Là một **Employee**,  
 tôi muốn **xem các asset đang đủ điều kiện yêu cầu mượn**,  
 để **chọn thiết bị phù hợp cho phiếu của mình**.
 

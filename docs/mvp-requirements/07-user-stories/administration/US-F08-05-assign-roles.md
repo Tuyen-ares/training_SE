@@ -2,7 +2,7 @@
 
 ## User Story
 
-Là một **Admin có quyền phân vai trò**,  
+Là một **Admin**,  
 tôi muốn **gán hoặc gỡ các role đã có cho user**,  
 để **quyền truy cập phản ánh đúng trách nhiệm công việc**.
 

@@ -2,7 +2,7 @@
 
 ## User Story
 
-Là một **user có tài khoản**,  
+Là một **Employee, Asset Manager hoặc Admin**,  
 tôi muốn **đăng nhập bằng thông tin xác thực của mình**,  
 để **truy cập các chức năng được cấp quyền**.
 

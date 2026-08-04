@@ -2,7 +2,7 @@
 
 ## User Story
 
-Là một **user**,  
+Là một **Employee, Asset Manager hoặc Admin**,  
 tôi muốn **đánh dấu notification của mình đã đọc**,  
 để **phân biệt nội dung đã xem và chưa xem**.
 

@@ -2,7 +2,7 @@
 
 ## User Story
 
-Là một **user có quyền quản lý sửa chữa**,  
+Là một **Asset Manager hoặc Admin**,  
 tôi muốn **cập nhật thông tin quá trình xử lý**,  
 để **chi phí, đơn vị sửa và tiến độ được theo dõi tập trung**.
 

@@ -8,7 +8,8 @@ Stitch là visual reference. Screen chỉ được tái sử dụng khi sau khi 
 
 | Screen Spec | Stitch hiện có | Status | Giữ được | Cần sửa/thêm |
 | --- | --- | --- | --- | --- |
-| SCR-SYS-01 Login | AUTH-01 | NEEDS_UPDATE | Auth layout và visual language. | Bỏ entry/link registration; chỉ giữ account nội bộ và lỗi chung. |
+| SCR-SYS-01 Login | AUTH-01 | NEEDS_UPDATE | Auth layout và visual language. | Giữ entry sang Registration Request, account nội bộ và lỗi chung. |
+| SCR-SYS-03 Registration Request | AUTH-02 | NEEDS_UPDATE | Auth layout, field hierarchy và responsive form. | English content; chỉ form thông tin cơ bản, không role/department; success state nói rõ request chờ review. |
 | SCR-APP-01 Dashboard | Workspace Dashboard; DASH-01/02/03 | NEEDS_UPDATE | Layout queue/shortcut phù hợp từ từng dashboard. | Hợp nhất thành một logical Workspace Dashboard theo permission, gồm personal/operational summary, work queue và quick access; không KPI/role dashboard cố định. Stitch có thể có tối đa hai visual variant theo permission combination, không đại diện role. |
 | SCR-SYS-02 Result | SYS-403 | NEEDS_UPDATE | Result/return-safe pattern. | Thêm not-found state và không lộ resource. |
 | SCR-F02-01 Asset List | AST-01, AST-02 | NEEDS_UPDATE | Table, search/filter, asset context. | Một list theo permission với selection mode; QR entry; không tách theo role. |
@@ -31,7 +32,6 @@ Stitch là visual reference. Screen chỉ được tái sử dụng khi sau khi 
 
 | Stitch Screen | Xử lý | Lý do |
 | --- | --- | --- |
-| AUTH-02 | OUTDATED | Public registration ngoài MVP. |
 | Dashboard Nhân viên, Dashboard Quản lý, Dashboard Admin (DASH-01, DASH-02, DASH-03) | OUTDATED | Superseded bởi một logical `SCR-APP-01 Workspace Dashboard`. Các visual variant, nếu có, chỉ minh họa effective-permission combinations; không đại diện role. |
 | DEP-01 | OUTDATED | Department CRUD không có feature/US MVP. |
 | RBAC-01, RBAC-02, RBAC-03 | OUTDATED | MVP chỉ gán/gỡ role có sẵn, không CRUD role/permission. |
@@ -41,5 +41,5 @@ Stitch là visual reference. Screen chỉ được tái sử dụng khi sau khi 
 ## Bước Stitch sau khi inventory được duyệt
 
 1. Cập nhật/hợp nhất screen theo mapping, giữ nguyên design language đã audit.
-2. Không tạo lại dashboard role-based, registration, RBAC CRUD hoặc department CRUD.
+2. Không tạo lại dashboard role-based, RBAC CRUD hoặc department CRUD.
 3. Review visual từng screen đã sửa với status/state mới trước khi đánh dấu hoàn thành.

@@ -1,5 +1,4 @@
 @import "./base.css";
-@import "./auth.css";
 
 #app {
   min-height: 100vh;
@@ -31,9 +30,4 @@
 
 .btn-action:hover {
   background: #33956b;
-}
-
-a {
-  color: #fff;
-  text-decoration: none;
 }
