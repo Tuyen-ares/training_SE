@@ -1,0 +1,15 @@
+node_modules/
+.pnpm-store/
+dist/
+dist-ssr/
+generated/
+.env
+.env.*
+!.env.example
+*.log
+coverage/
+.cache/
+.agents/
+.codex/
+apps/backend/package-lock.json
+apps/frontend/package-lock.json
