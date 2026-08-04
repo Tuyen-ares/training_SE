@@ -1,5 +1,9 @@
 @import "./base.css";
 
+#app {
+  min-height: 100vh;
+}
+
 .color-primary {
   color: #34495E;
 }
@@ -26,9 +30,4 @@
 
 .btn-action:hover {
   background: #33956b;
-}
-
-a {
-  color: #fff;
-  text-decoration: none;
 }

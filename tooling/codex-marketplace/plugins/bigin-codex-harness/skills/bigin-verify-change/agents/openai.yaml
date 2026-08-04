@@ -1,0 +1,4 @@
+interface:
+  display_name: "BigIn Verify Change"
+  short_description: "Run checks selected from the changed files"
+  default_prompt: "Use $bigin-verify-change to verify the current changes."

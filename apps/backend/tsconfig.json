@@ -1,8 +1,8 @@
 {
   "compilerOptions": {
     "target": "ES2022",
-    "module": "CommonJS",
-    "moduleResolution": "Node",
+    "module": "NodeNext",
+    "moduleResolution": "NodeNext",
     "ignoreDeprecations": "6.0",
     "allowJs": true,
     "checkJs": false,
@@ -12,9 +12,13 @@
     "skipLibCheck": true,
     "forceConsistentCasingInFileNames": true,
     "resolveJsonModule": true,
-    "rootDir": ".",
+    "baseUrl": ".",
+    "paths": {
+      "@/*": ["src/*"]
+    },
+    "rootDir": "src",
     "outDir": "./dist"
   },
-  "include": ["**/*.js", "**/*.ts"],
+  "include": ["src/**/*"],
   "exclude": ["node_modules", "dist", "generated", "prisma/migrations"]
 }

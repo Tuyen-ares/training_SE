@@ -1,0 +1,4 @@
+interface:
+  display_name: "BigIn Vue Enterprise UI"
+  short_description: "Build consistent enterprise Vue interfaces"
+  default_prompt: "Use $bigin-vue-enterprise-ui to build this Vue interface."

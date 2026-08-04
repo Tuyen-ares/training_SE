@@ -1,0 +1,4 @@
+interface:
+  display_name: "BigIn Task Workflow"
+  short_description: "Plan, implement, and verify repository changes"
+  default_prompt: "Use $bigin-task-workflow to implement this change safely."

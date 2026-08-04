@@ -1,0 +1,39 @@
+{
+  "name": "bigin-codex-harness",
+  "version": "0.1.0+codex.20260720100959",
+  "description": "Codex workflow, architecture, UI, and verification guidance for BigIn Vue and Express repositories.",
+  "author": {
+    "name": "BigIn SE Team",
+    "url": "https://github.com/Tuyen-ares/training_SE"
+  },
+  "homepage": "https://github.com/Tuyen-ares/training_SE/tree/main/tooling/codex-marketplace",
+  "repository": "https://github.com/Tuyen-ares/training_SE",
+  "keywords": [
+    "bigin",
+    "codex",
+    "vue",
+    "vite",
+    "express",
+    "prisma",
+    "harness",
+    "enterprise-ui"
+  ],
+  "skills": "./skills/",
+  "interface": {
+    "displayName": "BigIn Codex Harness",
+    "shortDescription": "Guarded workflows for Vue and Express repositories.",
+    "longDescription": "Adds BigIn-specific task workflow, Vue enterprise UI guidance, Express and Prisma layering rules, repository-aware verification, and trusted lifecycle guards.",
+    "developerName": "BigIn SE Team",
+    "category": "Productivity",
+    "capabilities": [
+      "Read",
+      "Write"
+    ],
+    "websiteURL": "https://github.com/Tuyen-ares/training_SE",
+    "defaultPrompt": [
+      "Use BigIn's workflow to implement and verify this repository change.",
+      "Build this Vue screen using the BigIn enterprise UI conventions.",
+      "Implement this Express and Prisma feature using the repository layers."
+    ]
+  }
+}

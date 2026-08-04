@@ -1,5 +1,5 @@
 generator client {
-   provider = "prisma-client-js"
+  provider = "prisma-client-js"
   output   = "../generated/prisma"
 }
 
@@ -8,62 +8,230 @@ datasource db {
 }
 
 model assets {
-  id          Int          @id @default(autoincrement())
-  type_id     Int?
-  name        String       @db.VarChar(50)
-  status      String?      @default("available") @db.VarChar(20)
-  qr_code     String?      @unique(map: "qr_code") @db.VarChar(36)
-  created_at  DateTime?    @default(now()) @db.DateTime(0)
-  type_assets type_assets? @relation(fields: [type_id], references: [id], onUpdate: NoAction, map: "fk_assets_type")
-  checkouts   checkouts[]
+  id                     Int                      @id @default(autoincrement())
+  asset_model_id         Int
+  serial_number          String?                  @unique(map: "serial_number") @db.VarChar(100)
+  status                 assets_status            @default(available)
+  qr_code                String                   @unique(map: "qr_code") @db.VarChar(36)
+  image_url              String?                  @db.VarChar(500)
+  department_id          Int?
+  created_at             DateTime                 @default(now()) @db.DateTime(0)
+  asset_models           asset_models             @relation(fields: [asset_model_id], references: [id], onUpdate: NoAction, map: "fk_assets_model")
+  departments            departments?             @relation(fields: [department_id], references: [id], onDelete: SetNull, onUpdate: Cascade, map: "fk_assets_department")
+  asset_issues           asset_issues[]
+  borrow_request_details borrow_request_details[]
 
-  @@index([type_id], map: "fk_assets_type")
-}
-
-model checkouts {
-  id             Int       @id @default(autoincrement())
-  user_id        Int?
-  asset_id       Int?
-  checked_out_at DateTime? @default(now()) @db.DateTime(0)
-  checked_in_at  DateTime? @db.DateTime(0)
-  note           String?   @db.Text
-  assets         assets?   @relation(fields: [asset_id], references: [id], onDelete: Cascade, onUpdate: NoAction, map: "fk_checkouts_asset")
-  users          users?    @relation(fields: [user_id], references: [id], onDelete: Cascade, onUpdate: NoAction, map: "fk_checkouts_user")
-
-  @@index([asset_id], map: "fk_checkouts_asset")
-  @@index([user_id], map: "fk_checkouts_user")
-}
-
-model department {
-  id    Int     @id @default(autoincrement())
-  name  String  @db.VarChar(30)
-  users users[]
-}
-
-model roles {
-  id    Int     @id @default(autoincrement())
-  name  String  @db.VarChar(30)
-  users users[]
-}
-
-model type_assets {
-  id     Int      @id @default(autoincrement())
-  name   String   @db.VarChar(30)
-  assets assets[]
+  @@index([asset_model_id], map: "fk_assets_model")
+  @@index([department_id], map: "fk_assets_department")
 }
 
 model users {
-  id            Int         @id @default(autoincrement())
-  department_id Int?
-  role_id       Int?
-  name          String      @db.VarChar(30)
-  password      String      @db.VarChar(255)
-  email         String?     @db.VarChar(30)
-  phone         String?     @db.VarChar(20)
-  checkouts     checkouts[]
-  department    department? @relation(fields: [department_id], references: [id], onUpdate: NoAction, map: "fk_users_department")
-  roles         roles?      @relation(fields: [role_id], references: [id], onUpdate: NoAction, map: "fk_users_role")
+  id                                     Int                      @id @default(autoincrement())
+  department_id                          Int
+  name                                   String                   @db.VarChar(30)
+  avatar_url                             String?                  @db.VarChar(500)
+  password                               String                   @db.VarChar(60)
+  email                                  String                   @unique(map: "email") @db.VarChar(40)
+  phone                                  String                   @unique(map: "phone") @db.VarChar(10)
+  is_active                              Boolean                  @default(true)
+  borrow_requests                        borrow_requests[]
+  reviewed_borrow_request_details        borrow_request_details[] @relation("borrow_request_details_approved_by")
+  reported_asset_issues                  asset_issues[]           @relation("asset_issues_reported_by")
+  handled_asset_issues                   asset_issues[]           @relation("asset_issues_handled_by")
+  handed_over_borrow_histories           borrow_histories[]       @relation("borrow_histories_handed_over_by")
+  received_return_borrow_histories       borrow_histories[]       @relation("borrow_histories_received_by")
+  notifications                          notifications[]
+  refresh_tokens                         refresh_tokens[]
+  user_roles                             user_roles[]
+  department                             departments              @relation(fields: [department_id], references: [id], onUpdate: NoAction, map: "fk_users_department")
 
   @@index([department_id], map: "fk_users_department")
-  @@index([role_id], map: "fk_users_role")
+}
+
+model refresh_tokens {
+  id         BigInt   @id @default(autoincrement())
+  jti        String   @unique(map: "idx_jti") @db.VarChar(36)
+  user_id    Int
+  family_id  String   @db.VarChar(36)
+  is_used    Boolean  @default(false)
+  is_revoked Boolean  @default(false)
+  expires_at DateTime @db.DateTime(0)
+  created_at DateTime? @default(now()) @db.DateTime(0)
+  users      users    @relation(fields: [user_id], references: [id], onDelete: Cascade, onUpdate: NoAction, map: "fk_user")
+
+  @@index([family_id], map: "idx_family_id")
+  @@index([user_id], map: "fk_user")
+}
+
+model asset_types {
+  id           Int            @id @default(autoincrement())
+  name         String         @unique(map: "name") @db.VarChar(30)
+  asset_models asset_models[]
+}
+
+model borrow_histories {
+  id                       Int                    @id @default(autoincrement())
+  borrow_request_detail_id Int                    @unique(map: "borrow_request_detail_id")
+  handed_over_by           Int?
+  borrow_date              DateTime               @default(now()) @db.DateTime(0)
+  received_by              Int?
+  return_date              DateTime?              @db.DateTime(0)
+  return_condition         String?                @db.VarChar(100)
+  borrow_request_details   borrow_request_details @relation(fields: [borrow_request_detail_id], references: [id], onUpdate: NoAction, map: "fk_borrow_histories_detail")
+  handed_over_by_users     users?                 @relation("borrow_histories_handed_over_by", fields: [handed_over_by], references: [id], onDelete: Restrict, onUpdate: NoAction, map: "fk_borrow_histories_handed_over_by")
+  received_by_users        users?                 @relation("borrow_histories_received_by", fields: [received_by], references: [id], onDelete: Restrict, onUpdate: NoAction, map: "fk_borrow_histories_received_by")
+
+  @@index([handed_over_by], map: "fk_borrow_histories_handed_over_by")
+  @@index([received_by], map: "fk_borrow_histories_received_by")
+}
+
+model departments {
+  id     Int      @id @default(autoincrement())
+  name   String   @unique(map: "name") @db.VarChar(30)
+  users  users[]
+  assets assets[]
+}
+
+model asset_issues {
+  id                     Int       @id @default(autoincrement())
+  asset_id               Int
+  reported_by            Int?
+  description            String?   @db.Text
+  status                 String?   @default("REPORTED") @db.VarChar(30)
+  handled_by             Int?
+  repair_provider        String?   @db.VarChar(255)
+  start_date             DateTime? @db.DateTime(0)
+  end_date               DateTime? @db.DateTime(0)
+  cost                   Decimal?  @db.Decimal(12, 2)
+  result                 String?   @db.Text
+  note                   String?   @db.Text
+  created_at             DateTime? @default(now()) @db.DateTime(0)
+  updated_at             DateTime? @default(now()) @db.DateTime(0)
+  assets                 assets    @relation(fields: [asset_id], references: [id], onUpdate: NoAction, map: "fk_asset_issues_asset")
+  reported_by_users      users?    @relation("asset_issues_reported_by", fields: [reported_by], references: [id], onDelete: Restrict, onUpdate: NoAction, map: "fk_asset_issues_reported_by")
+  handled_by_users       users?    @relation("asset_issues_handled_by", fields: [handled_by], references: [id], onDelete: Restrict, onUpdate: NoAction, map: "fk_asset_issues_handled_by")
+
+  @@index([asset_id], map: "fk_asset_issues_asset")
+  @@index([reported_by], map: "fk_asset_issues_reported_by")
+  @@index([handled_by], map: "fk_asset_issues_handled_by")
+}
+
+model asset_models {
+  id            Int         @id @default(autoincrement())
+  brand_id      Int
+  asset_type_id Int
+  name          String      @db.VarChar(30)
+  brands        brands      @relation(fields: [brand_id], references: [id], onUpdate: NoAction, map: "fk_asset_models_brand")
+  asset_types   asset_types @relation(fields: [asset_type_id], references: [id], onUpdate: NoAction, map: "fk_asset_models_type")
+  assets        assets[]
+
+  @@unique([brand_id, asset_type_id, name], map: "uq_asset_models")
+  @@index([asset_type_id], map: "fk_asset_models_type")
+}
+
+model borrow_request_details {
+  id                   Int               @id @default(autoincrement())
+  borrow_request_id    Int
+  asset_id             Int
+  approval_status      String            @default("PENDING") @db.VarChar(30)
+  approved_by          Int?
+  approved_at          DateTime?         @db.DateTime(0)
+  rejection_reason     String?           @db.Text
+  note                 String?           @db.Text
+  expected_return_date DateTime          @db.DateTime(0)
+  borrow_histories     borrow_histories?
+  assets               assets            @relation(fields: [asset_id], references: [id], onUpdate: NoAction, map: "fk_borrow_details_asset")
+  borrow_requests      borrow_requests   @relation(fields: [borrow_request_id], references: [id], onUpdate: NoAction, map: "fk_borrow_details_request")
+  approved_by_users    users?            @relation("borrow_request_details_approved_by", fields: [approved_by], references: [id], onDelete: Restrict, onUpdate: NoAction, map: "fk_borrow_details_approved_by")
+
+  @@unique([borrow_request_id, asset_id], map: "uq_borrow_request_asset")
+  @@index([asset_id], map: "fk_borrow_details_asset")
+  @@index([approved_by], map: "fk_borrow_details_approved_by")
+}
+
+model borrow_requests {
+  id                     Int                      @id @default(autoincrement())
+  user_id                Int
+  status                 borrow_requests_status   @default(pending)
+  created_at             DateTime                 @default(now()) @db.DateTime(0)
+  note                   String?                  @db.Text
+  borrow_request_details borrow_request_details[]
+  users                  users                    @relation(fields: [user_id], references: [id], onUpdate: NoAction, map: "fk_borrow_requests_user")
+
+  @@index([user_id], map: "fk_borrow_requests_user")
+}
+
+model notifications {
+  id                  Int      @id @default(autoincrement())
+  recipient_user_id   Int
+  notification_type   String   @db.VarChar(50)
+  title               String   @db.VarChar(255)
+  message             String   @db.Text
+  related_entity_type String?  @db.VarChar(50)
+  related_entity_id   Int?
+  is_read             Boolean  @default(false)
+  read_at             DateTime? @db.DateTime(0)
+  created_at          DateTime @default(now()) @db.DateTime(0)
+  users               users    @relation(fields: [recipient_user_id], references: [id], onUpdate: NoAction, map: "fk_notifications_recipient")
+
+  @@index([recipient_user_id, is_read], map: "idx_notifications_recipient_is_read")
+  @@index([recipient_user_id, created_at], map: "idx_notifications_recipient_created_at")
+}
+
+model brands {
+  id           Int            @id @default(autoincrement())
+  name         String         @unique(map: "name") @db.VarChar(30)
+  asset_models asset_models[]
+}
+
+model permissions {
+  id               Int                @id @default(autoincrement())
+  name             String             @db.VarChar(30)
+  code             String             @unique(map: "code") @db.VarChar(30)
+  role_permissions role_permissions[]
+}
+
+model role_permissions {
+  role_id       Int
+  permission_id Int
+  permissions   permissions @relation(fields: [permission_id], references: [id], onDelete: Cascade, onUpdate: NoAction, map: "fk_role_permissions_permission")
+  roles         roles       @relation(fields: [role_id], references: [id], onDelete: Cascade, onUpdate: NoAction, map: "fk_role_permissions_role")
+
+  @@id([role_id, permission_id])
+  @@index([permission_id], map: "fk_role_permissions_permission")
+}
+
+model roles {
+  id               Int                @id @default(autoincrement())
+  name             String             @unique(map: "name") @db.VarChar(30)
+  role_permissions role_permissions[]
+  user_roles       user_roles[]
+}
+
+model user_roles {
+  user_id Int
+  role_id Int
+  roles   roles @relation(fields: [role_id], references: [id], onDelete: Cascade, onUpdate: NoAction, map: "fk_user_roles_role")
+  users   users @relation(fields: [user_id], references: [id], onDelete: Cascade, onUpdate: NoAction, map: "fk_user_roles_user")
+
+  @@id([user_id, role_id])
+  @@index([role_id], map: "fk_user_roles_role")
+}
+
+enum assets_status {
+  available @map("AVAILABLE")
+  reserved  @map("RESERVED")
+  borrowed  @map("BORROWED")
+  damaged   @map("DAMAGED")
+  in_repair @map("IN_REPAIR")
+  retired   @map("RETIRED")
+}
+
+enum borrow_requests_status {
+  pending            @map("PENDING")
+  approved           @map("APPROVED")
+  rejected           @map("REJECTED")
+  partially_approved @map("PARTIALLY_APPROVED")
+  completed          @map("COMPLETED")
+  cancelled          @map("CANCELLED")
 }

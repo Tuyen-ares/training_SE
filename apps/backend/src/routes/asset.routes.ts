@@ -1,0 +1,69 @@
+import prisma from '@/prisma.js';
+import AssetController from '@/controllers/asset.controller.js';
+import { requireAuth } from '@/middleware/auth.middleware.js';
+import { requirePermission } from '@/middleware/rbac.middleware.js';
+import { PrismaAssetRepository } from '@/repositories/asset.prisma.repository.js';
+import { PrismaAssetIssueRepository } from '@/repositories/asset-issue.prisma.repository.js';
+import { AssetIssueService } from '@/services/asset-issue.service.js';
+import { AssetService } from '@/services/assets.service.js';
+import { ApiResponse } from '@/shared/api-response.js';
+import { createRestRouter } from '@/shared/rest-router.js';
+import type { RequestHandler } from 'express';
+
+const repository = new PrismaAssetRepository(prisma);
+const issueRepository = new PrismaAssetIssueRepository(prisma);
+const service = new AssetService(repository);
+const issueService = new AssetIssueService(repository, issueRepository);
+const controller = new AssetController(service, issueService);
+const requirePositiveAssetId: RequestHandler = (req, res, next): void => {
+  const id = Number(req.params.id);
+  if (!Number.isInteger(id) || id <= 0) {
+    ApiResponse.badRequest(res, {
+      id: ['Asset id must be a positive integer'],
+    });
+    return;
+  }
+  next();
+};
+
+const router = createRestRouter(controller, {
+  global: [requireAuth],
+  getAll: [requirePermission('asset.view')],
+  getById: [requirePermission('asset.view'), requirePositiveAssetId],
+  create: [requirePermission('asset.create')],
+  update: [requirePermission('asset.update'), requirePositiveAssetId],
+  delete: false,
+});
+
+router.post(
+  '/:id/report-damaged',
+  requireAuth,
+  requirePositiveAssetId,
+  controller.reportDamaged,
+);
+
+router.get(
+  '/by-qr/:qrCode',
+  requireAuth,
+  requirePermission('asset.view'),
+  controller.getByQr,
+);
+router.post(
+  '/:id/retire',
+  requireAuth,
+  requirePositiveAssetId,
+  requirePermission('asset.delete'),
+  controller.retire,
+);
+router.post(
+  '/:id/qr',
+  requireAuth,
+  requirePositiveAssetId,
+  requirePermission('asset.qr_generate'),
+  controller.regenerateQr,
+);
+
+export default {
+  resource: 'assets',
+  router,
+};
