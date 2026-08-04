@@ -6,6 +6,8 @@ import type {
   BorrowHistoryDto,
   PageDto,
   PageQuery,
+  ReviewQueueQuery,
+  BorrowHistoryQuery,
 } from '@/models/borrow-lifecycle.model.js';
 import type { Prisma } from '../../generated/prisma/index.js';
 
@@ -16,6 +18,7 @@ export interface IBorrowRequestRepository {
   createForRequester(requesterId: number, dto: CreateBorrowRequestDto): Promise<BorrowRequestDto>;
   findPageForRequester(requesterId: number, query: BorrowRequestListQuery): Promise<BorrowRequestPageDto>;
   findDetailForRequester(requestId: number, requesterId: number): Promise<BorrowRequestDto | null>;
+  findDetailForReview(requestId: number): Promise<BorrowRequestDto | null>;
   transaction<T>(work: (transaction: BorrowTransaction) => Promise<T>): Promise<T>;
   findActionDetail(detailId: number, transaction: BorrowTransaction): Promise<BorrowActionDetail | null>;
   findPendingDetailIdsForRequest(requestId: number): Promise<number[] | null>;
@@ -26,7 +29,7 @@ export interface IBorrowRequestRepository {
   completeReturn(historyId: number, receiverId: number, condition: string, transaction: BorrowTransaction): Promise<void>;
   refreshRequestStatus(requestId: number, transaction: BorrowTransaction): Promise<void>;
   withdraw(requestId: number, requesterId: number, transaction: BorrowTransaction): Promise<number[]>;
-  listReviewQueue(query: PageQuery): Promise<PageDto<BorrowRequestDto>>;
+  listReviewQueue(query: ReviewQueueQuery): Promise<PageDto<BorrowRequestDto>>;
   listCurrent(requesterId: number, query: PageQuery): Promise<PageDto<BorrowHistoryDto>>;
-  listHistory(query: PageQuery, requesterId?: number): Promise<PageDto<BorrowHistoryDto>>;
+  listHistory(query: BorrowHistoryQuery, requesterId?: number): Promise<PageDto<BorrowHistoryDto>>;
 }

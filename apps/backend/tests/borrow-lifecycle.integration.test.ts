@@ -114,6 +114,13 @@ test('Borrow lifecycle APIs create, approve, hand over, return and cancel safely
   );
   assert.equal(approved.status, 200, JSON.stringify(approved.body));
   assert.equal((await prisma.assets.findUniqueOrThrow({ where: { id: lifecycleAsset.id } })).status, 'reserved');
+  const approvedQueue = await request('/borrow-request-details/review-queue?approvalStatus=APPROVED', reviewerToken);
+  assert.equal(approvedQueue.status, 200, JSON.stringify(approvedQueue.body));
+  assert.ok(approvedQueue.body.data.items.some((item: { id: number }) => item.id === lifecycleRequestId));
+  const approvedDetail = await request(`/borrow-request-details/review-queue/${lifecycleRequestId}`, reviewerToken);
+  assert.equal(approvedDetail.status, 200, JSON.stringify(approvedDetail.body));
+  assert.equal(approvedDetail.body.data.details[0].approvalStatus, 'APPROVED');
+  assert.equal((await request(`/borrow-request-details/review-queue/${lifecycleRequestId}`, noPermissionToken)).status, 403);
   assert.equal((await request(`/borrow-request-details/${lifecycleDetailId}/approve`, reviewerToken, { method: 'POST' })).status, 409);
 
   const handover = await request(`/borrow-request-details/${lifecycleDetailId}/handover`, reviewerToken, { method: 'POST' });
@@ -126,6 +133,12 @@ test('Borrow lifecycle APIs create, approve, hand over, return and cancel safely
   assert.equal(current.status, 200);
   assert.equal(current.body.data.items[0].expectedReturnDate, '2099-01-01');
   assert.equal(current.body.data.items[0].borrower.id, borrower.id);
+  const currentTab = await request('/borrow-histories/me?state=CURRENT', borrowerToken);
+  assert.equal(currentTab.status, 200, JSON.stringify(currentTab.body));
+  assert.ok(currentTab.body.data.items.some((item: { id: number; returnedAt: null }) => item.id === historyId && item.returnedAt === null));
+  const returnedTabBeforeReturn = await request('/borrow-histories/me?state=RETURNED', borrowerToken);
+  assert.equal(returnedTabBeforeReturn.status, 200, JSON.stringify(returnedTabBeforeReturn.body));
+  assert.ok(!returnedTabBeforeReturn.body.data.items.some((item: { id: number }) => item.id === historyId));
 
   const arbitraryCondition = await request(`/borrow-histories/${historyId}/return`, reviewerToken, {
     method: 'POST',
@@ -138,6 +151,11 @@ test('Borrow lifecycle APIs create, approve, hand over, return and cancel safely
   assert.equal((await prisma.borrow_histories.findUniqueOrThrow({ where: { id: historyId } })).return_condition, 'NORMAL');
   assert.equal((await prisma.assets.findUniqueOrThrow({ where: { id: lifecycleAsset.id } })).status, 'available');
   assert.equal((await request('/borrow-histories/me', borrowerToken)).status, 200);
+  const returnedTab = await request('/borrow-histories/me?state=RETURNED', borrowerToken);
+  assert.equal(returnedTab.status, 200, JSON.stringify(returnedTab.body));
+  assert.ok(returnedTab.body.data.items.some((item: { id: number; returnedAt: string | null }) => item.id === historyId && item.returnedAt));
+  const currentTabAfterReturn = await request('/borrow-histories/me?state=CURRENT', borrowerToken);
+  assert.ok(!currentTabAfterReturn.body.data.items.some((item: { id: number }) => item.id === historyId));
   const allHistory = await request('/borrow-histories?page=1&pageSize=20', reviewerToken);
   assert.equal(allHistory.status, 200);
   assert.ok(Array.isArray(allHistory.body.data.items));
@@ -161,6 +179,9 @@ test('Borrow lifecycle APIs create, approve, hand over, return and cancel safely
     { method: 'POST', body: JSON.stringify({ rejectionReason: 'Not available for this purpose' }) },
   );
   assert.equal(rejected.status, 200, JSON.stringify(rejected.body));
+  const rejectedQueue = await request('/borrow-request-details/review-queue?approvalStatus=REJECTED', reviewerToken);
+  assert.equal(rejectedQueue.status, 200, JSON.stringify(rejectedQueue.body));
+  assert.ok(rejectedQueue.body.data.items.some((item: { id: number }) => item.id === rejectRequestId));
   assert.equal(
     (await prisma.borrow_requests.findUniqueOrThrow({ where: { id: rejectRequestId } })).status,
     'rejected',

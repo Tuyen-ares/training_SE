@@ -14,6 +14,14 @@ const pageQuerySchema = z.object({
   pageSize: z.coerce.number().int().min(1).max(100).default(20),
 });
 
+const reviewQueueQuerySchema = pageQuerySchema.extend({
+  approvalStatus: z.enum(['PENDING', 'APPROVED', 'REJECTED']).default('PENDING'),
+});
+
+const historyQuerySchema = pageQuerySchema.extend({
+  state: z.enum(['ALL', 'CURRENT', 'RETURNED']).default('ALL'),
+});
+
 const normalReturnSchema = z.strictObject({});
 
 function readPositiveId(value: string | string[] | undefined): number | null {
@@ -99,10 +107,24 @@ export class BorrowWorkflowController {
   };
 
   reviewQueue = async (req: Request, res: Response): Promise<void> => {
-    const parsed = pageQuerySchema.safeParse(req.query);
+    const parsed = reviewQueueQuerySchema.safeParse(req.query);
     if (!parsed.success) return ApiResponse.badRequest(res, { query: ['Invalid pagination query'] });
     try {
       return ApiResponse.ok(res, await this.service.listReviewQueue(parsed.data));
+    } catch {
+      return ApiResponse.internalError(res);
+    }
+  };
+
+  reviewDetail = async (req: Request, res: Response): Promise<void> => {
+    const requestId = readPositiveId(req.params.requestId);
+    if (!requestId) {
+      return ApiResponse.badRequest(res, { requestId: ['A positive id is required'] });
+    }
+    try {
+      const request = await this.service.getReviewDetail(requestId);
+      if (!request) return ApiResponse.notFound(res, 'Borrow request not found');
+      return ApiResponse.ok(res, request);
     } catch {
       return ApiResponse.internalError(res);
     }
@@ -121,7 +143,7 @@ export class BorrowWorkflowController {
 
   ownHistory = async (req: Request, res: Response): Promise<void> => {
     if (!req.auth) return ApiResponse.unauthorized(res);
-    const parsed = pageQuerySchema.safeParse(req.query);
+    const parsed = historyQuerySchema.safeParse(req.query);
     if (!parsed.success) return ApiResponse.badRequest(res, { query: ['Invalid pagination query'] });
     try {
       return ApiResponse.ok(res, await this.service.listHistory(parsed.data, req.auth.sub));
@@ -131,7 +153,7 @@ export class BorrowWorkflowController {
   };
 
   allHistory = async (req: Request, res: Response): Promise<void> => {
-    const parsed = pageQuerySchema.safeParse(req.query);
+    const parsed = historyQuerySchema.safeParse(req.query);
     if (!parsed.success) return ApiResponse.badRequest(res, { query: ['Invalid pagination query'] });
     try {
       return ApiResponse.ok(res, await this.service.listHistory(parsed.data));

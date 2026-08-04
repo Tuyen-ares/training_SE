@@ -12,8 +12,8 @@ import WorkspaceLayout from "../../components/layout/WorkspaceLayout.vue";
 import {
   approveAllBorrowDetails,
   approveBorrowDetail,
+  getReviewRequest,
   handoverBorrowDetail,
-  listReviewQueue,
   rejectBorrowDetail,
 } from "../../services/borrow.service";
 import { useAuthStore } from "../../stores/auth";
@@ -44,17 +44,9 @@ const pendingCount = computed(
 const colors = { PENDING: "orange", APPROVED: "success", REJECTED: "error" };
 async function load() {
   loading.value = true;
+  errorMessage.value = "";
   try {
-    const result = await listReviewQueue(authStore.api, {
-      page: 1,
-      pageSize: 100,
-    });
-    request.value =
-      result.items.find(
-        (item) => String(item.id) === String(route.params.id),
-      ) || null;
-    if (!request.value)
-      errorMessage.value = "This request is no longer in the approval queue.";
+    request.value = await getReviewRequest(authStore.api, route.params.id);
   } catch (e) {
     errorMessage.value = e.message || "Request could not be loaded.";
   } finally {

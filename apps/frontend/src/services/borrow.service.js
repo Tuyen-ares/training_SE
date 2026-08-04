@@ -13,6 +13,7 @@ export const getMyBorrowRequest = (api, requestId) => api(`/borrow-requests/${re
 export const withdrawBorrowRequest = (api, requestId) => api(`/borrow-requests/${requestId}/cancel`, { method: 'POST' })
 
 export const listReviewQueue = (api, params) => api(`/borrow-request-details/review-queue${queryString(params)}`)
+export const getReviewRequest = (api, requestId) => api(`/borrow-request-details/review-queue/${requestId}`)
 export const approveBorrowDetail = (api, detailId) => api(`/borrow-request-details/${detailId}/approve`, { method: 'POST' })
 export const approveAllBorrowDetails = (api, requestId) => api(`/borrow-requests/${requestId}/approve-all`, { method: 'POST' })
 export const rejectBorrowDetail = (api, detailId, rejectionReason) => api(`/borrow-request-details/${detailId}/reject`, {

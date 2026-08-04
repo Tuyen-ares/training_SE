@@ -72,6 +72,16 @@ export interface PageQuery {
   pageSize: number;
 }
 
+export interface ReviewQueueQuery extends PageQuery {
+  approvalStatus: BorrowDetailStatus;
+}
+
+export type BorrowHistoryState = 'ALL' | 'CURRENT' | 'RETURNED';
+
+export interface BorrowHistoryQuery extends PageQuery {
+  state: BorrowHistoryState;
+}
+
 export interface PageDto<T> extends PageQuery {
   items: T[];
   total: number;

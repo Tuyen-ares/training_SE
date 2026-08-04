@@ -9,6 +9,8 @@ import type {
   CreateBorrowRequestDto,
   PageDto,
   PageQuery,
+  ReviewQueueQuery,
+  BorrowHistoryQuery,
 } from '@/models/borrow-lifecycle.model.js';
 import { BorrowError } from '@/shared/app-error.js';
 import {
@@ -174,6 +176,14 @@ export class PrismaBorrowRequestRepository implements IBorrowRequestRepository {
     return request ? mapRequest(request) : null;
   }
 
+  async findDetailForReview(requestId: number): Promise<BorrowRequestDto | null> {
+    const request = await this.prisma.borrow_requests.findUnique({
+      where: { id: requestId },
+      include: requestInclude,
+    });
+    return request ? mapRequest(request) : null;
+  }
+
   transaction<T>(work: (transaction: BorrowTransaction) => Promise<T>): Promise<T> { return this.prisma.$transaction(work); }
 
   async findActionDetail(detailId: number, transaction: BorrowTransaction): Promise<BorrowActionDetail | null> {
@@ -260,8 +270,8 @@ export class PrismaBorrowRequestRepository implements IBorrowRequestRepository {
     return request.borrow_request_details.filter((detail) => detail.assets.status === 'reserved').map((detail) => detail.asset_id);
   }
 
-  async listReviewQueue(query: PageQuery): Promise<PageDto<BorrowRequestDto>> {
-    const where = { borrow_request_details: { some: { approval_status: 'PENDING' as const } } };
+  async listReviewQueue(query: ReviewQueueQuery): Promise<PageDto<BorrowRequestDto>> {
+    const where = { borrow_request_details: { some: { approval_status: query.approvalStatus } } };
     const [requests, total] = await this.prisma.$transaction([
       this.prisma.borrow_requests.findMany({
         where,
@@ -293,10 +303,18 @@ export class PrismaBorrowRequestRepository implements IBorrowRequestRepository {
     return { items: histories.map(mapHistory), ...query, total };
   }
 
-  async listHistory(query: PageQuery, requesterId?: number): Promise<PageDto<BorrowHistoryDto>> {
-    const where = requesterId
-      ? { borrow_request_details: { borrow_requests: { user_id: requesterId } } }
-      : {};
+  async listHistory(query: BorrowHistoryQuery, requesterId?: number): Promise<PageDto<BorrowHistoryDto>> {
+    const returnFilter = query.state === 'CURRENT'
+      ? { return_date: null }
+      : query.state === 'RETURNED'
+        ? { return_date: { not: null } }
+        : {};
+    const where = {
+      ...returnFilter,
+      ...(requesterId
+        ? { borrow_request_details: { borrow_requests: { user_id: requesterId } } }
+        : {}),
+    };
     const [histories, total] = await this.prisma.$transaction([
       this.prisma.borrow_histories.findMany({
         where,

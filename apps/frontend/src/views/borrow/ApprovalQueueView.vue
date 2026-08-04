@@ -1,5 +1,5 @@
 <script setup>
-import { onMounted, reactive, ref } from "vue";
+import { computed, onMounted, reactive, ref } from "vue";
 import { useRouter } from "vue-router";
 import WorkspaceLayout from "../../components/layout/WorkspaceLayout.vue";
 import { listReviewQueue } from "../../services/borrow.service";
@@ -9,7 +9,15 @@ const router = useRouter(),
 const loading = ref(true),
   errorMessage = ref(""),
   result = ref({ items: [], page: 1, pageSize: 10, total: 0 });
-const query = reactive({ page: 1, pageSize: 10 });
+const activeTab = ref("PENDING");
+const query = reactive({ page: 1, pageSize: 10, approvalStatus: "PENDING" });
+const matchingDetails = (record) =>
+  record.details.filter((detail) => detail.approvalStatus === activeTab.value);
+const tabLabel = computed(() =>
+  ({ PENDING: "Pending Approval", APPROVED: "Approved", REJECTED: "Rejected" })[
+    activeTab.value
+  ],
+);
 const formatDate = (value) =>
   new Intl.DateTimeFormat("en-GB").format(new Date(value));
 async function load() {
@@ -27,6 +35,12 @@ function pageChange(page) {
   query.page = page;
   void load();
 }
+function tabChange(status) {
+  activeTab.value = status;
+  query.approvalStatus = status;
+  query.page = 1;
+  void load();
+}
 onMounted(load);
 </script>
 <template>
@@ -40,8 +54,10 @@ onMounted(load);
         <p>Manage and approve equipment borrowing requests.</p>
       </header>
       <section class="panel">
-        <a-tabs default-active-key="pending"
-          ><a-tab-pane key="pending" tab="Pending Approval" /></a-tabs
+        <a-tabs :active-key="activeTab" @change="tabChange"
+          ><a-tab-pane key="PENDING" tab="Pending Approval" />
+          <a-tab-pane key="APPROVED" tab="Approved" />
+          <a-tab-pane key="REJECTED" tab="Rejected" /></a-tabs
         ><a-alert
           v-if="errorMessage"
           type="error"
@@ -72,22 +88,29 @@ onMounted(load);
             }}</template></a-table-column
           ><a-table-column title="Quantity" key="qty"
             ><template #default="{ record }">{{
-              record.details.length
+              matchingDetails(record).length
             }}</template></a-table-column
           ><a-table-column title="Expected Return" key="return"
             ><template #default="{ record }">{{
-              record.details[0]?.expectedReturnDate || "—"
+              matchingDetails(record)[0]?.expectedReturnDate || "—"
             }}</template></a-table-column
           ><a-table-column title="Status" key="status"
             ><template #default="{ record }"
-              ><a-tag color="orange">{{
-                record.status.replaceAll("_", " ")
-              }}</a-tag></template
+              ><a-tag
+                :color="
+                  activeTab === 'APPROVED'
+                    ? 'success'
+                    : activeTab === 'REJECTED'
+                      ? 'error'
+                      : 'orange'
+                "
+                >{{ tabLabel }}</a-tag
+              ></template
             ></a-table-column
           ><a-table-column title="Actions" key="actions"
             ><template #default="{ record }"
               ><a-button
-                type="primary"
+                :type="activeTab === 'PENDING' ? 'primary' : 'default'"
                 size="small"
                 @click="
                   router.push({
@@ -96,7 +119,7 @@ onMounted(load);
                     state: { request: record },
                   })
                 "
-                >Review</a-button
+                >{{ activeTab === "PENDING" ? "Review" : "View Details" }}</a-button
               ></template
             ></a-table-column
           ></a-table

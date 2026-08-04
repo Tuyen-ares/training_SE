@@ -1,7 +1,7 @@
 import type { AssetService } from '@/services/assets.service.js';
 import type { IBorrowRequestRepository } from '@/repositories/borrow-request.repository.js';
 import { BorrowError } from '@/shared/app-error.js';
-import type { ApproveAllResultDto, PageQuery } from '@/models/borrow-lifecycle.model.js';
+import type { ApproveAllResultDto, BorrowHistoryQuery, PageQuery, ReviewQueueQuery } from '@/models/borrow-lifecycle.model.js';
 import { ConflictError } from '@/shared/app-error.js';
 
 export class BorrowWorkflowService {
@@ -105,15 +105,19 @@ export class BorrowWorkflowService {
     });
   }
 
-  listReviewQueue(query: PageQuery) {
+  listReviewQueue(query: ReviewQueueQuery) {
     return this.repository.listReviewQueue(query);
+  }
+
+  getReviewDetail(requestId: number) {
+    return this.repository.findDetailForReview(requestId);
   }
 
   listCurrent(requesterId: number, query: PageQuery) {
     return this.repository.listCurrent(requesterId, query);
   }
 
-  listHistory(query: PageQuery, requesterId?: number) {
+  listHistory(query: BorrowHistoryQuery, requesterId?: number) {
     return this.repository.listHistory(query, requesterId);
   }
 }

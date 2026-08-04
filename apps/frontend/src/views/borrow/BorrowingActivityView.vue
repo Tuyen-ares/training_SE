@@ -10,20 +10,26 @@ const authStore = useAuthStore();
 const loading = ref(true),
   errorMessage = ref(""),
   result = ref({ items: [], page: 1, pageSize: 20, total: 0 });
+const activeTab = ref("CURRENT");
 const canViewAll = authStore.hasPermission("borrow_history.view_all");
 const formatDate = (value) =>
   value ? new Intl.DateTimeFormat("en-GB").format(new Date(value)) : "—";
 async function load(page = 1) {
   loading.value = true;
+  errorMessage.value = "";
   try {
     result.value = await (
       canViewAll ? listAllBorrowHistory : listMyBorrowHistory
-    )(authStore.api, { page, pageSize: 20 });
+    )(authStore.api, { page, pageSize: 20, state: activeTab.value });
   } catch (e) {
     errorMessage.value = e.message || "Borrowing activity could not be loaded.";
   } finally {
     loading.value = false;
   }
+}
+function tabChange(state) {
+  activeTab.value = state;
+  void load(1);
 }
 onMounted(() => load());
 </script>
@@ -44,6 +50,10 @@ onMounted(() => load());
         </p>
       </header>
       <section class="panel">
+        <a-tabs :active-key="activeTab" @change="tabChange">
+          <a-tab-pane key="CURRENT" tab="Currently Borrowed" />
+          <a-tab-pane key="RETURNED" tab="Returned History" />
+        </a-tabs>
         <a-alert
           v-if="errorMessage"
           type="error"
@@ -85,14 +95,24 @@ onMounted(() => load());
           ><a-table-column
             title="Expected Return"
             data-index="expectedReturnDate"
-          /><a-table-column title="Returned Date" key="returned"
+          /><a-table-column
+            v-if="activeTab === 'RETURNED'"
+            title="Returned Date"
+            key="returned"
             ><template #default="{ record }">{{
               formatDate(record.returnedAt)
             }}</template></a-table-column
+          ><a-table-column
+            v-if="activeTab === 'RETURNED'"
+            title="Return Condition"
+            key="condition"
+            ><template #default="{ record }">{{
+              record.returnCondition || "—"
+            }}</template></a-table-column
           ><a-table-column title="Status" key="status"
-            ><template #default="{ record }"
-              ><a-tag :color="record.returnedAt ? 'success' : 'processing'">{{
-                record.returnedAt ? "RETURNED" : "ACTIVE"
+            ><template #default
+              ><a-tag :color="activeTab === 'RETURNED' ? 'success' : 'processing'">{{
+                activeTab === "RETURNED" ? "RETURNED" : "ACTIVE"
               }}</a-tag></template
             ></a-table-column
           ></a-table
