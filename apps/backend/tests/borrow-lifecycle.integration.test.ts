@@ -74,6 +74,7 @@ test('Borrow lifecycle APIs create, approve, hand over, return and cancel safely
   const operator = await createUser('Operator', 2);
   const borrowerToken = tokenService.createAccessToken(borrower.id, ['borrow_request.create', 'borrow_request.view_own', 'borrow_request.cancel_own', 'borrow_history.view_own']);
   const reviewerToken = tokenService.createAccessToken(operator.id, ['borrow_request.view_all', 'borrow_request.approve', 'borrow_request.reject', 'asset.checkout', 'asset.checkin', 'borrow_history.view_all']);
+  const operatorOwnHistoryToken = tokenService.createAccessToken(operator.id, ['borrow_history.view_own']);
   const noPermissionToken = tokenService.createAccessToken(operator.id, []);
 
   const invalidDate = await request('/borrow-requests', borrowerToken, {
@@ -97,7 +98,7 @@ test('Borrow lifecycle APIs create, approve, hand over, return and cancel safely
 
   const createLifecycle = await request('/borrow-requests', borrowerToken, {
     method: 'POST',
-    body: JSON.stringify({ items: [{ assetId: lifecycleAsset.id, expectedReturnDate: '2099-01-01' }] }),
+    body: JSON.stringify({ note: 'Integration test borrowing reason', items: [{ assetId: lifecycleAsset.id, expectedReturnDate: '2099-01-01' }] }),
   });
   assert.equal(createLifecycle.status, 201);
   const lifecycleRequestId = createLifecycle.body.data.id as number;
@@ -141,6 +142,19 @@ test('Borrow lifecycle APIs create, approve, hand over, return and cancel safely
   assert.equal(current.status, 200);
   assert.equal(current.body.data.items[0].expectedReturnDate, '2099-01-01');
   assert.equal(current.body.data.items[0].borrower.id, borrower.id);
+  const ownHistoryDetail = await request(`/borrow-histories/${historyId}`, borrowerToken);
+  assert.equal(ownHistoryDetail.status, 200, JSON.stringify(ownHistoryDetail.body));
+  assert.equal(ownHistoryDetail.body.data.request.id, lifecycleRequestId);
+  assert.equal(ownHistoryDetail.body.data.request.note, 'Integration test borrowing reason');
+  assert.equal(ownHistoryDetail.body.data.approvalStatus, 'APPROVED');
+  assert.equal(ownHistoryDetail.body.data.approvedBy.id, operator.id);
+  assert.equal(ownHistoryDetail.body.data.handedOverBy.id, operator.id);
+  assert.equal(ownHistoryDetail.body.data.returnedAt, null);
+  const reviewerHistoryDetail = await request(`/borrow-histories/${historyId}`, reviewerToken);
+  assert.equal(reviewerHistoryDetail.status, 200, JSON.stringify(reviewerHistoryDetail.body));
+  assert.equal(reviewerHistoryDetail.body.data.request.requester.id, borrower.id);
+  assert.equal((await request(`/borrow-histories/${historyId}`, operatorOwnHistoryToken)).status, 404);
+  assert.equal((await request(`/borrow-histories/${historyId}`, noPermissionToken)).status, 403);
   const currentTab = await request('/borrow-histories/me?state=CURRENT', borrowerToken);
   assert.equal(currentTab.status, 200, JSON.stringify(currentTab.body));
   assert.ok(currentTab.body.data.items.some((item: { id: number; returnedAt: null }) => item.id === historyId && item.returnedAt === null));
@@ -162,6 +176,10 @@ test('Borrow lifecycle APIs create, approve, hand over, return and cancel safely
   const returnedTab = await request('/borrow-histories/me?state=RETURNED', borrowerToken);
   assert.equal(returnedTab.status, 200, JSON.stringify(returnedTab.body));
   assert.ok(returnedTab.body.data.items.some((item: { id: number; returnedAt: string | null }) => item.id === historyId && item.returnedAt));
+  const returnedHistoryDetail = await request(`/borrow-histories/${historyId}`, borrowerToken);
+  assert.equal(returnedHistoryDetail.status, 200, JSON.stringify(returnedHistoryDetail.body));
+  assert.equal(returnedHistoryDetail.body.data.receivedBy.id, operator.id);
+  assert.equal(returnedHistoryDetail.body.data.returnCondition, 'NORMAL');
   const currentTabAfterReturn = await request('/borrow-histories/me?state=CURRENT', borrowerToken);
   assert.ok(!currentTabAfterReturn.body.data.items.some((item: { id: number }) => item.id === historyId));
   const allHistory = await request('/borrow-histories?page=1&pageSize=20', reviewerToken);

@@ -148,7 +148,9 @@ User đã đăng nhập và có permission scope phù hợp.
 1. User mở Borrowing Activity.
 2. User chọn trạng thái xem hiện tại hoặc history; scope chỉ mở rộng khi có permission.
 3. Hệ thống hiển thị asset, borrower khi được phép, handover/return time và return condition.
-4. User có thể mở resource liên quan nếu còn quyền.
+4. User chọn `View Details` trên một history.
+5. Hệ thống hiển thị request ID, created date, borrowing reason, asset metadata, approval metadata, handover metadata và return metadata nếu có.
+6. User có thể quay lại danh sách hoặc mở resource liên quan nếu còn quyền.
 
 ## Alternative Flows
 
@@ -158,6 +160,7 @@ User đã đăng nhập và có permission scope phù hợp.
 
 - Detail APPROVED chưa handover không xuất hiện là asset đang mượn.
 - Thiếu permission all-history không hiển thị history của người khác.
+- History detail ngoài phạm vi own trả về trạng thái không tìm thấy an toàn khi user chỉ có `borrow_history.view_own`.
 
 ## Result
 

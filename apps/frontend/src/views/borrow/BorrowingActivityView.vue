@@ -1,5 +1,7 @@
 <script setup>
-import { onMounted, ref } from "vue";
+import { h, onMounted, ref } from "vue";
+import { EyeOutlined } from "@ant-design/icons-vue";
+import { useRouter } from "vue-router";
 import WorkspaceLayout from "../../components/layout/WorkspaceLayout.vue";
 import {
   listAllBorrowHistory,
@@ -7,6 +9,7 @@ import {
 } from "../../services/borrow.service";
 import { useAuthStore } from "../../stores/auth";
 const authStore = useAuthStore();
+const router = useRouter();
 const loading = ref(true),
   errorMessage = ref(""),
   result = ref({ items: [], page: 1, pageSize: 20, total: 0 });
@@ -30,6 +33,9 @@ async function load(page = 1) {
 function tabChange(state) {
   activeTab.value = state;
   void load(1);
+}
+function viewDetails(historyId) {
+  router.push({ name: "borrowing-activity-detail", params: { id: historyId } });
 }
 onMounted(() => load());
 </script>
@@ -114,6 +120,15 @@ onMounted(() => load());
               ><a-tag :color="activeTab === 'RETURNED' ? 'success' : 'processing'">{{
                 activeTab === "RETURNED" ? "RETURNED" : "ACTIVE"
               }}</a-tag></template
+            ></a-table-column
+          ><a-table-column title="Action" key="action"
+            ><template #default="{ record }"
+              ><a-button
+                type="link"
+                :icon="h(EyeOutlined)"
+                @click="viewDetails(record.id)"
+                >View Details</a-button
+              ></template
             ></a-table-column
           ></a-table
         >

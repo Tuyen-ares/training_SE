@@ -88,12 +88,17 @@ export class PrismaAssetRepository implements IAssetRepository {
     return database.assets.findUnique({ where: { id } });
   }
 
+  /**
+ * Retrieves a paginated list of assets
+ */
   async findReadPage(query: AssetListQuery): Promise<AssetListDto> {
+    // Build relational filter for asset models
     const assetModelWhere: Prisma.asset_modelsWhereInput = {
       ...(query.modelId ? { id: query.modelId } : {}),
       ...(query.typeId ? { type_id: query.typeId } : {}),
       ...(query.brandId ? { brand_id: query.brandId } : {}),
     };
+    // Build main search and filter criteria
     const where: Prisma.assetsWhereInput = {
       ...(query.status ? { status: query.status } : {}),
       ...(query.departmentId ? { department_id: query.departmentId } : {}),
@@ -108,6 +113,7 @@ export class PrismaAssetRepository implements IAssetRepository {
           }
         : {}),
     };
+    // Concurrently fetch paginated records and total count
     const [assets, total] = await this.prisma.$transaction([
       this.prisma.assets.findMany({
         where,

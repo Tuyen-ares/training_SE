@@ -6,6 +6,7 @@ import type {
   BorrowRequestPageDto,
   BorrowRequestStatus,
   BorrowHistoryDto,
+  BorrowHistoryDetailDto,
   CreateBorrowRequestDto,
   PageDto,
   PageQuery,
@@ -57,6 +58,30 @@ const historyInclude = {
   received_by_users: { select: { id: true, name: true } },
 } as const;
 
+const historyDetailInclude = {
+  borrow_request_details: {
+    include: {
+      borrow_requests: {
+        include: {
+          users: {
+            select: {
+              id: true,
+              name: true,
+              email: true,
+              avatar_url: true,
+              department: { select: { id: true, name: true } },
+            },
+          },
+        },
+      },
+      assets: { include: { asset_models: { select: { id: true, name: true } } } },
+      approved_by_users: { select: { id: true, name: true } },
+    },
+  },
+  handed_over_by_users: { select: { id: true, name: true } },
+  received_by_users: { select: { id: true, name: true } },
+} as const;
+
 function mapHistory(history: any): BorrowHistoryDto {
   const detail = history.borrow_request_details;
   return {
@@ -76,6 +101,50 @@ function mapHistory(history: any): BorrowHistoryDto {
       avatarUrl: detail.borrow_requests.users.avatar_url,
     },
     expectedReturnDate: dateOnlyFormatter.format(detail.expected_return_date),
+    handedOverBy: history.handed_over_by_users,
+    borrowedAt: history.borrow_date,
+    receivedBy: history.received_by_users,
+    returnedAt: history.return_date,
+    returnCondition: history.return_condition,
+  };
+}
+
+function mapHistoryDetail(history: any): BorrowHistoryDetailDto {
+  const detail = history.borrow_request_details;
+  const request = detail.borrow_requests;
+  const asset = detail.assets;
+  return {
+    id: history.id,
+    request: {
+      id: request.id,
+      status: request.status.toUpperCase() as BorrowRequestStatus,
+      note: request.note,
+      createdAt: request.created_at,
+      requester: {
+        id: request.users.id,
+        name: request.users.name,
+        email: request.users.email,
+        avatarUrl: request.users.avatar_url,
+        department: request.users.department
+          ? { id: request.users.department.id, name: request.users.department.name }
+          : null,
+      },
+    },
+    asset: {
+      id: asset.id,
+      serialNumber: asset.serial_number,
+      qrCode: asset.qr_code,
+      imageUrl: asset.image_url,
+      status: asset.status.toUpperCase(),
+      model: { id: asset.asset_models.id, name: asset.asset_models.name },
+    },
+    expectedReturnDate: dateOnlyFormatter.format(detail.expected_return_date),
+    approvalStatus: detail.approval_status as BorrowDetailStatus,
+    approvedBy: detail.approved_by_users
+      ? { id: detail.approved_by_users.id, name: detail.approved_by_users.name }
+      : null,
+    approvedAt: detail.approved_at,
+    rejectionReason: detail.rejection_reason,
     handedOverBy: history.handed_over_by_users,
     borrowedAt: history.borrow_date,
     receivedBy: history.received_by_users,
@@ -336,5 +405,18 @@ export class PrismaBorrowRequestRepository implements IBorrowRequestRepository {
       this.prisma.borrow_histories.count({ where }),
     ]);
     return { items: histories.map(mapHistory), ...query, total };
+  }
+
+  async findHistoryDetail(historyId: number, requesterId?: number): Promise<BorrowHistoryDetailDto | null> {
+    const history = await this.prisma.borrow_histories.findFirst({
+      where: {
+        id: historyId,
+        ...(requesterId !== undefined
+          ? { borrow_request_details: { borrow_requests: { user_id: requesterId } } }
+          : {}),
+      },
+      include: historyDetailInclude,
+    });
+    return history ? mapHistoryDetail(history) : null;
   }
 }

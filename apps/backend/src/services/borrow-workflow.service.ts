@@ -156,6 +156,10 @@ export class BorrowWorkflowService {
     return this.repository.listHistory(query, requesterId);
   }
 
+  getHistoryDetail(historyId: number, requesterId: number, canViewAll: boolean) {
+    return this.repository.findHistoryDetail(historyId, canViewAll ? undefined : requesterId);
+  }
+
   private async notifyRequester(
     recipientUserId: number,
     notificationType: string,

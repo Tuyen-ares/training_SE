@@ -12,6 +12,7 @@ tôi muốn **tra cứu lịch sử mượn/trả trong phạm vi được cấp
 - AC-US-F05-05-02: Then có thể nhận biết người mượn qua phiếu, người bàn giao và người nhận trả.
 - AC-US-F05-05-03: Given thiếu permission xem toàn bộ, then user không truy cập được lịch sử của người khác.
 - AC-US-F05-05-04: Dữ liệu hiển thị phản ánh history đã ghi, không suy ra bàn giao chỉ từ approval status.
+- AC-US-F05-05-05: Khi mở detail của history, user có quyền xem toàn bộ thấy lý do mượn, approval metadata, handover metadata và return metadata đã lưu.
 
 ## Business Rules áp dụng
 

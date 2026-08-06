@@ -46,29 +46,30 @@
 
 | API | English name | Tên tiếng Việt | Purpose / Mục đích | Status |
 | --- | --- | --- | --- | --- |
-| `POST /api/borrow-requests` | Create borrow request | Tạo phiếu mượn | Create a request with one or more available assets. / Tạo phiếu gồm một hoặc nhiều asset available. | Existing |
-| `GET /api/borrow-requests/me` | List my borrow requests | Xem phiếu mượn của tôi | List requests created by the current user. / Liệt kê phiếu do user hiện tại tạo. | Existing |
-| `GET /api/borrow-requests/:requestId` | Get borrow request detail | Xem chi tiết phiếu mượn | Read a request and its per-asset details with ownership checks. / Xem phiếu và từng detail asset, có kiểm tra ownership. | Existing |
-| `POST /api/borrow-requests/:requestId/cancel` | Cancel borrow request | Thu hồi phiếu mượn | Cancel an eligible request and release its reservations. / Thu hồi phiếu đủ điều kiện và giải phóng reservation. | Existing |
+| `POST /api/borrow-requests` | Create borrow request | Tạo phiếu mượn | Create a request with one or more available assets. / Tạo phiếu gồm một hoặc nhiều asset available. | Planned |
+| `GET /api/borrow-requests/me` | List my borrow requests | Xem phiếu mượn của tôi | List requests created by the current user. / Liệt kê phiếu do user hiện tại tạo. | Planned |
+| `GET /api/borrow-requests/:requestId` | Get borrow request detail | Xem chi tiết phiếu mượn | Read a request and its per-asset details with ownership checks. / Xem phiếu và từng detail asset, có kiểm tra ownership. | Planned |
+| `POST /api/borrow-requests/:requestId/cancel` | Cancel borrow request | Thu hồi phiếu mượn | Cancel an eligible request and release its reservations. / Thu hồi phiếu đủ điều kiện và giải phóng reservation. | Deferred |
 
 ## F04 — Approval & Reservation / Duyệt và giữ chỗ
 
 | API | English name | Tên tiếng Việt | Purpose / Mục đích | Status |
 | --- | --- | --- | --- | --- |
-| `GET /api/borrow-request-details/review-queue` | List review queue | Xem hàng đợi duyệt | List company-wide requests/details awaiting review. / Liệt kê phiếu/detail chờ duyệt toàn công ty trong MVP. | Existing |
-| `POST /api/borrow-request-details/:detailId/approve` | Approve borrow detail | Duyệt một thiết bị trong phiếu | Atomically approve a pending detail and reserve its asset. / Duyệt detail pending và giữ chỗ asset một cách nguyên tử. | Existing |
-| `POST /api/borrow-request-details/:detailId/reject` | Reject borrow detail | Từ chối một thiết bị trong phiếu | Reject a pending detail with a reason. / Từ chối detail pending kèm lý do. | Existing |
-| `POST /api/borrow-requests/:requestId/approve-all` | Approve all eligible details | Duyệt tất cả detail đủ điều kiện | Process pending details with partial-success results. / Xử lý nhiều detail pending theo kết quả partial success. | Existing |
+| `GET /api/borrow-requests/review-queue` | List review queue | Xem hàng đợi duyệt | List requests/details awaiting review within the permitted scope. / Liệt kê phiếu/detail chờ duyệt trong phạm vi được cấp. | Planned |
+| `POST /api/borrow-request-details/:detailId/approve` | Approve borrow detail | Duyệt một thiết bị trong phiếu | Atomically approve a pending detail and reserve its asset. / Duyệt detail pending và giữ chỗ asset một cách nguyên tử. | Planned |
+| `POST /api/borrow-request-details/:detailId/reject` | Reject borrow detail | Từ chối một thiết bị trong phiếu | Reject a pending detail with a reason. / Từ chối detail pending kèm lý do. | Planned |
+| `POST /api/borrow-requests/:requestId/approve-all` | Approve all eligible details | Duyệt tất cả detail đủ điều kiện | Process pending details with partial-success results. / Xử lý nhiều detail pending theo kết quả partial success. | Deferred |
 
 ## F05 — Handover, Return & Borrow History / Bàn giao, hoàn trả và lịch sử mượn
 
 | API | English name | Tên tiếng Việt | Purpose / Mục đích | Status |
 | --- | --- | --- | --- | --- |
-| `POST /api/borrow-request-details/:detailId/handover` | Confirm handover | Xác nhận bàn giao | Mark a reserved asset as handed over and create its borrow history. / Xác nhận bàn giao asset reserved và tạo lịch sử mượn. | Existing |
-| `GET /api/borrow-histories/current` | List my current borrows | Xem tài sản đang mượn | List assets currently borrowed by the current user. / Liệt kê asset user hiện tại đang mượn. | Existing |
-| `POST /api/borrow-histories/:historyId/return` | Confirm return | Xác nhận hoàn trả | Record canonical normal return and make the asset available. / Ghi nhận trả bình thường canonical và đưa asset về available. | Existing |
-| `GET /api/borrow-histories/me` | List my borrow history | Xem lịch sử mượn của tôi | List the current user's completed and open borrow history. / Xem lịch sử mượn đã/chưa hoàn trả của user hiện tại. | Existing |
-| `GET /api/borrow-histories` | List all borrow history | Xem toàn bộ lịch sử mượn | Company-wide history for users with effective permission. / Tra cứu lịch sử toàn công ty theo effective permission. | Existing |
+| `POST /api/borrow-request-details/:detailId/handover` | Confirm handover | Xác nhận bàn giao | Mark a reserved asset as handed over and create its borrow history. / Xác nhận bàn giao asset reserved và tạo lịch sử mượn. | Planned |
+| `GET /api/borrow-histories/current` | List my current borrows | Xem tài sản đang mượn | List assets currently borrowed by the current user. / Liệt kê asset user hiện tại đang mượn. | Planned |
+| `POST /api/borrow-histories/:historyId/return` | Confirm return | Xác nhận hoàn trả | Record a normal return and make the asset available. / Ghi nhận trả bình thường và đưa asset về available. | Planned | ok
+| `GET /api/borrow-histories/me` | List my borrow history | Xem lịch sử mượn của tôi | List the current user's completed and open borrow history. / Xem lịch sử mượn đã/chưa hoàn trả của user hiện tại. | Planned |
+| `GET /api/borrow-histories` | List all borrow history | Xem toàn bộ lịch sử mượn | Search history across users within the permitted scope. / Tra cứu lịch sử của mọi user trong phạm vi quyền. | Planned |
+| `GET /api/borrow-histories/:historyId` | Get borrow history detail | Xem chi tiết lịch sử mượn | Read request reason, approval, handover and return metadata within the user's effective history scope. / Xem lý do mượn, duyệt, bàn giao và hoàn trả trong phạm vi lịch sử được cấp. | Implemented |
 | `POST /api/borrow-histories/:historyId/return-damaged` | Return damaged asset | Xác nhận trả thiết bị hỏng | Return a damaged asset and create the linked confirmed issue. / Trả asset hỏng và tạo issue confirmed liên kết. | Deferred |
 
 ## F06 — Asset Issues & Repair / Sự cố và sửa chữa tài sản
@@ -76,23 +77,22 @@
 | API | English name | Tên tiếng Việt | Purpose / Mục đích | Status |
 | --- | --- | --- | --- | --- |
 | `POST /api/assets/:assetId/report-damaged` | Report asset issue | Báo sự cố thiết bị | Create a reported issue without changing asset status. / Tạo issue reported mà không đổi trạng thái asset. | Existing |
-| `GET /api/asset-issues` | List asset issues | Xem danh sách sự cố | Search and filter issues the user may view. / Tìm kiếm và lọc issue user được phép xem. | Existing |
-| `GET /api/asset-issues/:issueId` | Get asset issue detail | Xem chi tiết sự cố | Read an issue and its repair information. / Xem issue và thông tin sửa chữa. | Existing |
-| `POST /api/asset-issues/:issueId/confirm` | Confirm asset issue | Xác minh sự cố | Confirm a reported issue and mark the asset damaged. / Xác nhận issue reported và chuyển asset damaged. | Existing |
-| `POST /api/asset-issues/:issueId/reject` | Reject asset issue | Từ chối sự cố | Reject a reported issue with an optional note. / Từ chối issue reported kèm ghi chú tùy chọn. | Existing |
-| `POST /api/asset-issues/:issueId/start-repair` | Start repair | Bắt đầu sửa chữa | Start repair and move the asset into repair. / Bắt đầu sửa và chuyển asset sang in repair. | Existing |
-| `PATCH /api/asset-issues/:issueId/repair` | Update repair progress | Cập nhật quá trình sửa | Update repair provider, timing, cost, result and notes. / Cập nhật đơn vị, thời gian, chi phí, kết quả và ghi chú sửa chữa. | Existing |
-| `POST /api/asset-issues/:issueId/complete` | Complete repair | Hoàn tất sửa chữa | Complete repair and restore the asset to available. / Hoàn tất sửa và đưa asset về available. | Existing |
-| `POST /api/asset-issues/:issueId/fail` | Mark repair failed | Ghi nhận sửa thất bại | Close a failed repair and return the asset to damaged. / Ghi nhận sửa thất bại và đưa asset về damaged. | Existing |
+| `GET /api/asset-issues` | List asset issues | Xem danh sách sự cố | Search and filter issues the user may view. / Tìm kiếm và lọc issue user được phép xem. | Deferred |
+| `GET /api/asset-issues/:issueId` | Get asset issue detail | Xem chi tiết sự cố | Read an issue and its repair information. / Xem issue và thông tin sửa chữa. | Deferred |
+| `POST /api/asset-issues/:issueId/confirm` | Confirm asset issue | Xác minh sự cố | Confirm a reported issue and mark the asset damaged. / Xác nhận issue reported và chuyển asset damaged. | Deferred |
+| `POST /api/asset-issues/:issueId/reject` | Reject asset issue | Từ chối sự cố | Reject a reported issue with a reason. / Từ chối issue reported kèm lý do. | Deferred |
+| `POST /api/asset-issues/:issueId/start-repair` | Start repair | Bắt đầu sửa chữa | Start repair and move the asset into repair. / Bắt đầu sửa và chuyển asset sang in repair. | Deferred |
+| `PATCH /api/asset-issues/:issueId/repair` | Update repair progress | Cập nhật quá trình sửa | Update repair provider, timing, cost, result and notes. / Cập nhật đơn vị, thời gian, chi phí, kết quả và ghi chú sửa chữa. | Deferred |
+| `POST /api/asset-issues/:issueId/close-repair` | Close repair | Kết thúc sửa chữa | Close a repair as successful or failed and synchronize asset status. / Kết thúc sửa thành công/thất bại và đồng bộ trạng thái asset. | Deferred |
 
 ## F07 — Notifications / Thông báo
 
 | API | English name | Tên tiếng Việt | Purpose / Mục đích | Status |
 | --- | --- | --- | --- | --- |
-| `GET /api/notifications` | List my notifications | Xem thông báo của tôi | List the current user's notifications in time order. / Liệt kê thông báo của user hiện tại theo thời gian. | Existing |
-| `GET /api/notifications/unread-count` | Get unread notification count | Xem số thông báo chưa đọc | Return the count of unread notifications for the current user. / Trả số thông báo chưa đọc của user hiện tại. | Existing |
-| `PATCH /api/notifications/:notificationId/read` | Mark notification as read | Đánh dấu thông báo đã đọc | Mark one owned notification as read. / Đánh dấu một thông báo thuộc user là đã đọc. | Existing |
-| `PATCH /api/notifications/read-all` | Mark all notifications as read | Đánh dấu tất cả thông báo đã đọc | Mark all current-user notifications as read. / Đánh dấu toàn bộ thông báo của user hiện tại đã đọc. | Existing |
+| `GET /api/notifications` | List my notifications | Xem thông báo của tôi | List the current user's notifications in time order. / Liệt kê thông báo của user hiện tại theo thời gian. | Deferred |
+| `GET /api/notifications/unread-count` | Get unread notification count | Xem số thông báo chưa đọc | Return the count of unread notifications for the current user. / Trả số thông báo chưa đọc của user hiện tại. | Deferred |
+| `POST /api/notifications/:notificationId/read` | Mark notification as read | Đánh dấu thông báo đã đọc | Mark one owned notification as read. / Đánh dấu một thông báo thuộc user là đã đọc. | Deferred |
+| `POST /api/notifications/read-all` | Mark all notifications as read | Đánh dấu tất cả thông báo đã đọc | Mark all current-user notifications as read. / Đánh dấu toàn bộ thông báo của user hiện tại đã đọc. | Deferred |
 
 ## F08 — Administration / Quản trị người dùng và phân quyền
 

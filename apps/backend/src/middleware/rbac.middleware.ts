@@ -17,6 +17,22 @@ export function requirePermission(requiredCode: string): RequestHandler {
   };
 }
 
+export function requireAnyPermission(...requiredCodes: string[]): RequestHandler {
+  return (req, res, next): void => {
+    if (!req.auth) {
+      ApiResponse.unauthorized(res);
+      return;
+    }
+
+    if (!requiredCodes.some((code) => req.auth?.permissionCodes.includes(code))) {
+      ApiResponse.forbidden(res, 'Missing required permission');
+      return;
+    }
+
+    next();
+  };
+}
+
 export function requireRoleAssignWhenRoleIdsProvided(): RequestHandler {
   return (req, res, next): void => {
     const roleIds = (req.body as { roleIds?: unknown } | undefined)?.roleIds;

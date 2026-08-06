@@ -24,8 +24,9 @@ Sau khi approve, người có quyền xác nhận bàn giao. Hệ thống tạo 
 1. [ApprovalDetailView.vue](../../apps/frontend/src/views/borrow/ApprovalDetailView.vue) – `handover`.
 2. [HandoverReturnView.vue](../../apps/frontend/src/views/borrow/HandoverReturnView.vue) – `load`, `confirmReturn`.
 3. [BorrowingActivityView.vue](../../apps/frontend/src/views/borrow/BorrowingActivityView.vue) – `load`, `tabChange`.
-4. [borrow-workflow.service.ts](../../apps/backend/src/services/borrow-workflow.service.ts).
-5. [borrow-lifecycle.integration.test.ts](../../apps/backend/tests/borrow-lifecycle.integration.test.ts).
+4. [BorrowingActivityDetailView.vue](../../apps/frontend/src/views/borrow/BorrowingActivityDetailView.vue) – `load`, `formatDate`, permission-aware display.
+5. [borrow-workflow.service.ts](../../apps/backend/src/services/borrow-workflow.service.ts) – `listHistory`, `getHistoryDetail`.
+6. [borrow-lifecycle.integration.test.ts](../../apps/backend/tests/borrow-lifecycle.integration.test.ts).
 
 ## User Story/action chính
 
@@ -44,6 +45,7 @@ Sau khi approve, người có quyền xác nhận bàn giao. Hệ thống tạo 
 | `US-F05-03` Trả bình thường | `HandoverReturnView:load/confirmReturn` → `listAllBorrowHistory/receiveNormalReturn` → `GET /api/borrow-histories` + `POST /api/borrow-histories/:historyId/return` → `borrow-history.routes.ts` permission `asset.checkin` → `BorrowWorkflowController.allHistory/returnNormal` → `BorrowWorkflowService.returnNormal` → `PrismaBorrowRequestRepository.completeReturn` + `AssetService.returnAsset` → Prisma `BorrowHistory/Asset/BorrowRequest` → DB history/assets/request status → borrow lifecycle integration test | KỸ: transaction/normal condition; LƯỚT: modal |
 | `US-F05-04` Xem history của tôi | `BorrowingActivityView:load` → `listMyBorrowHistory` → `GET /api/borrow-histories/me` → `borrow-history.routes.ts` permission `borrow_history.view_own` → `BorrowWorkflowController.ownHistory` → `BorrowWorkflowService.listHistory(requesterId)` → `PrismaBorrowRequestRepository.listHistory` → Prisma `BorrowHistory/BorrowRequestDetail/BorrowRequest/Asset` → DB `borrow_histories` joins → integration test | LƯỚT: table; KỸ: requester scope |
 | `US-F05-05` Xem toàn bộ history | `BorrowingActivityView:load` khi có `borrow_history.view_all` → `listAllBorrowHistory` → `GET /api/borrow-histories` → `borrow-history.routes.ts` permission `borrow_history.view_all` → `BorrowWorkflowController.allHistory` → `BorrowWorkflowService.listHistory(query)` → `PrismaBorrowRequestRepository.listHistory` → Prisma borrow graph → DB company-wide `borrow_histories` → integration test | KỸ: permission scope; LƯỚT: pagination |
+| `US-F05-04/05` Mở history detail | `BorrowingActivityView:viewDetails` → `getBorrowHistoryDetail` → `GET /api/borrow-histories/:historyId` → `borrow-history.routes.ts` `requireAnyPermission(borrow_history.view_own, borrow_history.view_all)` → `BorrowWorkflowController.detail` → `BorrowWorkflowService.getHistoryDetail(historyId, requesterId, canViewAll)` → `PrismaBorrowRequestRepository.findHistoryDetail` với requester filter khi không có `view_all` → Prisma borrow history/request/detail/asset/users → `BorrowingActivityDetailView:load` → integration test own/all/forbidden | KỸ: scope filter và metadata mapping; LƯỚT: layout |
 
 ## SPEC EXPECTS
 
@@ -51,9 +53,10 @@ Borrowing Activity là nơi xem current/history. Handover/return là action củ
 
 ## CURRENT CODE
 
-API normal handover/return/current/history và FE screens đã tồn tại. Evidence: routes, `BorrowWorkflowService`, `HandoverReturnView`, `BorrowingActivityView`, integration test.
+API normal handover/return/current/history và FE screens đã tồn tại. Borrowing Activity Detail đã bổ sung API `GET /borrow-histories/:historyId`, permission scope và view dùng chung. Evidence: `borrow-history.routes.ts`, `BorrowWorkflowService`, `PrismaBorrowRequestRepository`, `BorrowingActivityView`, `BorrowingActivityDetailView`, integration test.
 
 ## GAPS
 
 - Nhánh trả hỏng combined (`return-damaged`) chưa có API/service transaction trong branch hiện tại. Hiện FE HandoverReturn chỉ gọi `receiveNormalReturn`.
 - Handover UI nằm trong Approval Detail; không có nghĩa phải tạo thêm page nếu action context hiện tại đủ.
+- Related Project, Pickup Instruction và Approval Note không được hiển thị vì chưa có trong baseline schema/requirement.

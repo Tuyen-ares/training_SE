@@ -4,6 +4,7 @@ import type {
   BorrowRequestPageDto,
   CreateBorrowRequestDto,
   BorrowHistoryDto,
+  BorrowHistoryDetailDto,
   PageDto,
   PageQuery,
   ReviewQueueQuery,
@@ -32,4 +33,5 @@ export interface IBorrowRequestRepository {
   listReviewQueue(query: ReviewQueueQuery): Promise<PageDto<BorrowRequestDto>>;
   listCurrent(requesterId: number, query: PageQuery): Promise<PageDto<BorrowHistoryDto>>;
   listHistory(query: BorrowHistoryQuery, requesterId?: number): Promise<PageDto<BorrowHistoryDto>>;
+  findHistoryDetail(historyId: number, requesterId?: number): Promise<BorrowHistoryDetailDto | null>;
 }

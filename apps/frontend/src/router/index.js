@@ -120,6 +120,12 @@ const router = createRouter({
       meta: { requiresAuth: true, permissionsAny: ['borrow_history.view_own', 'borrow_history.view_all'] },
     },
     {
+      path: '/borrowing-activity/:id',
+      name: 'borrowing-activity-detail',
+      component: () => import('../views/borrow/BorrowingActivityDetailView.vue'),
+      meta: { requiresAuth: true, permissionsAny: ['borrow_history.view_own', 'borrow_history.view_all'] },
+    },
+    {
       path: '/asset-catalog',
       name: 'asset-catalog',
       component: () => import('../views/assets/AssetCatalogView.vue'),

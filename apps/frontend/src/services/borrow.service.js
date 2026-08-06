@@ -25,4 +25,5 @@ export const handoverBorrowDetail = (api, detailId) => api(`/borrow-request-deta
 export const listCurrentBorrowing = (api, params) => api(`/borrow-histories/current${queryString(params)}`)
 export const listMyBorrowHistory = (api, params) => api(`/borrow-histories/me${queryString(params)}`)
 export const listAllBorrowHistory = (api, params) => api(`/borrow-histories${queryString(params)}`)
+export const getBorrowHistoryDetail = (api, historyId) => api(`/borrow-histories/${historyId}`)
 export const receiveNormalReturn = (api, historyId) => api(`/borrow-histories/${historyId}/return`, { method: 'POST' })

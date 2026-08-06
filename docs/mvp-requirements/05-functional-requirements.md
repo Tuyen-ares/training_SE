@@ -55,7 +55,7 @@
 | FR-F05-02 | Hệ thống phải tạo lịch sử bàn giao duy nhất cho detail và ghi người/thời điểm bàn giao. |
 | FR-F05-03 | Hệ thống phải cho phép nhân viên xem các asset mình đang mượn. |
 | FR-F05-04 | Hệ thống phải cho phép user có quyền xác nhận hoàn trả bình thường và ghi tình trạng trả. |
-| FR-F05-05 | Hệ thống phải cho phép xem lịch sử mượn của bản thân hoặc toàn bộ theo permission. |
+| FR-F05-05 | Hệ thống phải cho phép xem lịch sử mượn của bản thân hoặc toàn bộ theo permission và mở chi tiết một history để xem request reason, approval, handover và return metadata đã được ghi nhận. |
 
 ## F06 – Asset Issues & Repair
 

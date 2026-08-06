@@ -122,3 +122,31 @@ export interface BorrowHistoryDto {
   returnedAt: Date | null;
   returnCondition: string | null;
 }
+
+export interface BorrowHistoryDetailDto {
+  id: number;
+  request: {
+    id: number;
+    status: BorrowRequestStatus;
+    note: string | null;
+    createdAt: Date;
+    requester: {
+      id: number;
+      name: string;
+      email: string;
+      avatarUrl: string | null;
+      department: { id: number; name: string } | null;
+    };
+  };
+  asset: BorrowHistoryDto['asset'];
+  expectedReturnDate: string;
+  approvalStatus: BorrowDetailStatus;
+  approvedBy: { id: number; name: string } | null;
+  approvedAt: Date | null;
+  rejectionReason: string | null;
+  handedOverBy: { id: number; name: string } | null;
+  borrowedAt: Date;
+  receivedBy: { id: number; name: string } | null;
+  returnedAt: Date | null;
+  returnCondition: string | null;
+}

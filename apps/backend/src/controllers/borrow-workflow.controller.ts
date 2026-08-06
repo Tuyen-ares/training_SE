@@ -161,4 +161,19 @@ export class BorrowWorkflowController {
       return ApiResponse.internalError(res);
     }
   };
+
+  detail = async (req: Request, res: Response): Promise<void> => {
+    if (!req.auth) return ApiResponse.unauthorized(res);
+    const historyId = readPositiveId(req.params.historyId);
+    if (!historyId) return ApiResponse.badRequest(res, { historyId: ['A positive id is required'] });
+
+    try {
+      const canViewAll = req.auth.permissionCodes.includes('borrow_history.view_all');
+      const history = await this.service.getHistoryDetail(historyId, req.auth.sub, canViewAll);
+      if (!history) return ApiResponse.notFound(res, 'Borrow history not found');
+      return ApiResponse.ok(res, history);
+    } catch {
+      return ApiResponse.internalError(res);
+    }
+  };
 }
