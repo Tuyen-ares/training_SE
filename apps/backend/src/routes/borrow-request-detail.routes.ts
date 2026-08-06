@@ -7,12 +7,14 @@ import { PrismaAssetRepository } from '@/repositories/asset.prisma.repository.js
 import { PrismaBorrowRequestRepository } from '@/repositories/borrow-request.prisma.repository.js';
 import { AssetService } from '@/services/assets.service.js';
 import { BorrowWorkflowService } from '@/services/borrow-workflow.service.js';
+import { PrismaNotificationRepository } from '@/repositories/notification.prisma.repository.js';
 
 const router = Router();
 const borrowRepository = new PrismaBorrowRequestRepository(prisma);
 const assetService = new AssetService(new PrismaAssetRepository(prisma));
+const notificationRepository = new PrismaNotificationRepository(prisma);
 const controller = new BorrowWorkflowController(
-  new BorrowWorkflowService(borrowRepository, assetService),
+  new BorrowWorkflowService(borrowRepository, assetService, notificationRepository),
 );
 
 router.get('/review-queue', requireAuth, requirePermission('borrow_request.view_all'), controller.reviewQueue);

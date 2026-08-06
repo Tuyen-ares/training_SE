@@ -67,7 +67,6 @@ type BorrowRequestDetailDto = {
   id: number
   asset: AssetSummary
   expectedReturnAt: string // ISO-8601; date-vs-datetime remains an open question.
-  note: string | null
   approvalStatus: BorrowDetailApprovalStatus
   approvedBy: { id: number; name: string } | null
   approvedAt: string | null
@@ -128,7 +127,6 @@ type CreateBorrowRequestInput = {
   items: Array<{
     assetId: number
     expectedReturnAt: string
-    note?: string | null
   }>
 }
 // 201 ApiEnvelope<BorrowRequestDto>
@@ -215,7 +213,7 @@ returned + asset AVAILABLE`; it may also derive the request header as
 
 1. Is `expectedReturnAt` a date-only value or a datetime, and which timezone
    validates it?
-2. What are the maximum lengths and permitted values for request/detail note,
+2. What are the maximum lengths and permitted values for request note,
    rejection reason and `returnCondition`?
 3. What pagination defaults, maximum page size, filters and sort order apply
    to request, review-queue and history lists?

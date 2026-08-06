@@ -14,6 +14,7 @@ import { useRouter } from 'vue-router'
 
 import WorkspaceLayout from '../../components/layout/WorkspaceLayout.vue'
 import { listAssets } from '../../services/asset.service'
+import { listCurrentBorrowing, listMyBorrowHistory } from '../../services/borrow.service'
 import { useAuthStore } from '../../stores/auth'
 
 const router = useRouter()
@@ -146,20 +147,20 @@ function toDate(value) {
 }
 
 function activityAsset(history) {
-  const asset = history.borrow_request_details?.assets
+  const asset = history.asset
   return {
     id: asset?.id,
-    serialNumber: asset?.serial_number || `Asset #${history.borrow_request_detail_id}`,
-    name: asset?.asset_models?.name || 'Unknown model',
+    serialNumber: asset?.serialNumber || `Asset #${history.detailId}`,
+    name: asset?.model?.name || 'Unknown model',
   }
 }
 
 function activityStatus(history) {
-  return history.return_date ? 'Returned' : 'Active'
+  return history.returnedAt ? 'Returned' : 'Active'
 }
 
 function activityStatusColor(history) {
-  return history.return_date ? 'success' : 'processing'
+  return history.returnedAt ? 'success' : 'processing'
 }
 
 async function loadAssetSummary() {
@@ -203,11 +204,11 @@ async function loadPersonalSummary() {
   }
 
   if (canViewBorrowingActivity.value) {
-    requests.push(authStore.api('/borrow-histories/current').then((items) => {
-      nextSummary.currentBorrowed = Array.isArray(items) ? items.length : 0
+    requests.push(listCurrentBorrowing(authStore.api, { page: 1, pageSize: 1 }).then((page) => {
+      nextSummary.currentBorrowed = page?.total ?? 0
     }))
-    requests.push(authStore.api('/borrow-histories/me?page=1&pageSize=3').then((items) => {
-      nextSummary.activity = Array.isArray(items) ? items : []
+    requests.push(listMyBorrowHistory(authStore.api, { page: 1, pageSize: 3 }).then((page) => {
+      nextSummary.activity = Array.isArray(page?.items) ? page.items : []
     }))
   }
 
@@ -336,7 +337,7 @@ onMounted(() => {
             <template #bodyCell="{ column, record }">
               <a-typography-text v-if="column.key === 'assetId'" strong>{{ activityAsset(record).serialNumber }}</a-typography-text>
               <a-typography-text v-else-if="column.key === 'assetName'">{{ activityAsset(record).name }}</a-typography-text>
-              <a-typography-text v-else-if="column.key === 'borrowedOn'">{{ toDate(record.borrow_date) }}</a-typography-text>
+              <a-typography-text v-else-if="column.key === 'borrowedOn'">{{ toDate(record.borrowedAt) }}</a-typography-text>
               <a-tag v-else-if="column.key === 'status'" :color="activityStatusColor(record)">{{ activityStatus(record) }}</a-tag>
               <a-button v-else-if="column.key === 'action'" size="small" @click="openActivityAsset(record)">Details</a-button>
             </template>

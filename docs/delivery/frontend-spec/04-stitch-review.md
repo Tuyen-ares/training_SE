@@ -24,7 +24,7 @@ Stitch là visual reference. Screen chỉ được tái sử dụng khi sau khi 
 | SCR-F05-02 Borrowing Activity | BOR-04, BOR-05, BOR-10 | NEEDS_UPDATE | History table/detail pattern. | Gộp current/own/all scope theo permission; không suy ra history chỉ từ approval. |
 | SCR-F06-01 Issue List | REP-01 | NEEDS_UPDATE | Issue list/filter. | Status baseline và navigation vào shared Issue Detail. |
 | SCR-F06-02 Issue Detail | REP-02..05 | NEEDS_UPDATE | Repair content/workflow visual states. | Hợp nhất bước repair; support REPORTED→CONFIRMED/REJECTED→IN_REPAIR→COMPLETED/FAILED. |
-| SCR-F07-01 Notification Center | — | MISSING | Header styling có thể tái dùng. | Danh sách, unread/read và logical navigation. |
+| SCR-F07-01 Notification Center | `c30e1b9426b04704ae2bec0aa666a935` | NEEDS_UPDATE | All/Unread, notification content, relative time, mark-all and related action. | Runtime giữ AppShell trắng/Ant Design; không dùng dark sidebar, nền cam toàn dòng hoặc copy tiếng Việt của mockup. |
 | SCR-F08-01 User List | USR-01 | NEEDS_UPDATE | User table/search. | Avatar URL/state and permission-only actions. |
 | SCR-F08-02 User Form & Roles | USR-02..04 | NEEDS_UPDATE | Form/profile/role selection patterns. | Hợp nhất create/edit/role assignment; không CRUD role/permission. |
 

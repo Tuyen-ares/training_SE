@@ -14,7 +14,7 @@ does not create an authorization scope.
 - List/history order: newest first. Review Queue: oldest first.
 - `expectedReturnDate` is date-only `YYYY-MM-DD`, interpreted in
   `Asia/Ho_Chi_Minh`, and must be today or later.
-- `note` and `rejectionReason` allow at most 2,000 characters.
+- Request-level `note` and `rejectionReason` allow at most 2,000 characters.
 - Expected errors: `400` invalid input, `401` unauthenticated, `403` missing
   permission, `404` missing/hidden own resource, `409` state/concurrency conflict.
 
@@ -28,7 +28,7 @@ does not create an authorization scope.
 {
   "note": "For project work",
   "items": [
-    { "assetId": 12, "expectedReturnDate": "2026-08-20", "note": null },
+    { "assetId": 12, "expectedReturnDate": "2026-08-20" },
     { "assetId": 13, "expectedReturnDate": "2026-08-22" }
   ]
 }

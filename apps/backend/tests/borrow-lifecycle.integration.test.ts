@@ -29,6 +29,14 @@ test('Borrow lifecycle APIs create, approve, hand over, return and cancel safely
   };
 
   context.after(async () => {
+    await prisma.notifications.deleteMany({
+      where: {
+        OR: [
+          { recipient_user_id: { in: created.users } },
+          { related_entity_type: 'BORROW_REQUEST', related_entity_id: { in: created.requests } },
+        ],
+      },
+    });
     await prisma.borrow_histories.deleteMany({ where: { id: { in: created.histories } } });
     await prisma.borrow_request_details.deleteMany({ where: { id: { in: created.details } } });
     await prisma.borrow_requests.deleteMany({ where: { id: { in: created.requests } } });

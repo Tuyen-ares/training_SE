@@ -13,15 +13,17 @@ import {
   TeamOutlined,
   ToolOutlined,
 } from '@ant-design/icons-vue'
-import { computed, ref } from 'vue'
+import { computed, onMounted, onUnmounted, ref } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 
 import { useAuthStore } from '../../stores/auth'
+import { getUnreadNotificationCount } from '../../services/notification.service'
 
 const route = useRoute()
 const router = useRouter()
 const authStore = useAuthStore()
 const collapsed = ref(false)
+const unreadNotificationCount = ref(0)
 
 const hasAnyPermission = (...permissionCodes) => permissionCodes.some((code) => authStore.hasPermission(code))
 
@@ -32,17 +34,18 @@ const navigationItems = computed(() => [
   { key: 'approval-queue', label: 'Approval Queue', icon: CheckSquareOutlined, routeName: 'approval-queue', visible: hasAnyPermission('borrow_request.approve', 'borrow_request.reject') },
   { key: 'handover-return', label: 'Handover & Return', icon: SettingOutlined, routeName: 'handover-return', visible: hasAnyPermission('asset.checkout', 'asset.checkin') },
   { key: 'borrowing-activity', label: 'Borrowing Activity', icon: HistoryOutlined, routeName: 'borrowing-activity', visible: hasAnyPermission('borrow_history.view_own', 'borrow_history.view_all') },
-  { key: 'asset-issues', label: 'Asset Issues & Repairs', icon: ToolOutlined, visible: hasAnyPermission('asset_issue.report', 'repair_log.view', 'repair_log.create', 'repair_log.update', 'repair_log.close') },
+  { key: 'asset-issues', label: 'Asset Issues & Repairs', icon: ToolOutlined, routeName: 'asset-issues', visible: authStore.hasPermission('repair_log.view') },
   { key: 'asset-catalog', label: 'Asset Catalog', icon: AppstoreOutlined, routeName: 'asset-catalog', visible: hasAnyPermission('brand.create', 'brand.update', 'asset_type.create', 'asset_type.update', 'asset_model.create', 'asset_model.update') },
   { key: 'users', label: 'User Management', icon: TeamOutlined, routeName: 'users', visible: authStore.hasPermission('user.view') },
-  { key: 'notifications', label: 'Notifications', icon: BellOutlined, visible: authStore.isAuthenticated },
+  { key: 'notifications', label: 'Notifications', icon: BellOutlined, routeName: 'notifications', visible: authStore.isAuthenticated },
 ].filter((item) => item.visible))
 
 const selectedKeys = computed(() => [
   ['asset-detail', 'asset-create', 'asset-edit'].includes(route.name) ? 'assets'
       : ['user-detail', 'user-create', 'user-edit'].includes(route.name) ? 'users'
         : ['borrow-request-create', 'borrow-request-detail'].includes(route.name) ? 'my-requests'
-      : route.name === 'approval-detail' ? 'approval-queue' : route.name,
+      : route.name === 'approval-detail' ? 'approval-queue'
+        : route.name === 'asset-issue-detail' ? 'asset-issues' : route.name,
 ])
 const userInitials = computed(() => authStore.user?.name
   ?.split(/\s+/)
@@ -65,6 +68,25 @@ async function logout() {
   await authStore.logout()
   router.push({ name: 'login' })
 }
+
+async function loadUnreadNotifications() {
+  try {
+    const result = await getUnreadNotificationCount(authStore.api)
+    unreadNotificationCount.value = result?.unreadCount || 0
+  } catch {
+    unreadNotificationCount.value = 0
+  }
+}
+
+function openNotifications() {
+  if (route.name !== 'notifications') router.push({ name: 'notifications' })
+}
+
+onMounted(() => {
+  loadUnreadNotifications()
+  window.addEventListener('notifications:changed', loadUnreadNotifications)
+})
+onUnmounted(() => window.removeEventListener('notifications:changed', loadUnreadNotifications))
 </script>
 
 <template>
@@ -112,9 +134,11 @@ async function logout() {
 
         <a-space class="workspace-layout__header-actions" :size="12">
           <a-tooltip title="Notifications">
-            <a-button type="text" aria-label="Notifications">
-              <template #icon><BellOutlined /></template>
-            </a-button>
+            <a-badge :count="unreadNotificationCount" :overflow-count="99" size="small">
+              <a-button type="text" aria-label="Open notifications" @click="openNotifications">
+                <template #icon><BellOutlined /></template>
+              </a-button>
+            </a-badge>
           </a-tooltip>
           <a-dropdown placement="bottomRight">
             <a-button type="text" class="workspace-layout__account">

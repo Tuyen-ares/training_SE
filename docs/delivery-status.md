@@ -1,6 +1,6 @@
 # Delivery Status Audit
 
-> Audit date: 2026-08-04. Scope: repository evidence, automated verification,
+> Audit date: 2026-08-05. Scope: repository evidence, automated verification,
 > and manual browser verification of the Asset slice.
 >
 > Sources of requirement: `docs/mvp-requirements/` and
@@ -26,18 +26,18 @@
 | --- | ---: |
 | User Stories audited | 40 |
 | VERIFIED | 8 |
-| IMPLEMENTED | 16 |
+| IMPLEMENTED | 24 |
 | IN_PROGRESS | 2 |
 | MOCKUP_ONLY | 0 |
 | NOT_STARTED | 0 |
 | BLOCKED | 0 |
-| DEFERRED | 14 |
+| DEFERRED | 6 |
 
 ### Shared evidence
 
 - Requirements and named AC: `docs/mvp-requirements/07-user-stories/`.
-- Screen and flow evidence: `docs/frontend-spec/02-screen-inventory.md` and
-  `docs/frontend-spec/03-user-flows/`.
+- Screen and flow evidence: `docs/delivery/frontend-spec/02-screen-inventory.md` and
+  `docs/delivery/frontend-spec/03-user-flows/`.
 - Asset read/report and Asset write/catalog/retire/QR contracts are available
   under `docs/contracts/`.
 - Registered backend resources are limited to Users, Departments, Brands,
@@ -80,7 +80,7 @@
 5. Repair or isolate the failing database race tests before treating persistence
    or concurrency AC as verified.
 
-## Deferred status
+## Additional feature status
 
 | User Story | Tên dễ hiểu | Release | Contract | Backend | Frontend | Integration | Tests/AC | Status | Evidence | Gaps |
 | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- |
@@ -93,14 +93,14 @@
 | US-F04-04 | Duyệt tất cả theo partial success | Deferred | None | Partial | Skeleton | None | None | DEFERRED | borrow detail schema, `FLOW-10` | No bulk action/service/result contract or UI. |
 | US-F05-03 | Hoàn trả thiết bị hỏng | Deferred phase 2 branch | None | Partial | Skeleton | None | Partial | DEFERRED | `AssetService.returnAsset`, `asset_issues` schema, `FLOW-13` | No combined return-and-issue transaction; excluded from R1. |
 | US-F06-01 | Báo sự cố | R1 slice | Done | Done | Done | API | API/DB | IMPLEMENTED | `AssetIssueService`, `ReportIssueDialog.vue`, `asset-api.integration.test.ts` | Issue list, review and repair remain deferred. |
-| US-F06-02 | Xem danh sách và chi tiết sự cố | Deferred | None | Partial | Mockup Only | None | None | DEFERRED | `asset_issues` schema, `SCR-F06-01`, `SCR-F06-02` | No query API or UI implementation. |
-| US-F06-03 | Xác minh sự cố | Deferred | None | Partial | Mockup Only | None | None | DEFERRED | `asset_issues` schema, `FLOW-16` | No confirm/reject transaction, route or UI. |
-| US-F06-04 | Bắt đầu sửa chữa | Deferred | None | Partial | Mockup Only | None | Partial | DEFERRED | Asset transition helper/tests, `asset_issues` schema | No Issue-owned start-repair action or UI. |
-| US-F06-05 | Cập nhật quá trình sửa chữa | Deferred | None | Partial | Mockup Only | None | None | DEFERRED | repair fields in `asset_issues` schema, `FLOW-17` | No endpoint/service/UI. |
-| US-F06-06 | Kết thúc sửa chữa | Deferred | None | Partial | Mockup Only | None | Partial | DEFERRED | Asset repair helper/tests, `asset_issues` schema | No Issue close action or UI. |
-| US-F07-01 | Xem thông báo | Deferred | None | Partial | Mockup Only | None | None | DEFERRED | `notifications` schema, `SCR-F07-01` | No notification route/service/controller/UI. |
-| US-F07-02 | Đánh dấu thông báo đã đọc | Deferred | None | Partial | Mockup Only | None | None | DEFERRED | `notifications` schema, `US-F07-02` | No owner-scoped read action or UI. |
-| US-F07-03 | Mở đối tượng liên quan từ thông báo | Deferred | None | Partial | Mockup Only | None | None | DEFERRED | notification reference fields in schema, `US-F07-03` | No notification API/UI/navigation authorization. |
+| US-F06-02 | Xem danh sách và chi tiết sự cố | Current | Implemented Match | Done | Done | API/UI | API/DB + browser | IMPLEMENTED | Asset issue routes/services, `AssetIssueListView.vue`, `AssetIssueDetailView.vue`; browser loaded real list/detail data | No automated frontend test suite. |
+| US-F06-03 | Xác minh sự cố | Current | Implemented Match | Done | Done | API/UI | API/DB | IMPLEMENTED | Transactional confirm/reject APIs and permission/status-aware detail actions | Destructive transition was not repeated in browser verification. |
+| US-F06-04 | Bắt đầu sửa chữa | Current | Implemented Match | Done | Done | API/UI | API/DB | IMPLEMENTED | Start-repair API plus modal workflow state in Issue Detail | No automated frontend interaction test. |
+| US-F06-05 | Cập nhật quá trình sửa chữa | Current | Implemented Match | Done | Done | API/UI | API/DB | IMPLEMENTED | Repair update API and shared modal with provider/date/cost/result/note fields | No automated frontend interaction test. |
+| US-F06-06 | Kết thúc sửa chữa | Current | Implemented Match | Done | Done | API/UI | API/DB | IMPLEMENTED | Complete/fail APIs and status/permission-aware actions in Issue Detail | No automated frontend interaction test. |
+| US-F07-01 | Xem thông báo | Current | Implemented Match | Done | Done | Verified API/UI | API/DB + browser | IMPLEMENTED | Owner-scoped list/unread-count APIs, header badge, full Notification Center; browser loaded real notifications | No automated frontend test suite. |
+| US-F07-02 | Đánh dấu thông báo đã đọc | Current | Implemented Match | Done | Done | Verified API/UI | API/DB + browser | IMPLEMENTED | Single/all read PATCH APIs; browser navigation reduced unread badge from 5 to 4 | Mark-all was not executed to preserve remaining review data. |
+| US-F07-03 | Mở đối tượng liên quan từ thông báo | Current | Implemented Match | Done | Done | API/UI | Browser | IMPLEMENTED | Logical navigation supports borrow requests and asset issues with capability checks and safe missing/forbidden feedback | A legacy notification referenced deleted issue #35 and correctly rendered safe unavailable state. |
 | US-F08-01 | Xem danh sách người dùng | Deferred | None | Done | Done | Partial | Partial | DEFERRED | `user.routes.ts`, `Users.vue`, `user-api.integration.test.ts` | Outside R1; no story contract or frontend AC evidence. |
 | US-F08-02 | Tạo người dùng | Deferred | None | Done | Done | Partial | Partial | DEFERRED | `user.routes.ts`, `user.service.ts`, `Users.vue`, `user.service.test.ts` | Outside R1; FE has no avatar field required by story. |
 | US-F08-03 | Cập nhật người dùng | Deferred | None | Done | Partial | Partial | Partial | DEFERRED | `user.routes.ts`, `user.service.ts`, `user.service.test.ts` | Outside R1; routed FE only creates/activates/deactivates, no edit flow. |
@@ -109,11 +109,10 @@
 
 ## Discrepancies found
 
-1. **Asset and Borrow lifecycle API contracts are implemented.** F03–F05 are
-   `IMPLEMENTED`, not `VERIFIED`, because their frontend is not connected yet.
-2. **Most Frontend Release 1 routes are absent.** `/assets` and `/assets/:id`
-   are API-connected and permission guarded; Request, Review Queue,
-   Fulfillment Queue and Borrowing Activity are still absent.
+1. **Asset, Borrow and Repair lifecycle API contracts are implemented.** Their
+   runtime screens use the shared authenticated AppShell and effective-permission guards.
+2. **F03–F08 operational frontend routes are registered.** Verification depth
+   remains story-specific; an existing route or screen alone is not marked `VERIFIED`.
 3. **The legacy `POST /api/assets/:id/report-damaged` path is now an issue
    report action.** It creates `REPORTED` without changing asset status; its
    legacy name remains solely for compatibility.
@@ -156,6 +155,8 @@ agreed F03–F05 API scope.
 | `pnpm --filter backend typecheck` (2026-08-04, Borrow lifecycle) | Passed | TypeScript validation passed after the Borrow lifecycle additions. |
 | `pnpm --filter backend build` (2026-08-04, Borrow lifecycle) | Passed | Backend production TypeScript build passed after the Borrow lifecycle additions. |
 | Manual browser verification (2026-08-04, Asset slice) | Passed | Asset Manager created asset 128, updated its serial, found it by server-generated QR, retired it, and created/updated a Brand. Test fixtures were removed afterward; a clean reload had no console messages. |
+| `node .../bigin-verify-change/scripts/verify.mjs` (2026-08-05, F06/F07) | Passed | Backend typecheck and frontend production build passed for the complete dirty-worktree scope. |
+| Manual browser verification (2026-08-05, F06/F07) | Passed with legacy-data discrepancy | Notification list/unread count loaded; opening one notification marked it read and changed badge 5→4; Asset Issue List/Detail and Reject modal rendered with live API data. Notification #35 referenced a deleted issue and safely showed unavailable state. |
 
 No frontend automated test command exists in `apps/frontend/package.json`.
 The production build is supplemented by the manual browser/API integration

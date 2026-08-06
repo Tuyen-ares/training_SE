@@ -1,39 +1,90 @@
 import type {
   AssetIssue,
+  AssetIssueListQuery,
+  AssetIssuePage,
+  AssetIssueRepairUpdate,
+  AssetIssueStatus,
   CreateAssetIssueReport,
 } from '@/models/asset-issue.model.js';
-import type { IAssetIssueRepository } from '@/repositories/asset-issue.repository.js';
+import type {
+  AssetIssueTransaction,
+  IAssetIssueRepository,
+} from '@/repositories/asset-issue.repository.js';
 import type { PrismaClient } from '../../generated/prisma/index.js';
+
+const issueSelect = {
+  id: true,
+  asset_id: true,
+  reported_by: true,
+  description: true,
+  status: true,
+  handled_by: true,
+  repair_provider: true,
+  start_date: true,
+  end_date: true,
+  cost: true,
+  result: true,
+  note: true,
+  created_at: true,
+  updated_at: true,
+  assets: {
+    select: {
+      id: true,
+      serial_number: true,
+      status: true,
+      asset_models: { select: { name: true } },
+    },
+  },
+  reported_by_users: { select: { id: true, name: true } },
+} as const;
+
+function mapIssue(issue: any): AssetIssue {
+  return {
+    id: issue.id,
+    assetId: issue.asset_id,
+    reportedBy: issue.reported_by,
+    description: issue.description ?? '',
+    status: issue.status ?? 'REPORTED',
+    handledBy: issue.handled_by,
+    repairProvider: issue.repair_provider,
+    startDate: issue.start_date,
+    endDate: issue.end_date,
+    cost: issue.cost?.toString() ?? null,
+    result: issue.result,
+    note: issue.note,
+    createdAt: issue.created_at,
+    updatedAt: issue.updated_at,
+    asset: issue.assets ? {
+      id: issue.assets.id,
+      serialNumber: issue.assets.serial_number,
+      status: issue.assets.status.toUpperCase(),
+      modelName: issue.assets.asset_models.name,
+    } : null,
+    reporter: issue.reported_by_users
+      ? { id: issue.reported_by_users.id, name: issue.reported_by_users.name }
+      : null,
+  };
+}
 
 export class PrismaAssetIssueRepository implements IAssetIssueRepository {
   constructor(private readonly prisma: PrismaClient) {}
 
-  async createReport(data: CreateAssetIssueReport): Promise<AssetIssue> {
-    const issue = await this.prisma.asset_issues.create({
+  transaction<T>(work: (transaction: AssetIssueTransaction) => Promise<T>): Promise<T> {
+    return this.prisma.$transaction(work);
+  }
+
+  async createReport(data: CreateAssetIssueReport, transaction?: AssetIssueTransaction): Promise<AssetIssue> {
+    const database = transaction ?? this.prisma;
+    const issue = await database.asset_issues.create({
       data: {
         asset_id: data.assetId,
         reported_by: data.reportedBy,
         description: data.description,
         status: 'REPORTED',
       },
-      select: {
-        id: true,
-        asset_id: true,
-        reported_by: true,
-        description: true,
-        status: true,
-        created_at: true,
-      },
+      select: issueSelect,
     });
-
-    return {
-      id: issue.id,
-      assetId: issue.asset_id,
-      reportedBy: issue.reported_by,
-      description: issue.description ?? '',
-      status: issue.status ?? 'REPORTED',
-      createdAt: issue.created_at,
-    };
+    return mapIssue(issue);
   }
 
   async isCurrentBorrower(assetId: number, userId: number): Promise<boolean> {
@@ -48,5 +99,112 @@ export class PrismaAssetIssueRepository implements IAssetIssueRepository {
       select: { id: true },
     });
     return history !== null;
+  }
+
+  async findPage(query: AssetIssueListQuery): Promise<AssetIssuePage> {
+    const where = {
+      ...(query.status ? { status: query.status } : {}),
+      ...(query.assetId ? { asset_id: query.assetId } : {}),
+    };
+    const [issues, total] = await this.prisma.$transaction([
+      this.prisma.asset_issues.findMany({
+        where,
+        select: issueSelect,
+        orderBy: [{ created_at: 'desc' }, { id: 'desc' }],
+        skip: (query.page - 1) * query.pageSize,
+        take: query.pageSize,
+      }),
+      this.prisma.asset_issues.count({ where }),
+    ]);
+    return {
+      items: issues.map(mapIssue),
+      page: query.page,
+      pageSize: query.pageSize,
+      total,
+    };
+  }
+
+  async findById(id: number, transaction?: AssetIssueTransaction): Promise<AssetIssue | null> {
+    const database = transaction ?? this.prisma;
+    const issue = await database.asset_issues.findUnique({ where: { id }, select: issueSelect });
+    return issue ? mapIssue(issue) : null;
+  }
+
+  async transition(
+    id: number,
+    expectedStatus: AssetIssueStatus,
+    nextStatus: AssetIssueStatus,
+    actorId: number,
+    transaction: AssetIssueTransaction,
+  ): Promise<boolean> {
+    const result = await transaction.asset_issues.updateMany({
+      where: { id, status: expectedStatus },
+      data: {
+        status: nextStatus,
+        handled_by: actorId,
+        ...(nextStatus === 'IN_REPAIR' ? { start_date: new Date() } : {}),
+        updated_at: new Date(),
+      },
+    });
+    return result.count === 1;
+  }
+
+  async updateRepair(
+    id: number,
+    data: AssetIssueRepairUpdate,
+    transaction: AssetIssueTransaction,
+  ): Promise<AssetIssue> {
+    const issue = await transaction.asset_issues.update({
+      where: { id },
+      data: {
+        repair_provider: data.repairProvider,
+        cost: data.cost,
+        result: data.result,
+        note: data.note,
+        start_date: data.startDate,
+        end_date: data.endDate,
+        updated_at: new Date(),
+      },
+      select: issueSelect,
+    });
+    return mapIssue(issue);
+  }
+
+  async completeRepair(
+    id: number,
+    status: 'COMPLETED' | 'FAILED',
+    actorId: number,
+    data: AssetIssueRepairUpdate,
+    transaction: AssetIssueTransaction,
+  ): Promise<AssetIssue> {
+    const issue = await transaction.asset_issues.update({
+      where: { id },
+      data: {
+        status,
+        handled_by: actorId,
+        repair_provider: data.repairProvider,
+        cost: data.cost,
+        result: data.result,
+        note: data.note,
+        start_date: data.startDate,
+        end_date: new Date(),
+        updated_at: new Date(),
+      },
+      select: issueSelect,
+    });
+    return mapIssue(issue);
+  }
+
+  async transitionAsset(
+    assetId: number,
+    expectedStatus: 'available' | 'borrowed' | 'damaged' | 'in_repair',
+    nextStatus: 'available' | 'damaged' | 'in_repair',
+    transaction: AssetIssueTransaction,
+  ): Promise<boolean> {
+    const result = await transaction.assets.updateMany({
+      where: { id: assetId, status: expectedStatus },
+      data: { status: nextStatus },
+    });
+    return result.count === 1;
   }
 }

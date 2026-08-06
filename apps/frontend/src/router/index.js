@@ -133,6 +133,24 @@ const router = createRouter({
       },
     },
     {
+      path: '/asset-issues',
+      name: 'asset-issues',
+      component: () => import('../views/issues/AssetIssueListView.vue'),
+      meta: { requiresAuth: true, permission: 'repair_log.view' },
+    },
+    {
+      path: '/asset-issues/:id',
+      name: 'asset-issue-detail',
+      component: () => import('../views/issues/AssetIssueDetailView.vue'),
+      meta: { requiresAuth: true, permission: 'repair_log.view' },
+    },
+    {
+      path: '/notifications',
+      name: 'notifications',
+      component: () => import('../views/notifications/NotificationCenterView.vue'),
+      meta: { requiresAuth: true },
+    },
+    {
       path: '/CartItem',
       name: 'CartItem',
       component: () => import('../views/train/components/SearchBar.vue'),

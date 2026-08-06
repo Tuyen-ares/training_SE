@@ -4,6 +4,7 @@ import cookieParser from 'cookie-parser';
 import dotenv from 'dotenv';
 dotenv.config({ path: `${process.cwd()}/.env` });
 import { registerRoutes } from '@/routes/index.js';
+import { mountSwagger } from '@/swagger.js';
 
 const app = express();
 const configuredFrontendOrigins = (process.env.FRONTEND_ORIGIN || '')
@@ -33,6 +34,8 @@ app.use(cookieParser());
 app.get('/health', (_req, res) => {
   res.json({ status: 'ok' })
 })
+
+mountSwagger(app);
 
 registerRoutes(app);
 

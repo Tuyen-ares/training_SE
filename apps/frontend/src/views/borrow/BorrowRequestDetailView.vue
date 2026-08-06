@@ -1,6 +1,11 @@
 <script setup>
 import { computed, h, onMounted, ref, watch } from "vue";
-import { ArrowLeftOutlined, RollbackOutlined } from "@ant-design/icons-vue";
+import {
+  ApartmentOutlined,
+  ArrowLeftOutlined,
+  MailOutlined,
+  RollbackOutlined,
+} from "@ant-design/icons-vue";
 import { Modal, message } from "ant-design-vue";
 import { useRoute, useRouter } from "vue-router";
 import WorkspaceLayout from "../../components/layout/WorkspaceLayout.vue";
@@ -90,23 +95,23 @@ onMounted(load);
       /><template v-else-if="request"
         ><header class="detail-heading">
           <div>
-            <h1>
-              Borrow Request REQ-{{ String(request.id).padStart(4, "0") }}
-            </h1>
+            <div class="title-row">
+              <h1>
+                Borrow Request REQ-{{ String(request.id).padStart(4, "0") }}
+              </h1>
+              <a-tag :color="colors[request.status]">
+                {{ request.status.replaceAll("_", " ") }}
+              </a-tag>
+            </div>
             <p>Asset borrowing request details</p>
           </div>
-          <a-space
-            ><a-tag :color="colors[request.status]">{{
-              request.status.replaceAll("_", " ")
-            }}</a-tag
-            ><a-button
-              v-if="canWithdraw"
-              danger
-              :loading="withdrawing"
-              :icon="h(RollbackOutlined)"
-              @click="withdraw"
-              >Withdraw Request</a-button
-            ></a-space
+          <a-button
+            v-if="canWithdraw"
+            danger
+            :loading="withdrawing"
+            :icon="h(RollbackOutlined)"
+            @click="withdraw"
+            >Withdraw Request</a-button
           >
         </header>
         <div class="detail-grid">
@@ -119,15 +124,31 @@ onMounted(load);
                 <dt>Creation Date</dt>
                 <dd>{{ formatDate(request.createdAt) }}</dd>
                 <dt>Borrowing Reason</dt>
-                <dd>{{ request.note || "No reason provided." }}</dd>
+                <dd class="reason-box">
+                  {{ request.note || "No reason provided." }}
+                </dd>
               </dl>
             </section>
             <section class="panel requester">
               <h2>Requester</h2>
-              <a-avatar :size="50" :src="request.requester.avatarUrl">{{
-                request.requester.name.slice(0, 1)
-              }}</a-avatar
-              ><strong>{{ request.requester.name }}</strong>
+              <div class="requester-profile">
+                <a-avatar :size="50" :src="request.requester.avatarUrl">
+                  {{ request.requester.name.slice(0, 1) }}
+                </a-avatar>
+                <div class="requester-copy">
+                  <strong>{{ request.requester.name }}</strong>
+                  <span v-if="request.requester.email" class="requester-meta">
+                    <MailOutlined /> {{ request.requester.email }}
+                  </span>
+                  <span
+                    v-if="request.requester.department?.name"
+                    class="requester-meta"
+                  >
+                    <ApartmentOutlined />
+                    {{ request.requester.department.name }}
+                  </span>
+                </div>
+              </div>
             </section>
           </aside>
           <section class="panel asset-list">
@@ -193,6 +214,12 @@ onMounted(load);
   font-size: 26px;
   margin: 0;
 }
+.title-row {
+  align-items: center;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+}
 .detail-heading p {
   color: #8c8c8c;
   margin: 3px 0;
@@ -231,14 +258,39 @@ onMounted(load);
 .panel dd {
   margin: 0 0 8px;
 }
+.reason-box {
+  background: #f5f5f5;
+  border: 1px solid #e6e6e6;
+  border-radius: 4px;
+  padding: 12px;
+  color: #434343;
+  line-height: 1.55;
+}
 .requester {
-  display: grid;
-  grid-template-columns: auto 1fr;
+  display: block;
+}
+.requester h2 {
+  margin-bottom: 16px;
+}
+.requester-profile {
+  display: flex;
   align-items: center;
   gap: 12px;
 }
-.requester h2 {
-  grid-column: 1/-1;
+.requester-copy {
+  display: grid;
+  gap: 5px;
+  min-width: 0;
+}
+.requester-meta {
+  color: #595959;
+  font-size: 13px;
+  line-height: 1.35;
+  overflow-wrap: anywhere;
+}
+.requester-meta :deep(svg) {
+  color: #8c8c8c;
+  margin-right: 4px;
 }
 .asset-list {
   padding: 0;

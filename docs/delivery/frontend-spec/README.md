@@ -25,3 +25,7 @@ Khi có mâu thuẫn, không sửa requirement để khớp mockup hoặc code c
 - Dialog/drawer là workflow state của screen cha, không phải screen mới.
 - Không quy định route URL, request/response, component props, SQL, Prisma hoặc service.
 - Không thay đổi màu sắc, design language hoặc Stitch trong giai đoạn này.
+
+## Implementation alignment
+
+When a screen has been implemented, the relevant inventory row and flow file include an `Implementation alignment` note. These notes record the realized route, permission behavior, API-backed states, and deliberate differences from Stitch without changing the underlying User Story, AC, or Business Rule.

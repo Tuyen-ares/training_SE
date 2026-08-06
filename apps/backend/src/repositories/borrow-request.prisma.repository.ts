@@ -20,7 +20,15 @@ import {
 import type { BorrowActionDetail, BorrowTransaction, IBorrowRequestRepository } from './borrow-request.repository.js';
 
 const requestInclude = {
-  users: { select: { id: true, name: true, avatar_url: true } },
+  users: {
+    select: {
+      id: true,
+      name: true,
+      email: true,
+      avatar_url: true,
+      department: { select: { id: true, name: true } },
+    },
+  },
   borrow_request_details: {
     include: {
       assets: { include: { asset_models: { select: { id: true, name: true } } } },
@@ -82,7 +90,11 @@ function mapRequest(request: any): BorrowRequestDto {
     requester: {
       id: request.users.id,
       name: request.users.name,
+      email: request.users.email,
       avatarUrl: request.users.avatar_url,
+      department: request.users.department
+        ? { id: request.users.department.id, name: request.users.department.name }
+        : null,
     },
     status: request.status.toUpperCase() as BorrowRequestStatus,
     note: request.note,
@@ -98,7 +110,6 @@ function mapRequest(request: any): BorrowRequestDto {
         model: { id: detail.assets.asset_models.id, name: detail.assets.asset_models.name },
       },
       expectedReturnDate: dateOnlyFormatter.format(detail.expected_return_date),
-      note: detail.note,
       approvalStatus: detail.approval_status as BorrowDetailStatus,
       approvedBy: detail.approved_by_users
         ? { id: detail.approved_by_users.id, name: detail.approved_by_users.name }
@@ -143,7 +154,6 @@ export class PrismaBorrowRequestRepository implements IBorrowRequestRepository {
             create: dto.items.map((item) => ({
               asset_id: item.assetId,
               expected_return_date: item.expectedReturnDate,
-              note: item.note ?? null,
             })),
           },
         },
@@ -222,8 +232,8 @@ export class PrismaBorrowRequestRepository implements IBorrowRequestRepository {
   }
 
   async findHistoryForAction(historyId: number, transaction: BorrowTransaction) {
-    const history = await transaction.borrow_histories.findUnique({ where: { id: historyId }, include: { borrow_request_details: { include: { assets: true } } } });
-    return history ? { id: history.id, detailId: history.borrow_request_detail_id, assetId: history.borrow_request_details.asset_id, assetStatus: history.borrow_request_details.assets.status, returnedAt: history.return_date } : null;
+    const history = await transaction.borrow_histories.findUnique({ where: { id: historyId }, include: { borrow_request_details: { include: { assets: true, borrow_requests: true } } } });
+    return history ? { id: history.id, detailId: history.borrow_request_detail_id, assetId: history.borrow_request_details.asset_id, assetStatus: history.borrow_request_details.assets.status, requesterId: history.borrow_request_details.borrow_requests.user_id, returnedAt: history.return_date } : null;
   }
 
   async completeReturn(historyId: number, receiverId: number, condition: string, transaction: BorrowTransaction): Promise<void> {

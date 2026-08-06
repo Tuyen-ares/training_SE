@@ -3,11 +3,13 @@ import type { IBorrowRequestRepository } from '@/repositories/borrow-request.rep
 import { BorrowError } from '@/shared/app-error.js';
 import type { ApproveAllResultDto, BorrowHistoryQuery, PageQuery, ReviewQueueQuery } from '@/models/borrow-lifecycle.model.js';
 import { ConflictError } from '@/shared/app-error.js';
+import type { INotificationRepository } from '@/repositories/notification.repository.js';
 
 export class BorrowWorkflowService {
   constructor(
     private readonly repository: IBorrowRequestRepository,
     private readonly assets: AssetService,
+    private readonly notifications?: INotificationRepository,
   ) {}
 
   async approve(detailId: number, reviewerId: number): Promise<void> {
@@ -21,6 +23,14 @@ export class BorrowWorkflowService {
       await this.assets.reserveForApprovedRequest([detail.assetId], transaction);
       await this.repository.approveDetail(detailId, reviewerId, transaction);
       await this.repository.refreshRequestStatus(detail.requestId, transaction);
+      await this.notifyRequester(
+        detail.requesterId,
+        'BORROW_DETAIL_APPROVED',
+        'Borrow request item approved',
+        `An item in borrow request #${detail.requestId} was approved.`,
+        detail.requestId,
+        transaction,
+      );
     });
   }
 
@@ -56,6 +66,14 @@ export class BorrowWorkflowService {
 
       await this.repository.rejectDetail(detailId, reviewerId, reason, transaction);
       await this.repository.refreshRequestStatus(detail.requestId, transaction);
+      await this.notifyRequester(
+        detail.requesterId,
+        'BORROW_DETAIL_REJECTED',
+        'Borrow request item rejected',
+        `An item in borrow request #${detail.requestId} was rejected.`,
+        detail.requestId,
+        transaction,
+      );
     });
   }
 
@@ -72,7 +90,16 @@ export class BorrowWorkflowService {
       }
 
       await this.assets.confirmHandover([detail.assetId], transaction);
-      return this.repository.createHistory(detailId, actorId, transaction);
+      const historyId = await this.repository.createHistory(detailId, actorId, transaction);
+      await this.notifyRequester(
+        detail.requesterId,
+        'ASSET_HANDED_OVER',
+        'Asset handover confirmed',
+        `Asset handover for borrow request #${detail.requestId} was confirmed.`,
+        detail.requestId,
+        transaction,
+      );
+      return historyId;
     });
   }
 
@@ -92,6 +119,14 @@ export class BorrowWorkflowService {
       const detail = await this.repository.findActionDetail(history.detailId, transaction);
       if (detail) {
         await this.repository.refreshRequestStatus(detail.requestId, transaction);
+        await this.notifyRequester(
+          history.requesterId,
+          'ASSET_RETURNED',
+          'Asset return confirmed',
+          `An asset return for borrow request #${detail.requestId} was confirmed.`,
+          detail.requestId,
+          transaction,
+        );
       }
     });
   }
@@ -119,5 +154,24 @@ export class BorrowWorkflowService {
 
   listHistory(query: BorrowHistoryQuery, requesterId?: number) {
     return this.repository.listHistory(query, requesterId);
+  }
+
+  private async notifyRequester(
+    recipientUserId: number,
+    notificationType: string,
+    title: string,
+    message: string,
+    requestId: number,
+    transaction: Parameters<IBorrowRequestRepository['findActionDetail']>[1],
+  ): Promise<void> {
+    if (!this.notifications) return;
+    await this.notifications.create({
+      recipientUserId,
+      notificationType,
+      title,
+      message,
+      relatedEntityType: 'BORROW_REQUEST',
+      relatedEntityId: requestId,
+    }, transaction);
   }
 }

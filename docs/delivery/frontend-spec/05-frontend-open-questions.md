@@ -6,8 +6,6 @@ Các câu hỏi dưới đây không thay đổi Business Rule hoặc Functional
 | --- | --- | --- |
 | FOQ-01 | Permission registry/code cuối cùng cho từng menu, action và Dashboard widget là gì? | Navigation, Dashboard, route guard. |
 | FOQ-02 | Widget Dashboard được sắp theo priority nào và empty state ra sao khi user không có queue/action nào? | SCR-APP-01. |
-| FOQ-03 | Workflow có context (reject, handover, return, repair, retire, activate/deactivate) dùng Modal hay Drawer theo pattern Stitch/Design System nào? | Các screen detail/queue. |
-| FOQ-04 | Notification Center chỉ là full page, hay cần thêm preview popover ở header? | SCR-F07-01/AppShell. |
 | FOQ-05 | QR nhập thủ công, camera browser hay thiết bị scanner keyboard-wedge? | Entry của Asset List/Detail; không ảnh hưởng rule QR. |
 | FOQ-06 | MVP desktop-first có cần bản mobile hoàn chỉnh ở cùng mốc implementation không? | Responsive detail và table strategy. |
 | FOQ-07 | Search/filter/sort/pagination cụ thể của từng list sẽ được chốt ở screen spec hay API contract? | List/table behavior, route query. |
@@ -20,3 +18,8 @@ Các câu hỏi dưới đây không thay đổi Business Rule hoặc Functional
 - Return damaged ghi return, tạo issue `CONFIRMED` và đưa asset về `DAMAGED` theo BR-ISS-08.
 - QR chỉ mở Asset Detail, không tạo inventory/stocktake.
 - Registration không cho guest tự chọn role/department; chỉ reviewer có permission mới gán khi duyệt. Role CRUD hoặc permission CRUD vẫn ngoài MVP.
+
+## Resolved during implementation
+
+- FOQ-03 (F06 portion): confirm/reject and repair actions remain workflow states in `SCR-F06-02`; focused data entry uses Ant Design modal rather than separate routes.
+- FOQ-04: Notification Center is a full page. The header bell shows unread count and navigates directly to it; no preview popover is included in the MVP.

@@ -76,22 +76,23 @@
 | API | English name | Tên tiếng Việt | Purpose / Mục đích | Status |
 | --- | --- | --- | --- | --- |
 | `POST /api/assets/:assetId/report-damaged` | Report asset issue | Báo sự cố thiết bị | Create a reported issue without changing asset status. / Tạo issue reported mà không đổi trạng thái asset. | Existing |
-| `GET /api/asset-issues` | List asset issues | Xem danh sách sự cố | Search and filter issues the user may view. / Tìm kiếm và lọc issue user được phép xem. | Deferred |
-| `GET /api/asset-issues/:issueId` | Get asset issue detail | Xem chi tiết sự cố | Read an issue and its repair information. / Xem issue và thông tin sửa chữa. | Deferred |
-| `POST /api/asset-issues/:issueId/confirm` | Confirm asset issue | Xác minh sự cố | Confirm a reported issue and mark the asset damaged. / Xác nhận issue reported và chuyển asset damaged. | Deferred |
-| `POST /api/asset-issues/:issueId/reject` | Reject asset issue | Từ chối sự cố | Reject a reported issue with a reason. / Từ chối issue reported kèm lý do. | Deferred |
-| `POST /api/asset-issues/:issueId/start-repair` | Start repair | Bắt đầu sửa chữa | Start repair and move the asset into repair. / Bắt đầu sửa và chuyển asset sang in repair. | Deferred |
-| `PATCH /api/asset-issues/:issueId/repair` | Update repair progress | Cập nhật quá trình sửa | Update repair provider, timing, cost, result and notes. / Cập nhật đơn vị, thời gian, chi phí, kết quả và ghi chú sửa chữa. | Deferred |
-| `POST /api/asset-issues/:issueId/close-repair` | Close repair | Kết thúc sửa chữa | Close a repair as successful or failed and synchronize asset status. / Kết thúc sửa thành công/thất bại và đồng bộ trạng thái asset. | Deferred |
+| `GET /api/asset-issues` | List asset issues | Xem danh sách sự cố | Search and filter issues the user may view. / Tìm kiếm và lọc issue user được phép xem. | Existing |
+| `GET /api/asset-issues/:issueId` | Get asset issue detail | Xem chi tiết sự cố | Read an issue and its repair information. / Xem issue và thông tin sửa chữa. | Existing |
+| `POST /api/asset-issues/:issueId/confirm` | Confirm asset issue | Xác minh sự cố | Confirm a reported issue and mark the asset damaged. / Xác nhận issue reported và chuyển asset damaged. | Existing |
+| `POST /api/asset-issues/:issueId/reject` | Reject asset issue | Từ chối sự cố | Reject a reported issue with an optional note. / Từ chối issue reported kèm ghi chú tùy chọn. | Existing |
+| `POST /api/asset-issues/:issueId/start-repair` | Start repair | Bắt đầu sửa chữa | Start repair and move the asset into repair. / Bắt đầu sửa và chuyển asset sang in repair. | Existing |
+| `PATCH /api/asset-issues/:issueId/repair` | Update repair progress | Cập nhật quá trình sửa | Update repair provider, timing, cost, result and notes. / Cập nhật đơn vị, thời gian, chi phí, kết quả và ghi chú sửa chữa. | Existing |
+| `POST /api/asset-issues/:issueId/complete` | Complete repair | Hoàn tất sửa chữa | Complete repair and restore the asset to available. / Hoàn tất sửa và đưa asset về available. | Existing |
+| `POST /api/asset-issues/:issueId/fail` | Mark repair failed | Ghi nhận sửa thất bại | Close a failed repair and return the asset to damaged. / Ghi nhận sửa thất bại và đưa asset về damaged. | Existing |
 
 ## F07 — Notifications / Thông báo
 
 | API | English name | Tên tiếng Việt | Purpose / Mục đích | Status |
 | --- | --- | --- | --- | --- |
-| `GET /api/notifications` | List my notifications | Xem thông báo của tôi | List the current user's notifications in time order. / Liệt kê thông báo của user hiện tại theo thời gian. | Deferred |
-| `GET /api/notifications/unread-count` | Get unread notification count | Xem số thông báo chưa đọc | Return the count of unread notifications for the current user. / Trả số thông báo chưa đọc của user hiện tại. | Deferred |
-| `POST /api/notifications/:notificationId/read` | Mark notification as read | Đánh dấu thông báo đã đọc | Mark one owned notification as read. / Đánh dấu một thông báo thuộc user là đã đọc. | Deferred |
-| `POST /api/notifications/read-all` | Mark all notifications as read | Đánh dấu tất cả thông báo đã đọc | Mark all current-user notifications as read. / Đánh dấu toàn bộ thông báo của user hiện tại đã đọc. | Deferred |
+| `GET /api/notifications` | List my notifications | Xem thông báo của tôi | List the current user's notifications in time order. / Liệt kê thông báo của user hiện tại theo thời gian. | Existing |
+| `GET /api/notifications/unread-count` | Get unread notification count | Xem số thông báo chưa đọc | Return the count of unread notifications for the current user. / Trả số thông báo chưa đọc của user hiện tại. | Existing |
+| `PATCH /api/notifications/:notificationId/read` | Mark notification as read | Đánh dấu thông báo đã đọc | Mark one owned notification as read. / Đánh dấu một thông báo thuộc user là đã đọc. | Existing |
+| `PATCH /api/notifications/read-all` | Mark all notifications as read | Đánh dấu tất cả thông báo đã đọc | Mark all current-user notifications as read. / Đánh dấu toàn bộ thông báo của user hiện tại đã đọc. | Existing |
 
 ## F08 — Administration / Quản trị người dùng và phân quyền
 

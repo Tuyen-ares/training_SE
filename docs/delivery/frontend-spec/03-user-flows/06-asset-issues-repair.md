@@ -164,3 +164,11 @@ Issue kết thúc và asset có state chính xác, không tự retire.
 ## Related Screens
 
 `SCR-F06-02`, `SCR-F06-01`, `SCR-F02-02`.
+
+## Implementation alignment — 2026-08-05
+
+- Routes: `/asset-issues` and `/asset-issues/:id`.
+- Issue List is API-backed, permission-guarded by `repair_log.view`, filterable by status/asset and server-paginated.
+- Issue Detail is the single repair context. Confirm/reject/start/update/complete/fail actions are shown from effective permissions and current issue status.
+- Repair data entry uses Ant Design modal states; invalid HTTP 409 transitions show safe feedback and reload canonical issue data.
+- The timeline only renders milestones supported by both persisted status and timestamps; it does not infer a lifecycle from inconsistent legacy dates.

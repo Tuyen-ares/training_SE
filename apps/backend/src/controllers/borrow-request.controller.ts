@@ -39,7 +39,6 @@ const createBorrowRequestSchema = z.strictObject({
         (value) => parseBusinessDate(value) !== null,
         'Expected return date must be YYYY-MM-DD and today or later in Asia/Ho_Chi_Minh',
       ),
-      note: z.string().trim().max(2000).nullable().optional(),
     })).min(1),
   });
 

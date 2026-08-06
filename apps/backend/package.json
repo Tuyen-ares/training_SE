@@ -5,7 +5,7 @@
   "main": "dist/server.js",
   "scripts": {
     "test": "tsx --test tests/password-hasher.test.ts tests/auth.middleware.test.ts tests/user.service.test.ts tests/auth.service.test.ts tests/asset.service.test.ts tests/rbac.service.test.ts",
-    "test:db": "tsx --test --test-concurrency=1 tests/user-api.integration.test.ts tests/asset-api.integration.test.ts tests/borrow-lifecycle.integration.test.ts tests/race-condition.integration.test.ts",
+    "test:db": "tsx --test --test-concurrency=1 tests/user-api.integration.test.ts tests/asset-api.integration.test.ts tests/borrow-lifecycle.integration.test.ts tests/asset-issue-notification.integration.test.ts tests/race-condition.integration.test.ts",
     "build": "tsc -p tsconfig.json && tsc-alias -p tsconfig.json",
     "typecheck": "tsc -p tsconfig.json --noEmit",
     "start": "node dist/server.js",
@@ -27,6 +27,8 @@
     "mariadb": "^3.5.3",
     "mysql2": "^3.22.5",
     "nodeman": "^1.1.2",
+    "swagger-ui-express": "^5.0.1",
+    "yaml": "^2.9.0",
     "zod": "^4.4.3"
   },
   "devDependencies": {
@@ -36,6 +38,7 @@
     "@types/express": "^5.0.6",
     "@types/jsonwebtoken": "^9.0.10",
     "@types/node": "^26.1.0",
+    "@types/swagger-ui-express": "^4.1.8",
     "nodemon": "^3.1.14",
     "prisma": "^7.8.0",
     "tsc-alias": "^1.8.17",

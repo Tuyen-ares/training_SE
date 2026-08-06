@@ -137,7 +137,6 @@ model borrow_request_details {
   approved_by          Int?
   approved_at          DateTime?         @db.DateTime(0)
   rejection_reason     String?           @db.Text
-  note                 String?           @db.Text
   expected_return_date DateTime          @db.DateTime(0)
   borrow_histories     borrow_histories?
   assets               assets            @relation(fields: [asset_id], references: [id], onUpdate: NoAction, map: "fk_borrow_details_asset")

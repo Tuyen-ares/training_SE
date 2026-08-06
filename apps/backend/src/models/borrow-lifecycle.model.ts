@@ -13,7 +13,6 @@ export interface CreateBorrowRequestDto {
   items: Array<{
     assetId: number;
     expectedReturnDate: Date;
-    note?: string | null;
   }>;
 }
 
@@ -45,7 +44,6 @@ export interface BorrowRequestDetailDto {
     model: { id: number; name: string };
   };
   expectedReturnDate: string;
-  note: string | null;
   approvalStatus: BorrowDetailStatus;
   approvedBy: { id: number; name: string } | null;
   approvedAt: Date | null;
@@ -54,7 +52,13 @@ export interface BorrowRequestDetailDto {
 
 export interface BorrowRequestDto {
   id: number;
-  requester: { id: number; name: string; avatarUrl: string | null };
+  requester: {
+    id: number;
+    name: string;
+    email: string;
+    avatarUrl: string | null;
+    department: { id: number; name: string } | null;
+  };
   status: BorrowRequestStatus;
   note: string | null;
   createdAt: Date;

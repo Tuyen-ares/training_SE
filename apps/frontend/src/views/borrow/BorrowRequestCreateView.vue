@@ -33,7 +33,7 @@ async function loadAssets() {
 function addAsset() {
   const asset = availableAssets.value.find((item) => item.id === selectedAssetId.value)
   if (!asset) return
-  form.items.push({ asset, expectedReturnDate: '', note: '' })
+  form.items.push({ asset, expectedReturnDate: '' })
   selectedAssetId.value = undefined
 }
 
@@ -44,7 +44,7 @@ async function submit() {
   try {
     const created = await createBorrowRequest(authStore.api, {
       note: form.note.trim() || null,
-      items: form.items.map((item) => ({ assetId: item.asset.id, expectedReturnDate: item.expectedReturnDate, note: item.note.trim() || null })),
+      items: form.items.map((item) => ({ assetId: item.asset.id, expectedReturnDate: item.expectedReturnDate })),
     })
     message.success('Borrow request submitted.')
     await router.push({ name: 'borrow-request-detail', params: { id: created.id } })

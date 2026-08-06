@@ -65,7 +65,7 @@ Actions:
 - `IN_REPAIR`: Update Progress for `repair_log.update`; Complete or Mark Failed for `repair_log.close`.
 - Terminal states: read-only.
 
-Start Repair uses a focused modal or drawer based on the Stitch form fields supported by the backend: repair provider, start date, cost, and notes. Complete/Failed Repair uses a right drawer with required result, optional cost, dates, and notes.
+Start Repair, Update Repair, Complete Repair, and Failed Repair use focused Ant Design modals based on the fields supported by the backend: repair provider, dates, cost, result, and notes. They remain workflow states of Issue Detail rather than separate routes.
 
 Invalid transitions returned as HTTP 409 render a visible Ant Design error alert and reload the issue. This represents the Cannot Start Repair mockup without creating an artificial page.
 

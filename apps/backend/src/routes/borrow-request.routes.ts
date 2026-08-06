@@ -9,13 +9,21 @@ import { BorrowWorkflowController } from '@/controllers/borrow-workflow.controll
 import { PrismaAssetRepository } from '@/repositories/asset.prisma.repository.js';
 import { AssetService } from '@/services/assets.service.js';
 import { BorrowWorkflowService } from '@/services/borrow-workflow.service.js';
+import { PrismaNotificationRepository } from '@/repositories/notification.prisma.repository.js';
+import { NotificationService } from '@/services/notification.service.js';
 
 const router = Router();
 const repository = new PrismaBorrowRequestRepository(prisma);
-const service = new BorrowRequestService(repository);
+const notificationRepository = new PrismaNotificationRepository(prisma);
+const notificationService = new NotificationService(notificationRepository);
+const service = new BorrowRequestService(repository, notificationService);
 const controller = new BorrowRequestController(service);
 const workflowController = new BorrowWorkflowController(
-  new BorrowWorkflowService(repository, new AssetService(new PrismaAssetRepository(prisma))),
+  new BorrowWorkflowService(
+    repository,
+    new AssetService(new PrismaAssetRepository(prisma)),
+    notificationRepository,
+  ),
 );
 
 router.post('/', requireAuth, requirePermission('borrow_request.create'), controller.create);

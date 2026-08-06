@@ -12,7 +12,11 @@ export class InvalidStateTransitionError extends ConflictError {
   }
 }
 
-export type AssetIssueErrorCode = 'ASSET_NOT_FOUND' | 'REPORT_FORBIDDEN';
+export type AssetIssueErrorCode =
+  | 'ASSET_NOT_FOUND'
+  | 'ISSUE_NOT_FOUND'
+  | 'REPORT_FORBIDDEN'
+  | 'INVALID_ISSUE_STATE';
 
 export class AssetIssueError extends Error {
   constructor(public readonly code: AssetIssueErrorCode) {

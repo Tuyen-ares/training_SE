@@ -1,0 +1,3218 @@
+openapi: 3.0.3
+info:
+  title: BigIn Asset API
+  description: >-
+    API quản lý tài sản BigIn Asset. Bao gồm xác thực (F01), quản lý tài sản (F02),
+    phiếu mượn (F03), duyệt & giữ chỗ (F04), bàn giao/hoàn trả/lịch sử mượn (F05),
+    sự cố & sửa chữa (F06), thông báo (F07) và quản trị người dùng/phân quyền (F08).
+
+    Quy ước chung:
+    - Envelope thành công: `{ "data": ... }`.
+    - Envelope lỗi: `{ "error": string, "details"?: object }`.
+    - Danh sách: `page=1`, `pageSize=20` (tối đa 100); page DTO `{ items, page, pageSize, total }`.
+    - Danh sách sắp xếp mới nhất trước; Review Queue sắp xếp cũ nhất trước.
+    - `expectedReturnDate` chỉ ngày `YYYY-MM-DD` theo múi giờ `Asia/Ho_Chi_Minh`, phải từ hôm nay trở đi.
+    - Authorization theo effective permission code (không kiểm tra tên role).
+    - Lỗi dự kiến: `400` input sai, `401` chưa xác thực, `403` thiếu quyền, `404` không tìm thấy, `409` xung đột trạng thái/dữ liệu.
+  version: 1.0.0
+  contact:
+    name: BigIn SE Team
+servers:
+  - url: http://localhost:3000/api
+    description: Local development server
+tags:
+  - name: F01 - Authentication
+    description: Xác thực và truy cập
+  - name: F02 - Asset Management
+    description: Quản lý tài sản, danh mục hãng/loại/model
+  - name: F03 - Borrow Request
+    description: Yêu cầu mượn tài sản
+  - name: F04 - Approval & Reservation
+    description: Duyệt và giữ chỗ tài sản
+  - name: F05 - Handover, Return & History
+    description: Bàn giao, hoàn trả và lịch sử mượn
+  - name: F06 - Asset Issues & Repair
+    description: Sự cố và sửa chữa tài sản
+  - name: F07 - Notifications
+    description: Thông báo
+  - name: F08 - Administration
+    description: Quản trị người dùng, phân quyền và phòng ban
+paths:
+  /auth/register:
+    post:
+      tags:
+        - F01 - Authentication
+      summary: Đăng ký trực tiếp (legacy)
+      description: >-
+        Endpoint hiện tại tạo user trực tiếp. Sẽ được thay thế bởi luồng yêu cầu đăng ký.
+      operationId: register
+      security: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/RegisterInput'
+      responses:
+        '201':
+          description: Đăng ký thành công
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/MessageResponse'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '409':
+          description: Email hoặc số điện thoại đã được sử dụng
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+  /auth/login:
+    post:
+      tags:
+        - F01 - Authentication
+      summary: Đăng nhập
+      description: >-
+        Xác thực user active và cấp phiên. Refresh token được đặt trong httpOnly cookie
+        `refreshToken` (path `/api/auth`).
+      operationId: login
+      security: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/LoginInput'
+      responses:
+        '200':
+          description: Đăng nhập thành công
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data:
+                    $ref: '#/components/schemas/LoginResult'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          description: Email hoặc mật khẩu không đúng
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+  /auth/refresh:
+    post:
+      tags:
+        - F01 - Authentication
+      summary: Làm mới phiên
+      description: >-
+        Trao đổi refresh token hợp lệ (từ cookie) để nhận phiên mới. Access token không được dùng ở endpoint này.
+      operationId: refresh
+      security: []
+      responses:
+        '200':
+          description: Phiên mới
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data:
+                    $ref: '#/components/schemas/LoginResult'
+        '401':
+          description: Refresh token thiếu hoặc không hợp lệ
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+  /auth/logout:
+    post:
+      tags:
+        - F01 - Authentication
+      summary: Đăng xuất
+      description: Thu hồi khả năng refresh của phiên hiện tại dựa trên cookie.
+      operationId: logout
+      security: []
+      responses:
+        '204':
+          description: Đăng xuất thành công, không có nội dung trả về
+  /assets:
+    get:
+      tags:
+        - F02 - Asset Management
+      summary: Danh sách tài sản
+      description: Tìm kiếm, lọc và phân trang tài sản. Sắp xếp mới nhất trước.
+      operationId: listAssets
+      parameters:
+        - name: q
+          in: query
+          description: Tìm kiếm không phân biệt hoa thường theo QR code, số serial và tên model. Chuỗi rỗng bị bỏ qua.
+          schema:
+            type: string
+        - name: status
+          in: query
+          description: Lọc theo trạng thái tài sản
+          schema:
+            $ref: '#/components/schemas/AssetStatus'
+        - name: modelId
+          in: query
+          schema:
+            type: integer
+            minimum: 1
+        - name: typeId
+          in: query
+          schema:
+            type: integer
+            minimum: 1
+        - name: brandId
+          in: query
+          schema:
+            type: integer
+            minimum: 1
+        - name: departmentId
+          in: query
+          schema:
+            type: integer
+            minimum: 1
+        - $ref: '#/components/parameters/Page'
+        - $ref: '#/components/parameters/PageSize'
+      responses:
+        '200':
+          description: Danh sách tài sản
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data:
+                    $ref: '#/components/schemas/AssetListPage'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+    post:
+      tags:
+        - F02 - Asset Management
+      summary: Tạo tài sản
+      description: >-
+        Thêm tài sản với dữ liệu nhận diện và model hợp lệ. Server tự sinh `qrCode` (UUID) và
+        luôn đặt trạng thái ban đầu `AVAILABLE`. `qrCode` và `status` không được gửi lên.
+      operationId: createAsset
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CreateAssetInput'
+      responses:
+        '201':
+          description: Tạo tài sản thành công
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data:
+                    $ref: '#/components/schemas/AssetMutation'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '409':
+          description: Serial trùng hoặc model/department không tồn tại
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+  /assets/{id}:
+    get:
+      tags:
+        - F02 - Asset Management
+      summary: Chi tiết tài sản
+      description: Xem chi tiết asset và danh sách action được phép.
+      operationId: getAsset
+      parameters:
+        - $ref: '#/components/parameters/AssetId'
+      responses:
+        '200':
+          description: Chi tiết tài sản
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data:
+                    $ref: '#/components/schemas/AssetDetail'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          description: Tài sản không tồn tại
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+    patch:
+      tags:
+        - F02 - Asset Management
+      summary: Cập nhật tài sản
+      description: >-
+        Cập nhật thông tin được phép sửa. Yêu cầu ít nhất một trường. `status`, `qrCode`, `id`
+        và trường lạ bị từ chối với `400`.
+      operationId: updateAsset
+      parameters:
+        - $ref: '#/components/parameters/AssetId'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/UpdateAssetInput'
+      responses:
+        '200':
+          description: Cập nhật thành công
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data:
+                    $ref: '#/components/schemas/AssetMutation'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          description: Tài sản không tồn tại
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '409':
+          description: Serial trùng hoặc model/department không tồn tại
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+  /assets/{id}/report-damaged:
+    post:
+      tags:
+        - F06 - Asset Issues & Repair
+      summary: Báo sự cố tài sản
+      description: >-
+        Tạo issue `REPORTED` mà không thay đổi trạng thái asset. Chỉ cần xác thực (không cần
+        quyền tĩnh) vì người đang mượn cũng đủ điều kiện. Tên path giữ nguyên vì lý do tương thích.
+      operationId: reportDamaged
+      parameters:
+        - $ref: '#/components/parameters/AssetId'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ReportIssueInput'
+      responses:
+        '201':
+          description: Tạo báo cáo sự cố thành công
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data:
+                    $ref: '#/components/schemas/AssetIssue'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '403':
+          description: Người dùng đã xác thực nhưng không đủ điều kiện báo cáo
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '404':
+          description: Tài sản không tồn tại
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+  /assets/by-qr/{qrCode}:
+    get:
+      tags:
+        - F02 - Asset Management
+      summary: Tra cứu tài sản bằng QR
+      description: >-
+        Tra QR để mở chi tiết asset. Chỉ đọc: không tạo bản ghi kiểm kê và không đổi trạng thái asset.
+        Client trim và URL-encode mã QR trước khi gọi.
+      operationId: getAssetByQr
+      parameters:
+        - name: qrCode
+          in: path
+          required: true
+          description: Mã QR đã được trim
+          schema:
+            type: string
+            maxLength: 36
+      responses:
+        '200':
+          description: Chi tiết tài sản
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data:
+                    $ref: '#/components/schemas/AssetDetail'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          description: Không tìm thấy QR
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+  /assets/{id}/retire:
+    post:
+      tags:
+        - F02 - Asset Management
+      summary: Ngừng sử dụng tài sản
+      description: >-
+        Chuyển trạng thái tài sản sang `RETIRED`. Chỉ cho phép từ `AVAILABLE`, `DAMAGED`, `IN_REPAIR`.
+        Từ `RESERVED`, `BORROWED`, `RETIRED` trả về `409`. Đây là chuyển trạng thái, không phải xóa bản ghi.
+      operationId: retireAsset
+      parameters:
+        - $ref: '#/components/parameters/AssetId'
+      responses:
+        '204':
+          description: Ngừng sử dụng thành công
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          description: Tài sản không tồn tại
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '409':
+          description: Trạng thái không cho phép ngừng sử dụng
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+  /assets/{id}/qr:
+    post:
+      tags:
+        - F02 - Asset Management
+      summary: Tạo/tạo lại mã QR
+      description: Tạo hoặc tạo lại mã QR của tài sản (server sinh UUID mới).
+      operationId: regenerateQr
+      parameters:
+        - $ref: '#/components/parameters/AssetId'
+      responses:
+        '200':
+          description: Mã QR mới
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data:
+                    type: object
+                    properties:
+                      id:
+                        type: integer
+                      qrCode:
+                        type: string
+                        format: uuid
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          description: Tài sản không tồn tại
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+  /brands:
+    get:
+      tags:
+        - F02 - Asset Management
+      summary: Danh sách hãng
+      operationId: listBrands
+      responses:
+        '200':
+          description: Danh sách hãng
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/Reference'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+    post:
+      tags:
+        - F02 - Asset Management
+      summary: Tạo hãng
+      operationId: createBrand
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ReferenceInput'
+      responses:
+        '201':
+          description: Tạo hãng thành công
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data:
+                    $ref: '#/components/schemas/Reference'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '409':
+          description: Tên hãng đã tồn tại
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+  /brands/{id}:
+    get:
+      tags:
+        - F02 - Asset Management
+      summary: Chi tiết hãng
+      operationId: getBrand
+      parameters:
+        - $ref: '#/components/parameters/ReferenceId'
+      responses:
+        '200':
+          description: Chi tiết hãng
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data:
+                    $ref: '#/components/schemas/Reference'
+        '404':
+          description: Hãng không tồn tại
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+    patch:
+      tags:
+        - F02 - Asset Management
+      summary: Cập nhật hãng
+      operationId: updateBrand
+      parameters:
+        - $ref: '#/components/parameters/ReferenceId'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ReferenceUpdateInput'
+      responses:
+        '200':
+          description: Cập nhật thành công
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data:
+                    $ref: '#/components/schemas/Reference'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '404':
+          description: Hãng không tồn tại
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '409':
+          description: Tên hãng đã tồn tại
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+  /asset-types:
+    get:
+      tags:
+        - F02 - Asset Management
+      summary: Danh sách loại thiết bị
+      operationId: listAssetTypes
+      responses:
+        '200':
+          description: Danh sách loại thiết bị
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/Reference'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+    post:
+      tags:
+        - F02 - Asset Management
+      summary: Tạo loại thiết bị
+      operationId: createAssetType
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ReferenceInput'
+      responses:
+        '201':
+          description: Tạo loại thiết bị thành công
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data:
+                    $ref: '#/components/schemas/Reference'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '409':
+          description: Tên loại thiết bị đã tồn tại
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+  /asset-types/{id}:
+    get:
+      tags:
+        - F02 - Asset Management
+      summary: Chi tiết loại thiết bị
+      operationId: getAssetType
+      parameters:
+        - $ref: '#/components/parameters/ReferenceId'
+      responses:
+        '200':
+          description: Chi tiết loại thiết bị
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data:
+                    $ref: '#/components/schemas/Reference'
+        '404':
+          description: Không tồn tại
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+    patch:
+      tags:
+        - F02 - Asset Management
+      summary: Cập nhật loại thiết bị
+      operationId: updateAssetType
+      parameters:
+        - $ref: '#/components/parameters/ReferenceId'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ReferenceUpdateInput'
+      responses:
+        '200':
+          description: Cập nhật thành công
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data:
+                    $ref: '#/components/schemas/Reference'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '404':
+          description: Không tồn tại
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '409':
+          description: Tên loại thiết bị đã tồn tại
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+  /asset-models:
+    get:
+      tags:
+        - F02 - Asset Management
+      summary: Danh sách model thiết bị
+      description: Danh sách model cùng hãng và loại.
+      operationId: listAssetModels
+      responses:
+        '200':
+          description: Danh sách model
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/AssetModel'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+    post:
+      tags:
+        - F02 - Asset Management
+      summary: Tạo model thiết bị
+      operationId: createAssetModel
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/AssetModelInput'
+      responses:
+        '201':
+          description: Tạo model thành công
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data:
+                    $ref: '#/components/schemas/AssetModel'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '409':
+          description: Brand/type không tồn tại hoặc model trùng (brandId, assetTypeId, name)
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+  /asset-models/{id}:
+    get:
+      tags:
+        - F02 - Asset Management
+      summary: Chi tiết model thiết bị
+      operationId: getAssetModel
+      parameters:
+        - $ref: '#/components/parameters/ReferenceId'
+      responses:
+        '200':
+          description: Chi tiết model
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data:
+                    $ref: '#/components/schemas/AssetModel'
+        '404':
+          description: Không tồn tại
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+    patch:
+      tags:
+        - F02 - Asset Management
+      summary: Cập nhật model thiết bị
+      operationId: updateAssetModel
+      parameters:
+        - $ref: '#/components/parameters/ReferenceId'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/AssetModelUpdateInput'
+      responses:
+        '200':
+          description: Cập nhật thành công
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data:
+                    $ref: '#/components/schemas/AssetModel'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '404':
+          description: Không tồn tại
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '409':
+          description: Brand/type không tồn tại hoặc model trùng
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+  /borrow-requests:
+    post:
+      tags:
+        - F03 - Borrow Request
+      summary: Tạo phiếu mượn
+      description: >-
+        Tạo phiếu với một hoặc nhiều asset `AVAILABLE`. Không chấp nhận trùng asset. Trạng thái asset
+        vẫn `AVAILABLE` cho tới khi được duyệt; nhiều phiếu pending có thể tham chiếu cùng asset available.
+      operationId: createBorrowRequest
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CreateBorrowRequestInput'
+      responses:
+        '201':
+          description: Tạo phiếu thành công
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data:
+                    $ref: '#/components/schemas/BorrowRequest'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '409':
+          description: Một hoặc nhiều asset được chọn không available
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+  /borrow-requests/me:
+    get:
+      tags:
+        - F03 - Borrow Request
+      summary: Danh sách phiếu mượn của tôi
+      operationId: listMyBorrowRequests
+      parameters:
+        - $ref: '#/components/parameters/Page'
+        - $ref: '#/components/parameters/PageSize'
+        - name: status
+          in: query
+          description: Lọc theo trạng thái phiếu
+          schema:
+            $ref: '#/components/schemas/BorrowRequestStatus'
+      responses:
+        '200':
+          description: Trang phiếu mượn của user hiện tại
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data:
+                    $ref: '#/components/schemas/BorrowRequestPage'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+  /borrow-requests/{requestId}:
+    get:
+      tags:
+        - F03 - Borrow Request
+      summary: Chi tiết phiếu mượn
+      description: Chỉ trả về phiếu khi là chủ sở hữu (user hiện tại), ngược lại trả `404`.
+      operationId: getMyBorrowRequest
+      parameters:
+        - $ref: '#/components/parameters/RequestId'
+      responses:
+        '200':
+          description: Chi tiết phiếu mượn
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data:
+                    $ref: '#/components/schemas/BorrowRequest'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          description: Không tìm thấy hoặc không phải phiếu của user hiện tại
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+  /borrow-requests/{requestId}/approve-all:
+    post:
+      tags:
+        - F04 - Approval & Reservation
+      summary: Duyệt tất cả detail đủ điều kiện
+      description: >-
+        Xử lý mọi detail pending bằng cùng transaction atomic như duyệt từng detail. Detail đủ điều kiện
+        thành `APPROVED`; xung đột giữ nguyên `PENDING`. Response chứa mảng `approved` và `skipped` để
+        client hiển thị partial success.
+      operationId: approveAllBorrowRequest
+      parameters:
+        - $ref: '#/components/parameters/RequestId'
+      responses:
+        '200':
+          description: Kết quả duyệt từng detail
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data:
+                    $ref: '#/components/schemas/ApproveAllResult'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          description: Không tìm thấy phiếu
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '409':
+          description: Xử lý lại detail không còn pending
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+  /borrow-requests/{requestId}/cancel:
+    post:
+      tags:
+        - F03 - Borrow Request
+      summary: Thu hồi phiếu mượn
+      description: >-
+        Hủy phiếu của chủ sở hữu khi chưa có bàn giao xảy ra và giải phóng các asset đã được giữ chỗ.
+      operationId: cancelBorrowRequest
+      parameters:
+        - $ref: '#/components/parameters/RequestId'
+      responses:
+        '200':
+          description: Thu hồi thành công
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data:
+                    $ref: '#/components/schemas/CancelResult'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          description: Không tìm thấy phiếu
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '409':
+          description: Phiếu không ở trạng thái cho phép thu hồi
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+  /borrow-request-details/review-queue:
+    get:
+      tags:
+        - F04 - Approval & Reservation
+      summary: Hàng đợi duyệt
+      description: >-
+        Trang toàn công ty chứa các phiếu có ít nhất một detail `PENDING`, sắp xếp cũ nhất trước.
+      operationId: reviewQueue
+      parameters:
+        - $ref: '#/components/parameters/Page'
+        - $ref: '#/components/parameters/PageSize'
+        - name: approvalStatus
+          in: query
+          description: Lọc theo trạng thái duyệt của detail (mặc định PENDING)
+          schema:
+            $ref: '#/components/schemas/BorrowDetailStatus'
+      responses:
+        '200':
+          description: Trang hàng đợi duyệt
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data:
+                    $ref: '#/components/schemas/BorrowRequestPage'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+  /borrow-request-details/review-queue/{requestId}:
+    get:
+      tags:
+        - F04 - Approval & Reservation
+      summary: Chi tiết phiếu trong hàng đợi duyệt
+      operationId: reviewQueueDetail
+      parameters:
+        - $ref: '#/components/parameters/RequestId'
+      responses:
+        '200':
+          description: Chi tiết phiếu chờ duyệt
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data:
+                    $ref: '#/components/schemas/BorrowRequest'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          description: Không tìm thấy phiếu
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+  /borrow-request-details/{detailId}/approve:
+    post:
+      tags:
+        - F04 - Approval & Reservation
+      summary: Duyệt một thiết bị trong phiếu
+      description: >-
+        Chuyển detail `PENDING → APPROVED` và asset `AVAILABLE → RESERVED` một cách nguyên tử.
+        Request body rỗng.
+      operationId: approveBorrowDetail
+      parameters:
+        - $ref: '#/components/parameters/DetailId'
+      responses:
+        '200':
+          description: Duyệt thành công
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data:
+                    $ref: '#/components/schemas/ApprovalResult'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          description: Không tìm thấy detail
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '409':
+          description: Detail không còn pending hoặc asset không available
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+  /borrow-request-details/{detailId}/reject:
+    post:
+      tags:
+        - F04 - Approval & Reservation
+      summary: Từ chối một thiết bị trong phiếu
+      description: >-
+        Chỉ thay đổi detail pending, ghi lại reviewer/thời gian/lý do; trạng thái asset không đổi.
+      operationId: rejectBorrowDetail
+      parameters:
+        - $ref: '#/components/parameters/DetailId'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/RejectDetailInput'
+      responses:
+        '200':
+          description: Từ chối thành công
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data:
+                    $ref: '#/components/schemas/ApprovalResult'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          description: Không tìm thấy detail
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '409':
+          description: Detail không còn pending
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+  /borrow-request-details/{detailId}/handover:
+    post:
+      tags:
+        - F05 - Handover, Return & History
+      summary: Xác nhận bàn giao
+      description: >-
+        Chuyển `RESERVED → BORROWED` và tạo đúng một lịch sử mượn với borrower là chủ phiếu.
+        Request body rỗng.
+      operationId: confirmHandover
+      parameters:
+        - $ref: '#/components/parameters/DetailId'
+      responses:
+        '200':
+          description: Bàn giao thành công
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data:
+                    $ref: '#/components/schemas/HandoverResult'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          description: Không tìm thấy detail
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '409':
+          description: Detail không APPROVED hoặc asset không RESERVED, hoặc đã bàn giao
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+  /borrow-histories/current:
+    get:
+      tags:
+        - F05 - Handover, Return & History
+      summary: Tài sản đang mượn
+      description: Danh sách tài sản chưa trả của user hiện tại.
+      operationId: listCurrentBorrows
+      parameters:
+        - $ref: '#/components/parameters/Page'
+        - $ref: '#/components/parameters/PageSize'
+      responses:
+        '200':
+          description: Trang tài sản đang mượn
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data:
+                    $ref: '#/components/schemas/BorrowHistoryPage'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+  /borrow-histories/me:
+    get:
+      tags:
+        - F05 - Handover, Return & History
+      summary: Lịch sử mượn của tôi
+      description: Lịch sử mượn đã hoàn trả và chưa hoàn trả của user hiện tại.
+      operationId: listMyBorrowHistory
+      parameters:
+        - $ref: '#/components/parameters/Page'
+        - $ref: '#/components/parameters/PageSize'
+        - $ref: '#/components/parameters/HistoryState'
+      responses:
+        '200':
+          description: Trang lịch sử mượn của user hiện tại
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data:
+                    $ref: '#/components/schemas/BorrowHistoryPage'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+  /borrow-histories:
+    get:
+      tags:
+        - F05 - Handover, Return & History
+      summary: Toàn bộ lịch sử mượn
+      description: Lịch sử mượn toàn công ty cho user có permission phù hợp.
+      operationId: listAllBorrowHistory
+      parameters:
+        - $ref: '#/components/parameters/Page'
+        - $ref: '#/components/parameters/PageSize'
+        - $ref: '#/components/parameters/HistoryState'
+      responses:
+        '200':
+          description: Trang lịch sử mượn toàn công ty
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data:
+                    $ref: '#/components/schemas/BorrowHistoryPage'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+  /borrow-histories/{historyId}/return:
+    post:
+      tags:
+        - F05 - Handover, Return & History
+      summary: Xác nhận hoàn trả
+      description: >-
+        Ghi nhận người nhận/thời gian, ghi `returnCondition=NORMAL` canonical, chuyển asset
+        `BORROWED → AVAILABLE`. Client không thể tự chọn tình trạng trả trong lượt trả bình thường.
+      operationId: confirmReturn
+      parameters:
+        - name: historyId
+          in: path
+          required: true
+          schema:
+            type: integer
+            minimum: 1
+      responses:
+        '200':
+          description: Hoàn trả thành công
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data:
+                    $ref: '#/components/schemas/ReturnResult'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          description: Không tìm thấy lịch sử mượn
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '409':
+          description: Lịch sử đã trả hoặc asset không BORROWED
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+  /asset-issues:
+    get:
+      tags:
+        - F06 - Asset Issues & Repair
+      summary: Danh sách sự cố
+      description: Tìm kiếm và lọc sự cố mà user được phép xem.
+      operationId: listAssetIssues
+      parameters:
+        - $ref: '#/components/parameters/Page'
+        - $ref: '#/components/parameters/PageSize'
+        - name: status
+          in: query
+          description: Lọc theo trạng thái sự cố
+          schema:
+            $ref: '#/components/schemas/AssetIssueStatus'
+        - name: assetId
+          in: query
+          schema:
+            type: integer
+            minimum: 1
+      responses:
+        '200':
+          description: Trang sự cố
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data:
+                    $ref: '#/components/schemas/AssetIssuePage'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+  /asset-issues/{id}:
+    get:
+      tags:
+        - F06 - Asset Issues & Repair
+      summary: Chi tiết sự cố
+      description: Xem sự cố và thông tin sửa chữa của nó.
+      operationId: getAssetIssue
+      parameters:
+        - $ref: '#/components/parameters/IssueId'
+      responses:
+        '200':
+          description: Chi tiết sự cố
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data:
+                    $ref: '#/components/schemas/AssetIssue'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          description: Không tìm thấy sự cố
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+  /asset-issues/{id}/confirm:
+    post:
+      tags:
+        - F06 - Asset Issues & Repair
+      summary: Xác minh sự cố
+      description: Xác nhận sự cố `REPORTED` và chuyển asset sang `DAMAGED`.
+      operationId: confirmAssetIssue
+      parameters:
+        - $ref: '#/components/parameters/IssueId'
+      responses:
+        '200':
+          description: Xác minh thành công
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data:
+                    $ref: '#/components/schemas/AssetIssue'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          description: Không tìm thấy sự cố
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '409':
+          description: Sự cố không ở trạng thái REPORTED hoặc asset không hợp lệ
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+  /asset-issues/{id}/reject:
+    post:
+      tags:
+        - F06 - Asset Issues & Repair
+      summary: Từ chối sự cố
+      description: Từ chối sự cố `REPORTED` kèm ghi chú tùy chọn.
+      operationId: rejectAssetIssue
+      parameters:
+        - $ref: '#/components/parameters/IssueId'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/RejectIssueInput'
+      responses:
+        '200':
+          description: Từ chối thành công
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data:
+                    $ref: '#/components/schemas/AssetIssue'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          description: Không tìm thấy sự cố
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '409':
+          description: Sự cố không ở trạng thái REPORTED
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+  /asset-issues/{id}/start-repair:
+    post:
+      tags:
+        - F06 - Asset Issues & Repair
+      summary: Bắt đầu sửa chữa
+      description: Bắt đầu sửa chữa và chuyển asset sang `IN_REPAIR`.
+      operationId: startAssetRepair
+      parameters:
+        - $ref: '#/components/parameters/IssueId'
+      requestBody:
+        required: false
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/RepairUpdateInput'
+      responses:
+        '200':
+          description: Bắt đầu sửa chữa thành công
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data:
+                    $ref: '#/components/schemas/AssetIssue'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          description: Không tìm thấy sự cố
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '409':
+          description: Sự cố không ở trạng thái CONFIRMED
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+  /asset-issues/{id}/repair:
+    patch:
+      tags:
+        - F06 - Asset Issues & Repair
+      summary: Cập nhật quá trình sửa chữa
+      description: Cập nhật đơn vị, thời gian, chi phí, kết quả và ghi chú sửa chữa. Yêu cầu ít nhất một trường.
+      operationId: updateAssetRepair
+      parameters:
+        - $ref: '#/components/parameters/IssueId'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/RepairUpdateInput'
+      responses:
+        '200':
+          description: Cập nhật thành công
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data:
+                    $ref: '#/components/schemas/AssetIssue'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          description: Không tìm thấy sự cố
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '409':
+          description: Sự cố không ở trạng thái IN_REPAIR hoặc ngày không hợp lệ
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+  /asset-issues/{id}/complete:
+    post:
+      tags:
+        - F06 - Asset Issues & Repair
+      summary: Hoàn tất sửa chữa
+      description: Hoàn tất sửa chữa (bắt buộc `result`) và đưa asset về `AVAILABLE`.
+      operationId: completeAssetRepair
+      parameters:
+        - $ref: '#/components/parameters/IssueId'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/RepairCloseInput'
+      responses:
+        '200':
+          description: Hoàn tất thành công
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data:
+                    $ref: '#/components/schemas/AssetIssue'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          description: Không tìm thấy sự cố
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '409':
+          description: Sự cố không ở trạng thái IN_REPAIR
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+  /asset-issues/{id}/fail:
+    post:
+      tags:
+        - F06 - Asset Issues & Repair
+      summary: Ghi nhận sửa chữa thất bại
+      description: Đóng sửa chữa thất bại và đưa asset về `DAMAGED`.
+      operationId: failAssetRepair
+      parameters:
+        - $ref: '#/components/parameters/IssueId'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/RepairUpdateInput'
+      responses:
+        '200':
+          description: Ghi nhận thất bại thành công
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data:
+                    $ref: '#/components/schemas/AssetIssue'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          description: Không tìm thấy sự cố
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '409':
+          description: Sự cố không ở trạng thái IN_REPAIR
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+  /notifications:
+    get:
+      tags:
+        - F07 - Notifications
+      summary: Danh sách thông báo của tôi
+      operationId: listNotifications
+      parameters:
+        - $ref: '#/components/parameters/Page'
+        - $ref: '#/components/parameters/PageSize'
+        - name: isRead
+          in: query
+          description: Lọc theo trạng thái đọc
+          schema:
+            type: boolean
+      responses:
+        '200':
+          description: Trang thông báo của user hiện tại
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data:
+                    $ref: '#/components/schemas/NotificationPage'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+  /notifications/unread-count:
+    get:
+      tags:
+        - F07 - Notifications
+      summary: Số thông báo chưa đọc
+      operationId: getUnreadNotificationCount
+      responses:
+        '200':
+          description: Số thông báo chưa đọc
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data:
+                    type: object
+                    properties:
+                      unreadCount:
+                        type: integer
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+  /notifications/read-all:
+    patch:
+      tags:
+        - F07 - Notifications
+      summary: Đánh dấu tất cả đã đọc
+      operationId: markAllNotificationsRead
+      responses:
+        '200':
+          description: Đánh dấu tất cả đã đọc
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data:
+                    type: object
+                    properties:
+                      updatedCount:
+                        type: integer
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+  /notifications/{id}/read:
+    patch:
+      tags:
+        - F07 - Notifications
+      summary: Đánh dấu một thông báo đã đọc
+      description: Chỉ thông báo thuộc user hiện tại.
+      operationId: markNotificationRead
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+            minimum: 1
+      responses:
+        '200':
+          description: Thông báo sau khi đánh dấu đọc
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data:
+                    $ref: '#/components/schemas/Notification'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '404':
+          description: Không tìm thấy thông báo
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+  /users:
+    get:
+      tags:
+        - F08 - Administration
+      summary: Danh sách người dùng
+      operationId: listUsers
+      parameters:
+        - name: status
+          in: query
+          description: Lọc theo trạng thái user (mặc định active)
+          schema:
+            type: string
+            enum:
+              - active
+              - inactive
+              - all
+      responses:
+        '200':
+          description: Danh sách người dùng
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/User'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+    post:
+      tags:
+        - F08 - Administration
+      summary: Tạo người dùng
+      operationId: createUser
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CreateUserInput'
+      responses:
+        '201':
+          description: Tạo người dùng thành công
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data:
+                    $ref: '#/components/schemas/User'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '409':
+          description: Email/phone trùng hoặc role/department không tồn tại
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+  /users/{id}:
+    get:
+      tags:
+        - F08 - Administration
+      summary: Chi tiết người dùng
+      description: Hồ sơ và role của một user.
+      operationId: getUser
+      parameters:
+        - $ref: '#/components/parameters/UserId'
+      responses:
+        '200':
+          description: Chi tiết người dùng
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data:
+                    $ref: '#/components/schemas/User'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          description: Không tìm thấy người dùng
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+    patch:
+      tags:
+        - F08 - Administration
+      summary: Cập nhật người dùng
+      description: Cập nhật hồ sơ, department hoặc role được phép. Yêu cầu ít nhất một trường.
+      operationId: updateUser
+      parameters:
+        - $ref: '#/components/parameters/UserId'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/UpdateUserInput'
+      responses:
+        '200':
+          description: Cập nhật thành công
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data:
+                    $ref: '#/components/schemas/User'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          description: Không tìm thấy người dùng
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '409':
+          description: Email/phone trùng hoặc role/department không tồn tại
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+    delete:
+      tags:
+        - F08 - Administration
+      summary: Vô hiệu hóa người dùng
+      description: Vô hiệu hóa user mà không xóa lịch sử.
+      operationId: deactivateUser
+      parameters:
+        - $ref: '#/components/parameters/UserId'
+      responses:
+        '204':
+          description: Vô hiệu hóa thành công
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          description: Không tìm thấy người dùng
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+  /users/{id}/activate:
+    patch:
+      tags:
+        - F08 - Administration
+      summary: Kích hoạt/vô hiệu hóa người dùng
+      description: Chuyển trạng thái active của user mà không xóa lịch sử.
+      operationId: activateUser
+      parameters:
+        - $ref: '#/components/parameters/UserId'
+      responses:
+        '200':
+          description: User sau khi thay đổi trạng thái
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data:
+                    $ref: '#/components/schemas/User'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          description: Không tìm thấy người dùng
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+  /rbac/roles:
+    get:
+      tags:
+        - F08 - Administration
+      summary: Danh sách role có thể gán
+      operationId: listRoles
+      responses:
+        '200':
+          description: Danh sách role
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/Reference'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+  /rbac/users/{userId}/roles:
+    put:
+      tags:
+        - F08 - Administration
+      summary: Thay thế role của người dùng
+      description: Thay thế danh sách role cố định của user.
+      operationId: replaceUserRoles
+      parameters:
+        - $ref: '#/components/parameters/UserId'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ReplaceUserRolesInput'
+      responses:
+        '200':
+          description: Cập nhật role thành công
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/MessageResponse'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          description: Không tìm thấy người dùng
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+  /departments:
+    get:
+      tags:
+        - F08 - Administration
+      summary: Danh sách phòng ban
+      operationId: listDepartments
+      responses:
+        '200':
+          description: Danh sách phòng ban
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/Reference'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+    post:
+      tags:
+        - F08 - Administration
+      summary: Tạo phòng ban
+      operationId: createDepartment
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ReferenceInput'
+      responses:
+        '201':
+          description: Tạo phòng ban thành công
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data:
+                    $ref: '#/components/schemas/Reference'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '409':
+          description: Tên phòng ban đã tồn tại
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+  /departments/{id}:
+    get:
+      tags:
+        - F08 - Administration
+      summary: Chi tiết phòng ban
+      operationId: getDepartment
+      parameters:
+        - $ref: '#/components/parameters/ReferenceId'
+      responses:
+        '200':
+          description: Chi tiết phòng ban
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data:
+                    $ref: '#/components/schemas/Reference'
+        '404':
+          description: Không tồn tại
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+    patch:
+      tags:
+        - F08 - Administration
+      summary: Cập nhật phòng ban
+      operationId: updateDepartment
+      parameters:
+        - $ref: '#/components/parameters/ReferenceId'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ReferenceUpdateInput'
+      responses:
+        '200':
+          description: Cập nhật thành công
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data:
+                    $ref: '#/components/schemas/Reference'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '404':
+          description: Không tồn tại
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '409':
+          description: Tên phòng ban đã tồn tại
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+    delete:
+      tags:
+        - F08 - Administration
+      summary: Xóa phòng ban
+      operationId: deleteDepartment
+      parameters:
+        - $ref: '#/components/parameters/ReferenceId'
+      responses:
+        '204':
+          description: Xóa thành công
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          description: Không tồn tại
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+components:
+  securitySchemes:
+    bearerAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
+  parameters:
+    AssetId:
+      name: id
+      in: path
+      required: true
+      description: ID tài sản
+      schema:
+        type: integer
+        minimum: 1
+    ReferenceId:
+      name: id
+      in: path
+      required: true
+      schema:
+        type: integer
+        minimum: 1
+    RequestId:
+      name: requestId
+      in: path
+      required: true
+      schema:
+        type: integer
+        minimum: 1
+    DetailId:
+      name: detailId
+      in: path
+      required: true
+      schema:
+        type: integer
+        minimum: 1
+    IssueId:
+      name: id
+      in: path
+      required: true
+      schema:
+        type: integer
+        minimum: 1
+    UserId:
+      name: userId
+      in: path
+      required: true
+      schema:
+        type: integer
+        minimum: 1
+    Page:
+      name: page
+      in: query
+      description: Số trang, bắt đầu từ 1
+      schema:
+        type: integer
+        minimum: 1
+        default: 1
+    PageSize:
+      name: pageSize
+      in: query
+      description: Số bản ghi mỗi trang, tối đa 100
+      schema:
+        type: integer
+        minimum: 1
+        maximum: 100
+        default: 20
+    HistoryState:
+      name: state
+      in: query
+      description: Lọc trạng thái lịch sử mượn
+      schema:
+        type: string
+        enum:
+          - ALL
+          - CURRENT
+          - RETURNED
+  responses:
+    BadRequest:
+      description: Dữ liệu đầu vào không hợp lệ
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/Error'
+    Unauthorized:
+      description: Chưa xác thực hoặc token không hợp lệ
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/Error'
+    Forbidden:
+      description: Thiếu quyền thực hiện thao tác
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/Error'
+  schemas:
+    Error:
+      type: object
+      properties:
+        error:
+          type: string
+        details:
+          type: object
+          additionalProperties: true
+      required:
+        - error
+    MessageResponse:
+      type: object
+      properties:
+        data:
+          type: object
+          properties:
+            message:
+              type: string
+          required:
+            - message
+      required:
+        - data
+    RegisterInput:
+      type: object
+      properties:
+        departmentId:
+          type: integer
+          minimum: 1
+        name:
+          type: string
+          minLength: 1
+          maxLength: 30
+        password:
+          type: string
+          minLength: 6
+          maxLength: 72
+        email:
+          type: string
+          format: email
+          maxLength: 40
+        phone:
+          type: string
+          minLength: 1
+          maxLength: 10
+      required:
+        - departmentId
+        - name
+        - password
+        - email
+        - phone
+      additionalProperties: false
+    LoginInput:
+      type: object
+      properties:
+        email:
+          type: string
+          format: email
+          maxLength: 40
+        password:
+          type: string
+          minLength: 1
+          maxLength: 72
+      required:
+        - email
+        - password
+      additionalProperties: false
+    AuthenticatedUser:
+      type: object
+      properties:
+        id:
+          type: integer
+        name:
+          type: string
+        avatarUrl:
+          type: string
+          format: uri
+          nullable: true
+        email:
+          type: string
+          format: email
+        phone:
+          type: string
+        departmentId:
+          type: integer
+        roles:
+          type: array
+          items:
+            $ref: '#/components/schemas/Reference'
+        permissionCodes:
+          type: array
+          items:
+            type: string
+      required:
+        - id
+        - name
+        - email
+        - phone
+        - departmentId
+        - roles
+        - permissionCodes
+    LoginResult:
+      type: object
+      properties:
+        accessToken:
+          type: string
+          description: JWT access token dùng cho Authorization header
+        user:
+          $ref: '#/components/schemas/AuthenticatedUser'
+      required:
+        - accessToken
+        - user
+    Reference:
+      type: object
+      properties:
+        id:
+          type: integer
+        name:
+          type: string
+      required:
+        - id
+        - name
+    ReferenceInput:
+      type: object
+      properties:
+        name:
+          type: string
+          minLength: 1
+          maxLength: 30
+      required:
+        - name
+      additionalProperties: false
+    ReferenceUpdateInput:
+      type: object
+      properties:
+        name:
+          type: string
+          minLength: 1
+          maxLength: 30
+      required:
+        - name
+      additionalProperties: false
+    AssetModel:
+      type: object
+      properties:
+        id:
+          type: integer
+        brandId:
+          type: integer
+        assetTypeId:
+          type: integer
+        name:
+          type: string
+      required:
+        - id
+        - brandId
+        - assetTypeId
+        - name
+    AssetModelInput:
+      type: object
+      properties:
+        brandId:
+          type: integer
+          minimum: 1
+        assetTypeId:
+          type: integer
+          minimum: 1
+        name:
+          type: string
+          minLength: 1
+          maxLength: 30
+      required:
+        - brandId
+        - assetTypeId
+        - name
+      additionalProperties: false
+    AssetModelUpdateInput:
+      type: object
+      properties:
+        brandId:
+          type: integer
+          minimum: 1
+        assetTypeId:
+          type: integer
+          minimum: 1
+        name:
+          type: string
+          minLength: 1
+          maxLength: 30
+      additionalProperties: false
+    AssetStatus:
+      type: string
+      enum:
+        - AVAILABLE
+        - RESERVED
+        - BORROWED
+        - DAMAGED
+        - IN_REPAIR
+        - RETIRED
+    CreateAssetInput:
+      type: object
+      properties:
+        assetModelId:
+          type: integer
+          minimum: 1
+        serialNumber:
+          type: string
+          minLength: 1
+          maxLength: 100
+          nullable: true
+        imageUrl:
+          type: string
+          format: uri
+          maxLength: 500
+          nullable: true
+        departmentId:
+          type: integer
+          minimum: 1
+          nullable: true
+      required:
+        - assetModelId
+      additionalProperties: false
+    UpdateAssetInput:
+      type: object
+      properties:
+        assetModelId:
+          type: integer
+          minimum: 1
+        serialNumber:
+          type: string
+          minLength: 1
+          maxLength: 100
+          nullable: true
+        imageUrl:
+          type: string
+          format: uri
+          maxLength: 500
+          nullable: true
+        departmentId:
+          type: integer
+          minimum: 1
+          nullable: true
+      additionalProperties: false
+    AssetSummary:
+      type: object
+      properties:
+        id:
+          type: integer
+        name:
+          type: string
+      required:
+        - id
+        - name
+    AssetListItem:
+      type: object
+      properties:
+        id:
+          type: integer
+        serialNumber:
+          type: string
+          nullable: true
+        qrCode:
+          type: string
+        imageUrl:
+          type: string
+          nullable: true
+        status:
+          $ref: '#/components/schemas/AssetStatus'
+        model:
+          $ref: '#/components/schemas/AssetSummary'
+        brand:
+          $ref: '#/components/schemas/AssetSummary'
+        type:
+          $ref: '#/components/schemas/AssetSummary'
+        department:
+          allOf:
+            - $ref: '#/components/schemas/AssetSummary'
+          nullable: true
+      required:
+        - id
+        - serialNumber
+        - qrCode
+        - status
+        - model
+        - brand
+        - type
+    AssetListPage:
+      type: object
+      properties:
+        items:
+          type: array
+          items:
+            $ref: '#/components/schemas/AssetListItem'
+        page:
+          type: integer
+        pageSize:
+          type: integer
+        total:
+          type: integer
+      required:
+        - items
+        - page
+        - pageSize
+        - total
+    AssetDetail:
+      allOf:
+        - $ref: '#/components/schemas/AssetListItem'
+        - type: object
+          properties:
+            actions:
+              type: object
+              properties:
+                canReportIssue:
+                  type: boolean
+              required:
+                - canReportIssue
+          required:
+            - actions
+    AssetMutation:
+      type: object
+      properties:
+        id:
+          type: integer
+        assetModelId:
+          type: integer
+        serialNumber:
+          type: string
+          nullable: true
+        qrCode:
+          type: string
+        status:
+          $ref: '#/components/schemas/AssetStatus'
+        imageUrl:
+          type: string
+          nullable: true
+        departmentId:
+          type: integer
+          nullable: true
+        createdAt:
+          type: string
+          format: date-time
+      required:
+        - id
+        - assetModelId
+        - serialNumber
+        - qrCode
+        - status
+        - createdAt
+    ReportIssueInput:
+      type: object
+      properties:
+        description:
+          type: string
+          minLength: 1
+          maxLength: 2000
+      required:
+        - description
+      additionalProperties: false
+    BorrowRequestStatus:
+      type: string
+      enum:
+        - PENDING
+        - APPROVED
+        - REJECTED
+        - PARTIALLY_APPROVED
+        - COMPLETED
+        - CANCELLED
+    BorrowDetailStatus:
+      type: string
+      enum:
+        - PENDING
+        - APPROVED
+        - REJECTED
+    CreateBorrowRequestInput:
+      type: object
+      properties:
+        note:
+          type: string
+          maxLength: 2000
+          nullable: true
+        items:
+          type: array
+          minItems: 1
+          items:
+            type: object
+            properties:
+              assetId:
+                type: integer
+                minimum: 1
+              expectedReturnDate:
+                type: string
+                format: date
+                description: YYYY-MM-DD, từ hôm nay trở đi (Asia/Ho_Chi_Minh)
+            required:
+              - assetId
+              - expectedReturnDate
+            additionalProperties: false
+      required:
+        - items
+      additionalProperties: false
+    BorrowRequest:
+      type: object
+      properties:
+        id:
+          type: integer
+        requester:
+          type: object
+          properties:
+            id:
+              type: integer
+            name:
+              type: string
+            avatarUrl:
+              type: string
+              nullable: true
+          required:
+            - id
+            - name
+        status:
+          $ref: '#/components/schemas/BorrowRequestStatus'
+        note:
+          type: string
+          nullable: true
+        createdAt:
+          type: string
+          format: date-time
+        details:
+          type: array
+          items:
+            type: object
+            properties:
+              id:
+                type: integer
+              asset:
+                type: object
+                properties:
+                  id:
+                    type: integer
+                  serialNumber:
+                    type: string
+                    nullable: true
+                  qrCode:
+                    type: string
+                  imageUrl:
+                    type: string
+                    nullable: true
+                  status:
+                    $ref: '#/components/schemas/AssetStatus'
+                  model:
+                    $ref: '#/components/schemas/AssetSummary'
+                required:
+                  - id
+                  - qrCode
+                  - status
+                  - model
+              expectedReturnDate:
+                type: string
+                format: date
+              approvalStatus:
+                $ref: '#/components/schemas/BorrowDetailStatus'
+              approvedBy:
+                type: object
+                properties:
+                  id:
+                    type: integer
+                  name:
+                    type: string
+                required:
+                  - id
+                  - name
+                nullable: true
+              approvedAt:
+                type: string
+                format: date-time
+                nullable: true
+              rejectionReason:
+                type: string
+                nullable: true
+            required:
+              - id
+              - asset
+              - expectedReturnDate
+              - approvalStatus
+          required:
+            - id
+            - requester
+            - status
+            - createdAt
+            - details
+      required:
+        - id
+        - requester
+        - status
+        - createdAt
+        - details
+    BorrowRequestListItem:
+      type: object
+      properties:
+        id:
+          type: integer
+        status:
+          $ref: '#/components/schemas/BorrowRequestStatus'
+        createdAt:
+          type: string
+          format: date-time
+        detailCount:
+          type: integer
+        pendingCount:
+          type: integer
+        approvedCount:
+          type: integer
+        rejectedCount:
+          type: integer
+      required:
+        - id
+        - status
+        - createdAt
+        - detailCount
+        - pendingCount
+        - approvedCount
+        - rejectedCount
+    BorrowRequestPage:
+      type: object
+      properties:
+        items:
+          type: array
+          items:
+            oneOf:
+              - $ref: '#/components/schemas/BorrowRequestListItem'
+              - $ref: '#/components/schemas/BorrowRequest'
+        page:
+          type: integer
+        pageSize:
+          type: integer
+        total:
+          type: integer
+      required:
+        - items
+        - page
+        - pageSize
+        - total
+    ApprovalResult:
+      type: object
+      properties:
+        detailId:
+          type: integer
+        approvalStatus:
+          $ref: '#/components/schemas/BorrowDetailStatus'
+      required:
+        - detailId
+        - approvalStatus
+    RejectDetailInput:
+      type: object
+      properties:
+        rejectionReason:
+          type: string
+          minLength: 1
+          maxLength: 2000
+      required:
+        - rejectionReason
+      additionalProperties: false
+    ApproveAllResult:
+      type: object
+      properties:
+        requestId:
+          type: integer
+        approved:
+          type: array
+          items:
+            type: object
+            properties:
+              detailId:
+                type: integer
+              approvalStatus:
+                type: string
+                enum:
+                  - APPROVED
+            required:
+              - detailId
+              - approvalStatus
+        skipped:
+          type: array
+          items:
+            type: object
+            properties:
+              detailId:
+                type: integer
+              approvalStatus:
+                type: string
+                enum:
+                  - PENDING
+              reason:
+                type: string
+                enum:
+                  - ASSET_NOT_AVAILABLE
+                  - DETAIL_NOT_PENDING
+            required:
+              - detailId
+              - approvalStatus
+              - reason
+      required:
+        - requestId
+        - approved
+        - skipped
+    CancelResult:
+      type: object
+      properties:
+        requestId:
+          type: integer
+        status:
+          type: string
+          enum:
+            - CANCELLED
+      required:
+        - requestId
+        - status
+    HandoverResult:
+      type: object
+      properties:
+        historyId:
+          type: integer
+      required:
+        - historyId
+    ReturnResult:
+      type: object
+      properties:
+        historyId:
+          type: integer
+        returned:
+          type: boolean
+      required:
+        - historyId
+        - returned
+    BorrowHistory:
+      type: object
+      properties:
+        id:
+          type: integer
+        detailId:
+          type: integer
+        asset:
+          type: object
+          properties:
+            id:
+              type: integer
+            serialNumber:
+              type: string
+              nullable: true
+            qrCode:
+              type: string
+            status:
+              $ref: '#/components/schemas/AssetStatus'
+            model:
+              $ref: '#/components/schemas/AssetSummary'
+          required:
+            - id
+            - qrCode
+            - status
+            - model
+        borrower:
+          type: object
+          properties:
+            id:
+              type: integer
+            name:
+              type: string
+            avatarUrl:
+              type: string
+              nullable: true
+          required:
+            - id
+            - name
+        expectedReturnDate:
+          type: string
+          format: date
+        handedOverBy:
+          type: object
+          properties:
+            id:
+              type: integer
+            name:
+              type: string
+          required:
+            - id
+            - name
+          nullable: true
+        borrowedAt:
+          type: string
+          format: date-time
+        receivedBy:
+          type: object
+          properties:
+            id:
+              type: integer
+            name:
+              type: string
+          required:
+            - id
+            - name
+          nullable: true
+        returnedAt:
+          type: string
+          format: date-time
+          nullable: true
+        returnCondition:
+          type: string
+          nullable: true
+      required:
+        - id
+        - detailId
+        - asset
+        - borrower
+        - expectedReturnDate
+        - borrowedAt
+    BorrowHistoryPage:
+      type: object
+      properties:
+        items:
+          type: array
+          items:
+            $ref: '#/components/schemas/BorrowHistory'
+        page:
+          type: integer
+        pageSize:
+          type: integer
+        total:
+          type: integer
+      required:
+        - items
+        - page
+        - pageSize
+        - total
+    AssetIssueStatus:
+      type: string
+      enum:
+        - REPORTED
+        - CONFIRMED
+        - REJECTED
+        - CANCELLED
+        - IN_REPAIR
+        - COMPLETED
+        - FAILED
+    AssetIssue:
+      type: object
+      properties:
+        id:
+          type: integer
+        assetId:
+          type: integer
+        reportedBy:
+          type: integer
+          nullable: true
+        description:
+          type: string
+        status:
+          $ref: '#/components/schemas/AssetIssueStatus'
+        createdAt:
+          type: string
+          format: date-time
+          nullable: true
+        updatedAt:
+          type: string
+          format: date-time
+          nullable: true
+        handledBy:
+          type: integer
+          nullable: true
+        repairProvider:
+          type: string
+          nullable: true
+        startDate:
+          type: string
+          format: date-time
+          nullable: true
+        endDate:
+          type: string
+          format: date-time
+          nullable: true
+        cost:
+          type: string
+          nullable: true
+          description: Chi phí sửa chữa dạng chuỗi thập phân
+        result:
+          type: string
+          nullable: true
+        note:
+          type: string
+          nullable: true
+        asset:
+          type: object
+          properties:
+            id:
+              type: integer
+            serialNumber:
+              type: string
+              nullable: true
+            status:
+              $ref: '#/components/schemas/AssetStatus'
+            modelName:
+              type: string
+          required:
+            - id
+            - status
+            - modelName
+          nullable: true
+        reporter:
+          type: object
+          properties:
+            id:
+              type: integer
+            name:
+              type: string
+          required:
+            - id
+            - name
+          nullable: true
+      required:
+        - id
+        - assetId
+        - description
+        - status
+    AssetIssuePage:
+      type: object
+      properties:
+        items:
+          type: array
+          items:
+            $ref: '#/components/schemas/AssetIssue'
+        page:
+          type: integer
+        pageSize:
+          type: integer
+        total:
+          type: integer
+      required:
+        - items
+        - page
+        - pageSize
+        - total
+    RejectIssueInput:
+      type: object
+      properties:
+        note:
+          type: string
+          minLength: 1
+          maxLength: 5000
+      additionalProperties: false
+    RepairUpdateInput:
+      type: object
+      properties:
+        repairProvider:
+          type: string
+          minLength: 1
+          maxLength: 255
+          nullable: true
+        cost:
+          type: number
+          minimum: 0
+          maximum: 9999999999.99
+          nullable: true
+        result:
+          type: string
+          minLength: 1
+          maxLength: 5000
+          nullable: true
+        note:
+          type: string
+          minLength: 1
+          maxLength: 5000
+          nullable: true
+        startDate:
+          type: string
+          format: date-time
+          nullable: true
+        endDate:
+          type: string
+          format: date-time
+          nullable: true
+      additionalProperties: false
+    RepairCloseInput:
+      type: object
+      properties:
+        repairProvider:
+          type: string
+          minLength: 1
+          maxLength: 255
+          nullable: true
+        cost:
+          type: number
+          minimum: 0
+          maximum: 9999999999.99
+          nullable: true
+        result:
+          type: string
+          minLength: 1
+          maxLength: 5000
+        note:
+          type: string
+          minLength: 1
+          maxLength: 5000
+          nullable: true
+        startDate:
+          type: string
+          format: date-time
+          nullable: true
+        endDate:
+          type: string
+          format: date-time
+          nullable: true
+      required:
+        - result
+      additionalProperties: false
+    Notification:
+      type: object
+      properties:
+        id:
+          type: integer
+        recipientUserId:
+          type: integer
+        notificationType:
+          type: string
+        title:
+          type: string
+        message:
+          type: string
+        relatedEntityType:
+          type: string
+          nullable: true
+        relatedEntityId:
+          type: integer
+          nullable: true
+        isRead:
+          type: boolean
+        readAt:
+          type: string
+          format: date-time
+          nullable: true
+        createdAt:
+          type: string
+          format: date-time
+      required:
+        - id
+        - recipientUserId
+        - notificationType
+        - title
+        - message
+        - isRead
+        - createdAt
+    NotificationPage:
+      type: object
+      properties:
+        items:
+          type: array
+          items:
+            $ref: '#/components/schemas/Notification'
+        page:
+          type: integer
+        pageSize:
+          type: integer
+        total:
+          type: integer
+        unreadCount:
+          type: integer
+      required:
+        - items
+        - page
+        - pageSize
+        - total
+        - unreadCount
+    User:
+      type: object
+      properties:
+        id:
+          type: integer
+        departmentId:
+          type: integer
+        department:
+          $ref: '#/components/schemas/Reference'
+        name:
+          type: string
+        avatarUrl:
+          type: string
+          nullable: true
+        email:
+          type: string
+          format: email
+        phone:
+          type: string
+        isActive:
+          type: boolean
+        roles:
+          type: array
+          items:
+            $ref: '#/components/schemas/Reference'
+      required:
+        - id
+        - departmentId
+        - department
+        - name
+        - email
+        - phone
+        - isActive
+        - roles
+    CreateUserInput:
+      type: object
+      properties:
+        departmentId:
+          type: integer
+          minimum: 1
+        name:
+          type: string
+          minLength: 1
+          maxLength: 30
+        avatarUrl:
+          type: string
+          format: uri
+          maxLength: 500
+          nullable: true
+        email:
+          type: string
+          format: email
+          maxLength: 40
+        phone:
+          type: string
+          pattern: '^\d{10}$'
+        password:
+          type: string
+          minLength: 6
+          maxLength: 72
+        roleIds:
+          type: array
+          maxItems: 10
+          uniqueItems: true
+          items:
+            type: integer
+            minimum: 1
+      required:
+        - departmentId
+        - name
+        - email
+        - phone
+        - password
+      additionalProperties: false
+    UpdateUserInput:
+      type: object
+      properties:
+        departmentId:
+          type: integer
+          minimum: 1
+        name:
+          type: string
+          minLength: 1
+          maxLength: 30
+        avatarUrl:
+          type: string
+          format: uri
+          maxLength: 500
+          nullable: true
+        email:
+          type: string
+          format: email
+          maxLength: 40
+        phone:
+          type: string
+          pattern: '^\d{10}$'
+        password:
+          type: string
+          minLength: 6
+          maxLength: 72
+        roleIds:
+          type: array
+          minItems: 1
+          maxItems: 10
+          uniqueItems: true
+          items:
+            type: integer
+            minimum: 1
+      additionalProperties: false
+    ReplaceUserRolesInput:
+      type: object
+      properties:
+        roleIds:
+          type: array
+          minItems: 1
+          maxItems: 10
+          uniqueItems: true
+          items:
+            type: integer
+            minimum: 1
+      required:
+        - roleIds
+      additionalProperties: false
+security:
+  - bearerAuth: []
