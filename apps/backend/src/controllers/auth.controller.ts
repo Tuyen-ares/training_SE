@@ -25,7 +25,9 @@ function getRefreshTokenCookieOptions(expires?: Date): CookieOptions {
   return {
     httpOnly: true,
     secure: process.env.NODE_ENV === 'production',
-    sameSite: 'lax',
+    // Render/Vercel are cross-site in production; use None with Secure there.
+    // Revisit this policy when token-based CSRF protection is implemented.
+    sameSite: process.env.NODE_ENV === 'production' ? 'none' : 'lax',
     path: '/api/auth',
     ...(expires ? { expires } : {}),
   };
