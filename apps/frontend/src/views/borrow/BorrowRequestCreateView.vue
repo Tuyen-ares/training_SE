@@ -3,10 +3,12 @@ import { computed, h, onMounted, reactive, ref } from 'vue'
 import { DeleteOutlined, PlusOutlined } from '@ant-design/icons-vue'
 import { message } from 'ant-design-vue'
 import { useRouter } from 'vue-router'
+import StatusTag from '../../components/common/StatusTag.vue'
 import WorkspaceLayout from '../../components/layout/WorkspaceLayout.vue'
 import { listAssets } from '../../services/asset.service'
 import { createBorrowRequest } from '../../services/borrow.service'
 import { useAuthStore } from '../../stores/auth'
+import { DEFAULT_ASSET_IMAGE } from '../../constants/media'
 
 const router = useRouter()
 const authStore = useAuthStore()
@@ -75,8 +77,8 @@ onMounted(loadAssets)
             </div>
             <a-empty v-if="!form.items.length" description="No assets added yet." />
             <article v-for="(item, index) in form.items" :key="item.asset.id" class="asset-row">
-              <a-avatar shape="square" :size="52" :src="item.asset.imageUrl">{{ item.asset.model.name.slice(0, 1) }}</a-avatar>
-              <div class="asset-copy"><strong>{{ item.asset.model.name }}</strong><span>{{ item.asset.brand.name }} · SN: {{ item.asset.serialNumber || 'Not assigned' }}</span><a-tag color="success">Available</a-tag></div>
+              <a-avatar shape="square" :size="52" :src="item.asset.imageUrl || DEFAULT_ASSET_IMAGE">{{ item.asset.model.name.slice(0, 1) }}</a-avatar>
+              <div class="asset-copy"><strong>{{ item.asset.model.name }}</strong><span>{{ item.asset.brand.name }} · SN: {{ item.asset.serialNumber || 'Not assigned' }}</span><StatusTag status="AVAILABLE" /></div>
               <label class="date-field"><span>Expected return</span><input v-model="item.expectedReturnDate" type="date" :min="today"></label>
               <a-button type="text" danger aria-label="Remove asset" :icon="h(DeleteOutlined)" @click="form.items.splice(index, 1)" />
             </article>

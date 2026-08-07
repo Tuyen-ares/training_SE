@@ -2,9 +2,11 @@
 import { computed, h, onMounted, ref } from "vue";
 import { ArrowLeftOutlined, CheckCircleOutlined, ClockCircleOutlined, MailOutlined, UserOutlined } from "@ant-design/icons-vue";
 import { useRoute, useRouter } from "vue-router";
+import StatusTag from "../../components/common/StatusTag.vue";
 import WorkspaceLayout from "../../components/layout/WorkspaceLayout.vue";
 import { getBorrowHistoryDetail } from "../../services/borrow.service";
 import { useAuthStore } from "../../stores/auth";
+import { DEFAULT_ASSET_IMAGE } from "../../constants/media";
 
 const route = useRoute();
 const router = useRouter();
@@ -13,39 +15,7 @@ const history = ref(null);
 const loading = ref(true);
 const errorMessage = ref("");
 
-const statusColors = {
-  AVAILABLE: "success",
-  RESERVED: "processing",
-  BORROWED: "processing",
-  DAMAGED: "error",
-  IN_REPAIR: "warning",
-  RETIRED: "default",
-};
-
-const requestStatusColors = {
-  PENDING: "orange",
-  PARTIALLY_APPROVED: "processing",
-  APPROVED: "success",
-  REJECTED: "error",
-  COMPLETED: "blue",
-  CANCELLED: "default",
-};
-
-const statusLabels = {
-  AVAILABLE: "Available",
-  RESERVED: "Reserved",
-  BORROWED: "Borrowed",
-  DAMAGED: "Damaged",
-  IN_REPAIR: "In Repair",
-  RETIRED: "Retired",
-};
-
 const isReturned = computed(() => Boolean(history.value?.returnedAt));
-
-function labelStatus(value) {
-  if (!value) return "—";
-  return statusLabels[value] || value.replaceAll("_", " ");
-}
 
 function formatDate(value) {
   if (!value) return "—";
@@ -106,9 +76,7 @@ onMounted(load);
               Request REQ-{{ String(history.request.id).padStart(4, '0') }}
             </p>
           </div>
-          <a-tag :color="statusColors[history.asset.status]">
-            {{ isReturned ? 'Returned' : labelStatus(history.asset.status) }}
-          </a-tag>
+          <StatusTag :status="isReturned ? 'RETURNED' : history.asset.status" />
         </header>
 
         <div class="detail-grid">
@@ -116,9 +84,7 @@ onMounted(load);
             <section class="panel">
               <div class="panel-heading">
                 <h2>Borrow Request</h2>
-                <a-tag :color="requestStatusColors[history.request.status]">
-                  {{ labelStatus(history.request.status) }}
-                </a-tag>
+                <StatusTag :status="history.request.status" />
               </div>
               <div class="request-summary">
                 <dl>
@@ -155,7 +121,7 @@ onMounted(load);
             <section class="panel asset-panel">
               <h2>Borrowed Asset</h2>
               <div class="asset-summary">
-                <a-avatar shape="square" :size="72" :src="history.asset.imageUrl">
+                <a-avatar shape="square" :size="72" :src="history.asset.imageUrl || DEFAULT_ASSET_IMAGE">
                   {{ history.asset.model.name.slice(0, 1) }}
                 </a-avatar>
                 <div>
@@ -166,7 +132,7 @@ onMounted(load);
               </div>
               <a-descriptions bordered :column="2" size="small">
                 <a-descriptions-item label="Asset Status">
-                  <a-tag :color="statusColors[history.asset.status]">{{ labelStatus(history.asset.status) }}</a-tag>
+                  <StatusTag :status="history.asset.status" />
                 </a-descriptions-item>
                 <a-descriptions-item label="Expected Return">
                   {{ history.expectedReturnDate || '—' }}
@@ -182,7 +148,7 @@ onMounted(load);
                 <CheckCircleOutlined class="timeline-icon approved" />
                 <div>
                   <span class="field-label">Approval Status</span>
-                  <strong>{{ labelStatus(history.approvalStatus) }}</strong>
+                  <StatusTag :status="history.approvalStatus" />
                 </div>
               </div>
               <dl class="meta-list">

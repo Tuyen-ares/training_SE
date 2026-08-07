@@ -1,6 +1,7 @@
 <script setup>
 import { computed, onMounted, reactive, ref } from 'vue'
 import { useRouter } from 'vue-router'
+import StatusTag from '../../components/common/StatusTag.vue'
 import WorkspaceLayout from '../../components/layout/WorkspaceLayout.vue'
 import { listReviewQueue } from '../../services/borrow.service'
 import { useAuthStore } from '../../stores/auth'
@@ -120,9 +121,7 @@ onMounted(load)
           </a-table-column>
           <a-table-column title="Status" key="status" :width="170">
             <template #default>
-              <a-tag class="status-tag" :color="activeTab === 'APPROVED' ? 'success' : activeTab === 'REJECTED' ? 'error' : 'orange'">
-                {{ tabLabel }}
-              </a-tag>
+              <StatusTag class="status-tag" :status="activeTab" :label="tabLabel" />
             </template>
           </a-table-column>
           <a-table-column title="" key="actions" :width="150" align="right">

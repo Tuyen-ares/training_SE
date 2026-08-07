@@ -3,7 +3,9 @@ import { EyeOutlined, ReloadOutlined } from '@ant-design/icons-vue'
 import { h, onMounted, reactive, ref } from 'vue'
 import { useRouter } from 'vue-router'
 
+import StatusTag from '../../components/common/StatusTag.vue'
 import WorkspaceLayout from '../../components/layout/WorkspaceLayout.vue'
+import { ASSET_ISSUE_STATUSES, statusLabel } from '../../constants/status-meta'
 import { listAssetIssues } from '../../services/asset-issue.service'
 import { useAuthStore } from '../../stores/auth'
 
@@ -13,8 +15,6 @@ const loading = ref(true)
 const errorMessage = ref('')
 const result = reactive({ items: [], page: 1, pageSize: 10, total: 0 })
 const filters = reactive({ status: undefined, assetId: '' })
-const statuses = ['REPORTED', 'CONFIRMED', 'REJECTED', 'CANCELLED', 'IN_REPAIR', 'COMPLETED', 'FAILED']
-const statusColors = { REPORTED: 'orange', CONFIRMED: 'error', REJECTED: 'default', CANCELLED: 'default', IN_REPAIR: 'processing', COMPLETED: 'success', FAILED: 'error' }
 
 function formatDate(value) {
   return value ? new Intl.DateTimeFormat('en-GB', { dateStyle: 'medium', timeStyle: 'short' }).format(new Date(value)) : '—'
@@ -55,7 +55,7 @@ onMounted(load)
       </header>
       <section class="filter-panel">
         <a-select v-model:value="filters.status" allow-clear placeholder="All statuses" style="width: 210px">
-          <a-select-option v-for="status in statuses" :key="status" :value="status">{{ status.replaceAll('_', ' ') }}</a-select-option>
+          <a-select-option v-for="status in ASSET_ISSUE_STATUSES" :key="status" :value="status">{{ statusLabel(status) }}</a-select-option>
         </a-select>
         <a-input-number v-model:value="filters.assetId" :min="1" placeholder="Asset ID" style="width: 160px" @press-enter="applyFilters" />
         <a-button type="primary" @click="applyFilters">Apply filters</a-button>
@@ -69,7 +69,7 @@ onMounted(load)
           <a-table-column title="Issue" key="issue" :width="110"><template #default="{ record }"><strong>#ISS-{{ String(record.id).padStart(4, '0') }}</strong></template></a-table-column>
           <a-table-column title="Asset" key="asset" :width="220"><template #default="{ record }"><div class="entity-cell"><strong>{{ record.asset?.modelName || `Asset ${record.assetId}` }}</strong><span>{{ record.asset?.serialNumber || `ID ${record.assetId}` }}</span></div></template></a-table-column>
           <a-table-column title="Reported by" key="reporter" :width="170"><template #default="{ record }">{{ record.reporter?.name || 'Unknown user' }}</template></a-table-column>
-          <a-table-column title="Status" key="status" :width="150"><template #default="{ record }"><a-tag :color="statusColors[record.status]">{{ record.status.replaceAll('_', ' ') }}</a-tag></template></a-table-column>
+          <a-table-column title="Status" key="status" :width="150"><template #default="{ record }"><StatusTag :status="record.status" /></template></a-table-column>
           <a-table-column title="Reported" key="createdAt" :width="180"><template #default="{ record }">{{ formatDate(record.createdAt) }}</template></a-table-column>
           <a-table-column title="Handler" key="handler" :width="110"><template #default="{ record }">{{ record.handledBy ? `User #${record.handledBy}` : 'Unassigned' }}</template></a-table-column>
           <a-table-column title="Action" key="action" fixed="right" :width="130"><template #default="{ record }"><a-button type="link" :icon="h(EyeOutlined)" @click="router.push({ name: 'asset-issue-detail', params: { id: record.id } })">View details</a-button></template></a-table-column>

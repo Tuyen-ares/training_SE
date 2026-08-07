@@ -2,12 +2,14 @@
 import { h, onMounted, ref } from "vue";
 import { EyeOutlined } from "@ant-design/icons-vue";
 import { useRouter } from "vue-router";
+import StatusTag from "../../components/common/StatusTag.vue";
 import WorkspaceLayout from "../../components/layout/WorkspaceLayout.vue";
 import {
   listAllBorrowHistory,
   listMyBorrowHistory,
 } from "../../services/borrow.service";
 import { useAuthStore } from "../../stores/auth";
+import { DEFAULT_ASSET_IMAGE } from "../../constants/media";
 const authStore = useAuthStore();
 const router = useRouter();
 const loading = ref(true),
@@ -74,7 +76,7 @@ onMounted(() => load());
           ><a-table-column title="Asset" key="asset"
             ><template #default="{ record }"
               ><div class="asset-cell">
-                <a-avatar shape="square" :size="40" :src="record.asset.imageUrl">{{
+                <a-avatar shape="square" :size="40" :src="record.asset.imageUrl || DEFAULT_ASSET_IMAGE">{{
                   record.asset.model.name.slice(0, 1)
                 }}</a-avatar>
                 <div>
@@ -117,9 +119,7 @@ onMounted(() => load());
             }}</template></a-table-column
           ><a-table-column title="Status" key="status"
             ><template #default
-              ><a-tag :color="activeTab === 'RETURNED' ? 'success' : 'processing'">{{
-                activeTab === "RETURNED" ? "RETURNED" : "ACTIVE"
-              }}</a-tag></template
+              ><StatusTag :status="activeTab === 'RETURNED' ? 'RETURNED' : 'CURRENT'" /></template
             ></a-table-column
           ><a-table-column title="Action" key="action"
             ><template #default="{ record }"

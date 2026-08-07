@@ -13,6 +13,8 @@ import { computed, onMounted, ref } from 'vue'
 import { useRouter } from 'vue-router'
 
 import WorkspaceLayout from '../../components/layout/WorkspaceLayout.vue'
+import StatusTag from '../../components/common/StatusTag.vue'
+import { statusColor } from '../../constants/status-meta'
 import { listAssets } from '../../services/asset.service'
 import { listCurrentBorrowing, listMyBorrowHistory } from '../../services/borrow.service'
 import { useAuthStore } from '../../stores/auth'
@@ -69,11 +71,11 @@ const activityColumns = [
 ]
 
 const assetMetrics = computed(() => [
-  { label: 'Total assets', value: assetSummary.value?.total ?? 0, status: 'default' },
-  { label: 'Available', value: assetSummary.value?.available ?? 0, status: 'success' },
-  { label: 'Reserved', value: assetSummary.value?.reserved ?? 0, status: 'warning' },
-  { label: 'Borrowed', value: assetSummary.value?.borrowed ?? 0, status: 'processing' },
-  { label: 'In repair', value: assetSummary.value?.inRepair ?? 0, status: 'error' },
+  { label: 'Total assets', value: assetSummary.value?.total ?? 0, status: 'TOTAL' },
+  { label: 'Available', value: assetSummary.value?.available ?? 0, status: 'AVAILABLE' },
+  { label: 'Reserved', value: assetSummary.value?.reserved ?? 0, status: 'RESERVED' },
+  { label: 'Borrowed', value: assetSummary.value?.borrowed ?? 0, status: 'BORROWED' },
+  { label: 'In repair', value: assetSummary.value?.inRepair ?? 0, status: 'IN_REPAIR' },
 ])
 
 const workQueues = computed(() => [
@@ -153,14 +155,6 @@ function activityAsset(history) {
     serialNumber: asset?.serialNumber || `Asset #${history.detailId}`,
     name: asset?.model?.name || 'Unknown model',
   }
-}
-
-function activityStatus(history) {
-  return history.returnedAt ? 'Returned' : 'Active'
-}
-
-function activityStatusColor(history) {
-  return history.returnedAt ? 'success' : 'processing'
 }
 
 async function loadAssetSummary() {
@@ -286,7 +280,7 @@ onMounted(() => {
           <a-col v-for="metric in assetMetrics" :key="metric.label" :xs="24" :sm="12" :lg="8" :xl="4">
             <a-card :loading="isLoadingSummary" class="dashboard-page__metric">
               <a-statistic :title="metric.label" :value="metric.value">
-                <template #prefix><a-badge :status="metric.status" /></template>
+                <template #prefix><a-badge :status="statusColor(metric.status)" /></template>
               </a-statistic>
             </a-card>
           </a-col>
@@ -338,7 +332,7 @@ onMounted(() => {
               <a-typography-text v-if="column.key === 'assetId'" strong>{{ activityAsset(record).serialNumber }}</a-typography-text>
               <a-typography-text v-else-if="column.key === 'assetName'">{{ activityAsset(record).name }}</a-typography-text>
               <a-typography-text v-else-if="column.key === 'borrowedOn'">{{ toDate(record.borrowedAt) }}</a-typography-text>
-              <a-tag v-else-if="column.key === 'status'" :color="activityStatusColor(record)">{{ activityStatus(record) }}</a-tag>
+              <StatusTag v-else-if="column.key === 'status'" :status="record.returnedAt ? 'RETURNED' : 'CURRENT'" />
               <a-button v-else-if="column.key === 'action'" size="small" @click="openActivityAsset(record)">Details</a-button>
             </template>
           </a-table>

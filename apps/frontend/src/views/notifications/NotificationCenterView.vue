@@ -10,6 +10,7 @@ import { computed, h, onMounted, reactive, ref } from 'vue'
 import { message } from 'ant-design-vue'
 import { useRouter } from 'vue-router'
 
+import StatusTag from '../../components/common/StatusTag.vue'
 import WorkspaceLayout from '../../components/layout/WorkspaceLayout.vue'
 import {
   listNotifications,
@@ -178,7 +179,7 @@ onMounted(load)
               </div>
               <p>{{ notification.message }}</p>
               <a-space wrap>
-                <a-tag v-if="!notification.isRead" color="orange">Unread</a-tag>
+                <StatusTag v-if="!notification.isRead" status="UNREAD" />
                 <a-button
                   v-if="!notification.isRead"
                   type="link"

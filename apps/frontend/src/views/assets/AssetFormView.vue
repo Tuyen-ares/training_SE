@@ -3,6 +3,7 @@ import { computed, onMounted, reactive, ref } from 'vue'
 import { message } from 'ant-design-vue'
 import { useRoute, useRouter } from 'vue-router'
 
+import StatusTag from '../../components/common/StatusTag.vue'
 import WorkspaceLayout from '../../components/layout/WorkspaceLayout.vue'
 import { createAsset, getAsset, listAssetLookups, updateAsset } from '../../services/asset.service'
 import { useAuthStore } from '../../stores/auth'
@@ -106,7 +107,7 @@ onMounted(load)
           <a-form-item name="departmentId" label="Managing department">
             <a-select v-model:value="form.departmentId" allow-clear show-search option-filter-prop="label" placeholder="Unassigned" :options="lookups.departments.map(item => ({ value: item.id, label: item.name }))" />
           </a-form-item>
-          <div class="initial-status"><span>Initial Status</span><a-tag color="success">AVAILABLE</a-tag><small>New assets are available by default.</small></div>
+          <div class="initial-status"><span>Initial Status</span><StatusTag status="AVAILABLE" /><small>New assets are available by default.</small></div>
           <a-alert type="info" show-icon message="Auto Generate QR Code" description="A unique QR code is generated automatically after you save this asset." />
           <a-space class="form-actions"><a-button @click="router.back()">Cancel</a-button><a-button type="primary" html-type="submit" :loading="saving">{{ isEdit ? 'Save changes' : 'Create asset' }}</a-button></a-space>
         </a-form>

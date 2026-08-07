@@ -8,6 +8,7 @@ import {
   receiveNormalReturn,
 } from "../../services/borrow.service";
 import { useAuthStore } from "../../stores/auth";
+import { DEFAULT_ASSET_IMAGE } from "../../constants/media";
 const authStore = useAuthStore();
 const loading = ref(true),
   errorMessage = ref(""),
@@ -84,7 +85,7 @@ onMounted(load);
           :key="history.id"
           class="return-row"
         >
-          <a-avatar shape="square" :size="56" :src="history.asset.imageUrl">{{
+          <a-avatar shape="square" :size="56" :src="history.asset.imageUrl || DEFAULT_ASSET_IMAGE">{{
             history.asset.model.name.slice(0, 1)
           }}</a-avatar>
           <div>

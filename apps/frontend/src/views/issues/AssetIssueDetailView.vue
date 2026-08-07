@@ -10,7 +10,9 @@ import { computed, h, onMounted, reactive, ref } from 'vue'
 import { message, Modal } from 'ant-design-vue'
 import { useRoute, useRouter } from 'vue-router'
 
+import StatusTag from '../../components/common/StatusTag.vue'
 import WorkspaceLayout from '../../components/layout/WorkspaceLayout.vue'
+import { statusTimelineColor } from '../../constants/status-meta'
 import {
   completeAssetRepair,
   confirmAssetIssue,
@@ -33,7 +35,6 @@ const busy = ref(false)
 const modalOpen = ref(false)
 const workflow = ref('start')
 const form = reactive({ repairProvider: '', startDate: '', endDate: '', cost: null, result: '', note: '' })
-const statusColors = { REPORTED: 'orange', CONFIRMED: 'error', REJECTED: 'default', CANCELLED: 'default', IN_REPAIR: 'processing', COMPLETED: 'success', FAILED: 'error' }
 
 const canReview = computed(() => authStore.hasPermission('repair_log.update'))
 const canStart = computed(() => authStore.hasPermission('repair_log.create'))
@@ -43,11 +44,12 @@ const modalTitle = computed(() => ({ start: 'Start Repair', update: 'Update Repa
 const requiresResult = computed(() => ['update', 'complete', 'fail'].includes(workflow.value))
 const timeline = computed(() => {
   if (!issue.value) return []
-  const items = [{ title: 'Issue reported', date: issue.value.createdAt, description: issue.value.description, color: 'orange' }]
-  if (['CONFIRMED', 'IN_REPAIR', 'COMPLETED', 'FAILED'].includes(issue.value.status)) items.push({ title: 'Issue confirmed', date: issue.value.updatedAt, description: 'The asset issue was verified.', color: 'red' })
-  if (issue.value.startDate && ['IN_REPAIR', 'COMPLETED', 'FAILED'].includes(issue.value.status)) items.push({ title: 'Repair started', date: issue.value.startDate, description: issue.value.repairProvider || 'Repair is in progress.', color: 'blue' })
-  if (['COMPLETED', 'FAILED'].includes(issue.value.status)) items.push({ title: issue.value.status === 'COMPLETED' ? 'Repair completed' : 'Repair failed', date: issue.value.endDate || issue.value.updatedAt, description: issue.value.result || 'Repair lifecycle closed.', color: issue.value.status === 'COMPLETED' ? 'green' : 'red' })
-  if (['REJECTED', 'CANCELLED'].includes(issue.value.status)) items.push({ title: issue.value.status === 'REJECTED' ? 'Issue rejected' : 'Issue cancelled', date: issue.value.updatedAt, description: issue.value.note || 'No further action is required.', color: 'gray' })
+  const timelineItem = (status, item) => ({ ...item, color: statusTimelineColor(status) })
+  const items = [timelineItem('REPORTED', { title: 'Issue reported', date: issue.value.createdAt, description: issue.value.description })]
+  if (['CONFIRMED', 'IN_REPAIR', 'COMPLETED', 'FAILED'].includes(issue.value.status)) items.push(timelineItem('CONFIRMED', { title: 'Issue confirmed', date: issue.value.updatedAt, description: 'The asset issue was verified.' }))
+  if (issue.value.startDate && ['IN_REPAIR', 'COMPLETED', 'FAILED'].includes(issue.value.status)) items.push(timelineItem('IN_REPAIR', { title: 'Repair started', date: issue.value.startDate, description: issue.value.repairProvider || 'Repair is in progress.' }))
+  if (['COMPLETED', 'FAILED'].includes(issue.value.status)) items.push(timelineItem(issue.value.status, { title: issue.value.status === 'COMPLETED' ? 'Repair completed' : 'Repair failed', date: issue.value.endDate || issue.value.updatedAt, description: issue.value.result || 'Repair lifecycle closed.' }))
+  if (['REJECTED', 'CANCELLED'].includes(issue.value.status)) items.push(timelineItem(issue.value.status, { title: issue.value.status === 'REJECTED' ? 'Issue rejected' : 'Issue cancelled', date: issue.value.updatedAt, description: issue.value.note || 'No further action is required.' }))
   return items
 })
 
@@ -142,7 +144,7 @@ onMounted(load)
       </a-result>
       <template v-else-if="issue">
         <header class="detail-header">
-          <div><div class="detail-header__title"><h1>Issue #ISS-{{ String(issue.id).padStart(4, '0') }}</h1><a-tag :color="statusColors[issue.status]">{{ issue.status.replaceAll('_', ' ') }}</a-tag></div><p>{{ issue.asset?.modelName || `Asset ${issue.assetId}` }} · {{ issue.asset?.serialNumber || `Asset ID ${issue.assetId}` }}</p></div>
+          <div><div class="detail-header__title"><h1>Issue #ISS-{{ String(issue.id).padStart(4, '0') }}</h1><StatusTag :status="issue.status" /></div><p>{{ issue.asset?.modelName || `Asset ${issue.assetId}` }} · {{ issue.asset?.serialNumber || `Asset ID ${issue.assetId}` }}</p></div>
           <a-space wrap>
             <a-button v-if="issue.status === 'REPORTED' && canReview" danger :disabled="busy" :icon="h(CloseCircleOutlined)" @click="rejectIssue">Reject</a-button>
             <a-button v-if="issue.status === 'REPORTED' && canReview" type="primary" :loading="busy" :icon="h(CheckCircleOutlined)" @click="confirmIssue">Confirm Issue</a-button>
@@ -159,7 +161,7 @@ onMounted(load)
             <h2>Issue Information</h2>
             <a-descriptions bordered :column="2" size="small">
               <a-descriptions-item label="Asset"><RouterLink :to="{ name: 'asset-detail', params: { id: issue.assetId } }">{{ issue.asset?.modelName || `Asset ${issue.assetId}` }}</RouterLink></a-descriptions-item>
-              <a-descriptions-item label="Asset status"><a-tag>{{ issue.asset?.status || '—' }}</a-tag></a-descriptions-item>
+              <a-descriptions-item label="Asset status"><StatusTag :status="issue.asset?.status" /></a-descriptions-item>
               <a-descriptions-item label="Reported by">{{ issue.reporter?.name || 'Unknown user' }}</a-descriptions-item>
               <a-descriptions-item label="Reported at">{{ formatDate(issue.createdAt) }}</a-descriptions-item>
               <a-descriptions-item label="Description" :span="2">{{ issue.description }}</a-descriptions-item>

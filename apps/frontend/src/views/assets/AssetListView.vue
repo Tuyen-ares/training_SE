@@ -10,7 +10,10 @@ import {
 import { computed, h, onMounted, reactive, ref } from 'vue'
 import { useRouter } from 'vue-router'
 
+import StatusTag from '../../components/common/StatusTag.vue'
 import WorkspaceLayout from '../../components/layout/WorkspaceLayout.vue'
+import { ASSET_STATUSES, statusLabel } from '../../constants/status-meta'
+import { DEFAULT_ASSET_IMAGE } from '../../constants/media'
 import { findAssetByQr, listAssets, listAssetLookups } from '../../services/asset.service'
 import { useAuthStore } from '../../stores/auth'
 
@@ -32,8 +35,6 @@ const loading = ref(true)
 const errorMessage = ref('')
 const forbidden = ref(false)
 const lookups = ref({ brands: [], types: [], models: [], departments: [] })
-const statuses = ['AVAILABLE', 'RESERVED', 'BORROWED', 'DAMAGED', 'IN_REPAIR', 'RETIRED']
-
 const canCreateAsset = computed(() => authStore.hasPermission('asset.create'))
 const canUpdateAsset = computed(() => authStore.hasPermission('asset.update'))
 const columns = [
@@ -46,33 +47,11 @@ const columns = [
   { title: 'Action', key: 'actions', width: 120 },
 ]
 
-const statusOptions = computed(() => statuses.map((value) => ({ value, label: statusLabel(value) })))
+const statusOptions = computed(() => ASSET_STATUSES.map((value) => ({ value, label: statusLabel(value) })))
 const modelOptions = computed(() => lookups.value.models.map((item) => ({ value: item.id, label: item.name })))
 const typeOptions = computed(() => lookups.value.types.map((item) => ({ value: item.id, label: item.name })))
 const brandOptions = computed(() => lookups.value.brands.map((item) => ({ value: item.id, label: item.name })))
 const departmentOptions = computed(() => lookups.value.departments.map((item) => ({ value: item.id, label: item.name })))
-
-function statusColor(status) {
-  return {
-    AVAILABLE: 'success',
-    RESERVED: 'processing',
-    BORROWED: 'blue',
-    DAMAGED: 'error',
-    IN_REPAIR: 'warning',
-    RETIRED: 'default',
-  }[status]
-}
-
-function statusLabel(status) {
-  return {
-    AVAILABLE: 'Available',
-    RESERVED: 'Reserved',
-    BORROWED: 'Borrowed',
-    DAMAGED: 'Damaged',
-    IN_REPAIR: 'In repair',
-    RETIRED: 'Retired',
-  }[status] || status
-}
 
 function filterPayload() {
   return {
@@ -200,7 +179,7 @@ onMounted(() => {
             <template #bodyCell="{ column, record }">
               <template v-if="column.key === 'asset'">
                 <div class="asset-page__asset-cell">
-                  <a-avatar shape="square" :size="42" :src="record.imageUrl">{{ record.model.name.slice(0, 1) }}</a-avatar>
+                  <a-avatar shape="square" :size="42" :src="record.imageUrl || DEFAULT_ASSET_IMAGE">{{ record.model.name.slice(0, 1) }}</a-avatar>
                   <div>
                     <a-typography-text strong>{{ record.model.name }}</a-typography-text>
                     <br><a-typography-text type="secondary">AST-{{ String(record.id).padStart(4, '0') }}</a-typography-text>
@@ -211,7 +190,7 @@ onMounted(() => {
               <a-typography-text v-else-if="column.key === 'department'">{{ record.department?.name || 'Unassigned' }}</a-typography-text>
               <a-typography-text v-else-if="column.key === 'serial'">{{ record.serialNumber || '—' }}</a-typography-text>
               <a-tooltip v-else-if="column.key === 'qr'" :title="record.qrCode"><QrcodeOutlined class="asset-page__qr-icon" /></a-tooltip>
-              <a-tag v-else-if="column.key === 'status'" :color="statusColor(record.status)">{{ statusLabel(record.status) }}</a-tag>
+              <StatusTag v-else-if="column.key === 'status'" :status="record.status" />
               <a-space v-else-if="column.key === 'actions'" :size="2">
                 <a-tooltip title="View details"><a-button type="text" :icon="h(EyeOutlined)" @click="openAsset(record)" /></a-tooltip>
                 <a-tooltip v-if="canUpdateAsset" title="Edit asset"><a-button type="text" :icon="h(EditOutlined)" @click="router.push({ name: 'asset-edit', params: { id: record.id } })" /></a-tooltip>

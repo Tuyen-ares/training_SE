@@ -4,6 +4,7 @@ import { DeleteOutlined, EditOutlined, MailOutlined, PhoneOutlined } from '@ant-
 import { useRoute, useRouter } from 'vue-router'
 
 import WorkspaceLayout from '../../components/layout/WorkspaceLayout.vue'
+import StatusTag from '../../components/common/StatusTag.vue'
 import { useAuthStore } from '../../stores/auth'
 
 const authStore = useAuthStore()
@@ -71,10 +72,10 @@ onMounted(loadUser)
           <aside class="profile-card">
             <a-avatar :size="92" :src="user.avatarUrl">{{ initials }}</a-avatar>
             <h2>{{ user.name }}</h2><p>ID: EMP-{{ String(user.id).padStart(4, '0') }}</p>
-            <a-tag :color="user.isActive ? 'green' : 'default'">{{ user.isActive ? 'Active' : 'Inactive' }}</a-tag>
+            <StatusTag :status="user.isActive ? 'ACTIVE' : 'INACTIVE'" />
             <a-divider />
             <dl>
-              <dt>Organization</dt><dd>{{ user.department?.name || 'Unassigned' }}</dd>
+              <dt>Department</dt><dd>{{ user.department?.name || 'Unassigned' }}</dd>
               <dt>Contact</dt><dd><MailOutlined /> {{ user.email }}</dd><dd><PhoneOutlined /> {{ user.phone }}</dd>
             </dl>
           </aside>
@@ -95,7 +96,7 @@ onMounted(loadUser)
                 <a-descriptions-item label="Department">{{ user.department?.name || 'Unassigned' }}</a-descriptions-item>
                 <a-descriptions-item label="Email">{{ user.email }}</a-descriptions-item>
                 <a-descriptions-item label="Phone number">{{ user.phone }}</a-descriptions-item>
-                <a-descriptions-item label="Account status" :span="2"><a-badge :status="user.isActive ? 'success' : 'default'" :text="user.isActive ? 'Active' : 'Inactive'" /></a-descriptions-item>
+                <a-descriptions-item label="Account status" :span="2"><StatusTag :status="user.isActive ? 'ACTIVE' : 'INACTIVE'" /></a-descriptions-item>
               </a-descriptions>
             </div>
           </section>

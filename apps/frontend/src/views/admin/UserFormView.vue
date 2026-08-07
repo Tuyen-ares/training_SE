@@ -4,6 +4,7 @@ import { EyeInvisibleOutlined, EyeOutlined, SaveOutlined } from '@ant-design/ico
 import { useRoute, useRouter } from 'vue-router'
 
 import WorkspaceLayout from '../../components/layout/WorkspaceLayout.vue'
+import StatusTag from '../../components/common/StatusTag.vue'
 import { useAuthStore } from '../../stores/auth'
 
 const authStore = useAuthStore()
@@ -64,7 +65,7 @@ async function submit() {
       ...(authStore.hasPermission('role.assign') && form.roleIds.length ? { roleIds: [...form.roleIds] } : {}),
     }
     const saved = await authStore.api(isEdit.value ? `/users/${route.params.id}` : '/users', {
-      method: isEdit.value ? 'PATCH' : 'POST', body: JSON.stringify(payload),
+      method: isEdit.value ? 'PATCH' : 'POST', body: payload,
     })
     router.push({ name: 'user-detail', params: { id: saved.id } })
   } catch (error) {
@@ -114,7 +115,7 @@ onMounted(loadPage)
             </button>
           </div>
           <a-alert v-else type="info" message="The default employee role will be assigned." />
-          <template v-if="isEdit"><a-divider /><h2>Account Status</h2><a-badge :status="form.isActive ? 'success' : 'default'" :text="form.isActive ? 'Active' : 'Inactive'" /><p class="helper">Account status is changed from User Details.</p></template>
+          <template v-if="isEdit"><a-divider /><h2>Account Status</h2><StatusTag :status="form.isActive ? 'ACTIVE' : 'INACTIVE'" /><p class="helper">Account status is changed from User Details.</p></template>
         </aside>
 
         <footer><a-button @click="router.back()">Cancel</a-button><a-button type="primary" html-type="submit" class="primary-action" :loading="submitting"><template #icon><SaveOutlined /></template>{{ isEdit ? 'Save Changes' : 'Save User' }}</a-button></footer>

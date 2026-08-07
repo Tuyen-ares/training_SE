@@ -4,6 +4,7 @@ import { PlusOutlined, SearchOutlined } from '@ant-design/icons-vue'
 import { useRouter } from 'vue-router'
 
 import WorkspaceLayout from '../../components/layout/WorkspaceLayout.vue'
+import StatusTag from '../../components/common/StatusTag.vue'
 import { useAuthStore } from '../../stores/auth'
 
 const authStore = useAuthStore()
@@ -152,7 +153,7 @@ onMounted(loadPage)
             </template>
           </a-table-column>
           <a-table-column title="Status" key="status" :width="110">
-            <template #default="{ record }"><a-badge :status="record.isActive ? 'success' : 'default'" :text="record.isActive ? 'Active' : 'Inactive'" /></template>
+            <template #default="{ record }"><StatusTag :status="record.isActive ? 'ACTIVE' : 'INACTIVE'" /></template>
           </a-table-column>
           <a-table-column title="Actions" key="actions" align="right" :width="160">
             <template #default="{ record }">

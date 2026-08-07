@@ -3,6 +3,7 @@ import { computed, onMounted, reactive, ref } from 'vue'
 import { AppstoreOutlined, ArrowLeftOutlined, CheckOutlined, CloseOutlined, SwapOutlined } from '@ant-design/icons-vue'
 import { message, Modal } from 'ant-design-vue'
 import { useRoute, useRouter } from 'vue-router'
+import StatusTag from '../../components/common/StatusTag.vue'
 import WorkspaceLayout from '../../components/layout/WorkspaceLayout.vue'
 import {
   approveAllBorrowDetails,
@@ -12,6 +13,7 @@ import {
   rejectBorrowDetail,
 } from '../../services/borrow.service'
 import { useAuthStore } from '../../stores/auth'
+import { DEFAULT_ASSET_IMAGE } from '../../constants/media'
 
 const route = useRoute()
 const router = useRouter()
@@ -31,9 +33,6 @@ const canHandover = computed(() => authStore.hasPermission('asset.checkout'))
 const requestDetails = computed(() => request.value?.details || [])
 const pendingCount = computed(() => requestDetails.value.filter((detail) => detail.approvalStatus === 'PENDING').length)
 const requestInitial = computed(() => request.value?.requester?.name?.slice(0, 1)?.toUpperCase() || 'U')
-const statusLabel = computed(() => request.value?.status?.replaceAll('_', ' ') || 'PENDING')
-const statusColor = computed(() => ({ APPROVED: 'success', REJECTED: 'error', COMPLETED: 'success', PARTIALLY_APPROVED: 'processing' }[request.value?.status] || 'orange'))
-const colors = { PENDING: 'orange', APPROVED: 'success', REJECTED: 'error' }
 const formatDateTime = (value) => new Intl.DateTimeFormat('en-GB', { dateStyle: 'medium', timeStyle: 'short' }).format(new Date(value))
 const formatDate = (value) => value ? new Intl.DateTimeFormat('en-GB', { dateStyle: 'medium' }).format(new Date(`${value}T00:00:00`)) : '—'
 const expectedBorrowPeriod = computed(() => {
@@ -171,7 +170,7 @@ onMounted(() => { if (!request.value) load() })
             <p class="eyebrow">REQUEST REVIEW</p>
             <div class="title-line">
               <h1>Borrow Request <span>#REQ-{{ String(request.id).padStart(4, '0') }}</span></h1>
-              <a-tag class="request-status" :color="statusColor">{{ statusLabel }}</a-tag>
+              <StatusTag class="request-status" :status="request.status" />
             </div>
             <p class="created-meta">Created {{ formatDateTime(request.createdAt) }}</p>
           </div>
@@ -206,7 +205,7 @@ onMounted(() => { if (!request.value) load() })
               <div v-else class="asset-list">
                 <article v-for="detail in requestDetails" :key="detail.id" class="asset-row">
               <div class="asset-identity">
-                <a-avatar shape="square" :size="48" :src="detail.asset.imageUrl" class="asset-avatar">{{ detail.asset.model?.name?.slice(0, 1) || 'A' }}</a-avatar>
+                <a-avatar shape="square" :size="48" :src="detail.asset.imageUrl || DEFAULT_ASSET_IMAGE" class="asset-avatar">{{ detail.asset.model?.name?.slice(0, 1) || 'A' }}</a-avatar>
                 <div>
                   <strong>{{ detail.asset.model?.name || 'Asset' }}</strong>
                   <span>{{ detail.asset.serialNumber || 'No serial number' }}</span>
@@ -216,11 +215,11 @@ onMounted(() => { if (!request.value) load() })
               <div class="asset-field category-field"><span>{{ detail.asset.assetType?.name || detail.asset.model?.assetType?.name || 'Equipment' }}</span></div>
               <div class="asset-field">
                 <span class="muted-label">STOCK STATUS</span>
-                <a-tag class="status-tag" :color="detail.asset.status === 'AVAILABLE' ? 'success' : detail.asset.status === 'RESERVED' ? 'processing' : 'default'">{{ detail.asset.status }}</a-tag>
+                <StatusTag class="status-tag" :status="detail.asset.status" />
               </div>
               <div class="asset-field">
                 <span class="muted-label">APPROVAL</span>
-                <a-tag class="status-tag" :color="colors[detail.approvalStatus]">{{ detail.approvalStatus }}</a-tag>
+                <StatusTag class="status-tag" :status="detail.approvalStatus" />
                 <small v-if="detail.rejectionReason" class="rejection-reason">{{ detail.rejectionReason }}</small>
               </div>
               <div class="asset-actions">
@@ -260,7 +259,7 @@ onMounted(() => { if (!request.value) load() })
             <section class="summary-card decision-card">
               <div class="section-heading"><span class="section-kicker">APPROVAL DECISION</span></div>
               <a-button v-if="canApprove && pendingCount" class="approve-all-button" block type="primary" :loading="busyAll" @click="confirmApproveAll"><template #icon><CheckOutlined /></template>Approve All</a-button>
-              <div class="decision-status">Status: <strong>{{ statusLabel }}</strong></div>
+              <div class="decision-status">Status: <StatusTag :status="request.status" /></div>
               <a-alert v-if="bulkResult?.skipped.length" class="bulk-result" type="warning" show-icon :message="`${bulkResult.approved.length} approved; ${bulkResult.skipped.length} remained pending.`" />
             </section>
           </aside>
