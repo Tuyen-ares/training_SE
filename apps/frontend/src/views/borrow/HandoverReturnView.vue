@@ -1,11 +1,12 @@
 <script setup>
 import { computed, h, onMounted, ref } from "vue";
-import { CheckCircleOutlined } from "@ant-design/icons-vue";
+import { CheckCircleOutlined, WarningOutlined } from "@ant-design/icons-vue";
 import { Modal, message } from "ant-design-vue";
 import WorkspaceLayout from "../../components/layout/WorkspaceLayout.vue";
 import {
   listAllBorrowHistory,
   receiveNormalReturn,
+  receiveDamagedReturn,
 } from "../../services/borrow.service";
 import { useAuthStore } from "../../stores/auth";
 import { DEFAULT_ASSET_IMAGE } from "../../constants/media";
@@ -14,6 +15,9 @@ const loading = ref(true),
   errorMessage = ref(""),
   histories = ref([]),
   busy = ref(null);
+const damagedOpen = ref(false);
+const damagedHistory = ref(null);
+const damagedDescription = ref("");
 const activeReturns = computed(() =>
   histories.value.filter((item) => !item.returnedAt),
 );
@@ -52,6 +56,31 @@ function confirmReturn(history) {
       }
     },
   });
+}
+function openDamagedReturn(history) {
+  damagedHistory.value = history;
+  damagedDescription.value = "";
+  damagedOpen.value = true;
+}
+async function confirmDamagedReturn() {
+  const description = damagedDescription.value.trim();
+  if (!description) {
+    message.warning("Describe the damage before confirming the return.");
+    return;
+  }
+  const history = damagedHistory.value;
+  if (!history) return;
+  busy.value = history.id;
+  try {
+    const result = await receiveDamagedReturn(authStore.api, history.id, description);
+    damagedOpen.value = false;
+    message.success(`Damaged return recorded. Issue #${result.issueId} created.`);
+    await load();
+  } catch (e) {
+    message.error(e.message || "Damaged return could not be recorded.");
+  } finally {
+    busy.value = null;
+  }
 }
 onMounted(load);
 </script>
@@ -102,15 +131,45 @@ onMounted(load);
             <dt>Expected Return</dt>
             <dd>{{ history.expectedReturnDate }}</dd>
           </dl>
-          <a-button
-            type="primary"
-            :loading="busy === history.id"
-            :icon="h(CheckCircleOutlined)"
-            @click="confirmReturn(history)"
-            >Confirm Normal Return</a-button
-          >
+          <div class="return-actions">
+            <a-button
+              type="primary"
+              :loading="busy === history.id"
+              :icon="h(CheckCircleOutlined)"
+              @click="confirmReturn(history)"
+              >Confirm Normal Return</a-button
+            >
+            <a-button
+              danger
+              :disabled="busy === history.id"
+              :icon="h(WarningOutlined)"
+              @click="openDamagedReturn(history)"
+              >Confirm Damaged Return</a-button
+            >
+          </div>
         </article>
       </section>
+      <a-modal
+        v-model:open="damagedOpen"
+        title="Confirm damaged return"
+        ok-text="Confirm Damaged Return"
+        cancel-text="Cancel"
+        :confirm-loading="busy === damagedHistory?.id"
+        @ok="confirmDamagedReturn"
+      >
+        <p>
+          The asset will be marked DAMAGED and a confirmed issue will be created.
+        </p>
+        <a-form-item label="Damage description" required>
+          <a-textarea
+            v-model:value="damagedDescription"
+            :maxlength="2000"
+            :rows="4"
+            show-count
+            placeholder="Describe the damage found during return inspection."
+          />
+        </a-form-item>
+      </a-modal>
     </main></WorkspaceLayout
   >
 </template>
@@ -172,6 +231,11 @@ onMounted(load);
 .return-row dd {
   margin: 0;
   grid-row: 2;
+}
+.return-actions {
+  display: grid;
+  gap: 8px;
+  min-width: 210px;
 }
 @media (max-width: 900px) {
   .return-row {

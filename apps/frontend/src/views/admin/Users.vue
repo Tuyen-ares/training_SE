@@ -27,7 +27,7 @@ const canDeactivate = computed(() => authStore.hasPermission('user.delete'))
 const filteredUsers = computed(() => {
   const query = searchQuery.value.trim().toLowerCase()
   return users.value.filter((user) => {
-    const matchesQuery = !query || [user.name, user.email, user.phone]
+    const matchesQuery = !query || [user.userCode, user.name, user.email, user.phone]
       .some((value) => value?.toLowerCase().includes(query))
     const matchesDepartment = departmentFilter.value === 'all'
       || user.departmentId === Number(departmentFilter.value)
@@ -73,8 +73,10 @@ async function changeStatus(user) {
   if (!confirmed) return
 
   try {
-    if (user.isActive) await authStore.api(`/users/${user.id}`, { method: 'DELETE' })
-    else await authStore.api(`/users/${user.id}/activate`, { method: 'PATCH' })
+    await authStore.api(`/users/${user.id}/status`, {
+      method: 'PATCH',
+      body: { isActive: !user.isActive },
+    })
     await loadPage()
   } catch {
     errorMessage.value = `We could not ${action} this account. Please try again.`
@@ -92,7 +94,7 @@ onMounted(loadPage)
 
     <main class="user-list-page">
       <section class="user-toolbar" aria-label="User filters">
-        <a-input v-model:value="searchQuery" class="user-search" placeholder="Search name, email, phone..." allow-clear>
+        <a-input v-model:value="searchQuery" class="user-search" placeholder="Search user code, name, email..." allow-clear>
           <template #prefix><SearchOutlined /></template>
         </a-input>
         <a-select v-model:value="departmentFilter" class="toolbar-select">
@@ -134,7 +136,7 @@ onMounted(loadPage)
             <template #default="{ record }">
               <button class="identity-link" type="button" @click="router.push({ name: 'user-detail', params: { id: record.id } })">
                 <a-avatar :size="36" :src="record.avatarUrl">{{ initials(record.name) }}</a-avatar>
-                <span><strong>{{ record.name }}</strong><small>ID: EMP-{{ String(record.id).padStart(4, '0') }}</small></span>
+                <span><strong>{{ record.name }}</strong><small>{{ record.userCode || 'User code unavailable' }}</small></span>
               </button>
             </template>
           </a-table-column>

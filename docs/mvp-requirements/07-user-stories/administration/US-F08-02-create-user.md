@@ -8,11 +8,12 @@ tôi muốn **tạo tài khoản nội bộ**,
 
 ## Acceptance Criteria
 
-- AC-US-F08-02-01: Given dữ liệu bắt buộc và department hợp lệ, when tạo, then hệ thống tạo user active; avatar_url là tùy chọn.
+- AC-US-F08-02-01: Given dữ liệu bắt buộc và department hợp lệ, when tạo, then hệ thống tạo user active và tự cấp user code duy nhất theo format `BI[YY][Sequence]`; avatar_url là tùy chọn.
 - AC-US-F08-02-02: Given email hoặc phone đã tồn tại, then hệ thống từ chối.
 - AC-US-F08-02-03: Given department không tồn tại, then hệ thống từ chối.
 - AC-US-F08-02-04: Then mật khẩu không được trả lại trong kết quả.
 - AC-US-F08-02-05: Given thiếu permission, then không tạo user.
+- AC-US-F08-02-06: User code không do client nhập, không đổi khi cập nhật hoặc activate/deactivate, và không được tái sử dụng.
 
 ## Business Rules áp dụng
 

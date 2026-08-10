@@ -14,7 +14,8 @@ does not create an authorization scope.
 - List/history order: newest first. Review Queue: oldest first.
 - `expectedReturnDate` is date-only `YYYY-MM-DD`, interpreted in
   `Asia/Ho_Chi_Minh`, and must be today or later.
-- Request-level `note` and `rejectionReason` allow at most 2,000 characters.
+- Request-level `note` (Borrowing Purpose) is required after trimming and allows
+  1–2,000 characters. `rejectionReason` allows at most 2,000 characters.
 - Expected errors: `400` invalid input, `401` unauthenticated, `403` missing
   permission, `404` missing/hidden own resource, `409` state/concurrency conflict.
 
@@ -34,10 +35,10 @@ does not create an authorization scope.
 }
 ```
 
-Returns `201` with the created request and `PENDING` details. Selected assets
-must exist and be `AVAILABLE`, duplicates are rejected, and asset status stays
-`AVAILABLE` until approval. Multiple pending requests may reference the same
-available asset.
+Returns `201` with the created request and `PENDING` details. Borrowing Purpose
+must be present after trimming. Selected assets must exist and be `AVAILABLE`,
+duplicates are rejected, and asset status stays `AVAILABLE` until approval.
+Multiple pending requests may reference the same available asset.
 
 ### Read own requests
 
@@ -84,6 +85,22 @@ a non-pending detail returns `409`.
   and changes asset `BORROWED → AVAILABLE`. The client cannot submit a return
   condition for a normal return. Returns
   `{ "data": { "historyId": number, "returned": true } }`.
+- `POST /api/borrow-histories/:historyId/return-damaged` — `asset.checkin`;
+  body `{ "description": "..." }`. The description is required after
+  trimming and is limited to 2,000 characters. Atomically records
+  `received_by`, `return_date`, `returnCondition=DAMAGED`, changes the asset
+  `BORROWED → DAMAGED`, and creates a `CONFIRMED` asset issue. Returns:
+
+  ```json
+  {
+    "data": {
+      "historyId": 25,
+      "returned": true,
+      "returnCondition": "DAMAGED",
+      "issueId": 17
+    }
+  }
+  ```
 - `GET /api/borrow-histories/me?page=&pageSize=` —
   `borrow_history.view_own`; the current user's history.
 - `GET /api/borrow-histories?page=&pageSize=` —
@@ -92,7 +109,8 @@ a non-pending detail returns `409`.
 History responses use camelCase and include asset, borrower, expected return
 date, handover actor/time and return actor/time/condition. When all approved
 details have been returned and no detail remains pending, the request becomes
-`COMPLETED`. Damaged return is outside this contract.
+`COMPLETED`. Damaged Return is the F05/F06 integration point and its history,
+asset, issue and notifications are committed as one business transaction.
 
 ## Shared response shapes
 
@@ -119,12 +137,11 @@ type BorrowHistory = {
   borrowedAt: string
   receivedBy: { id: number; name: string } | null
   returnedAt: string | null
-  returnCondition: 'NORMAL' | null
+  returnCondition: 'NORMAL' | 'DAMAGED' | null
 }
 ```
 
 ## Explicit exclusions
 
-- Damaged return and automatic Asset Issue creation.
 - Department-scoped visibility.
-- Notification and frontend implementation.
+- Evidence/media, accessory checklist, signature and repair handback workflows.

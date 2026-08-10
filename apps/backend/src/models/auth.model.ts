@@ -13,6 +13,7 @@ export interface LoginInputDto {
 
 export interface AuthenticatedUserDto {
   id: number;
+  userCode: string;
   name: string;
   avatarUrl: string | null;
   email: string;

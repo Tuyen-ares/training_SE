@@ -189,7 +189,7 @@ onMounted(() => { if (!request.value) load() })
                 <div class="requester-fields">
                   <div class="requester-field"><span class="muted-label">FULL NAME</span><strong>{{ request.requester?.name || 'Unknown requester' }}</strong></div>
                   <div class="requester-field"><span class="muted-label">DEPARTMENT</span><strong>{{ request.requester?.department?.name || request.requester?.departmentName || 'Not provided' }}</strong></div>
-                  <div class="requester-field"><span class="muted-label">EMPLOYEE ID</span><strong>{{ request.requester?.employeeId || 'Not provided' }}</strong></div>
+                  <div class="requester-field"><span class="muted-label">EMPLOYEE ID</span><strong>{{ request.requester?.userCode || 'Not provided' }}</strong></div>
                   <div class="requester-field"><span class="muted-label">EXPECTED BORROW PERIOD</span><strong>{{ expectedBorrowPeriod }}</strong></div>
                 </div>
               </div>

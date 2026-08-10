@@ -10,7 +10,7 @@ File này là bản đồ ownership chuẩn của hệ thống. Luật phụ thu
 | RBAC | `roles`, `permissions`, `role_permissions`, `user_roles` | Users để xác nhận user |
 | Asset | `assets`, `asset_models`, `asset_types`, `brands` | Không |
 | Borrow | `borrow_requests`, `borrow_request_details`, `borrow_histories` | Users, Asset |
-| Repair | `repair_logs` | Users, Asset |
+| Asset Issues & Repair | `asset_issues` | Users, Asset |
 | Notification (target) | `notifications`; sau này có thể thêm `notification_deliveries` | Domain events từ các module nghiệp vụ; Users public query để lấy người nhận/email |
 
 ## Quy tắc ownership

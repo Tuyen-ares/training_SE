@@ -13,7 +13,7 @@ test('Borrow lifecycle APIs create, approve, hand over, return and cancel safely
   assert.ok(department, 'A department seed is required');
 
   const suffix = `${Date.now()}`.slice(-7);
-  const created = { assets: [] as number[], users: [] as number[], requests: [] as number[], details: [] as number[], histories: [] as number[], models: [] as number[], brands: [] as number[], types: [] as number[] };
+  const created = { assets: [] as number[], users: [] as number[], requests: [] as number[], details: [] as number[], histories: [] as number[], issueIds: [] as number[], models: [] as number[], brands: [] as number[], types: [] as number[] };
   const server: Server = app.listen(0);
   const address = server.address();
   assert.ok(address && typeof address === 'object');
@@ -34,9 +34,11 @@ test('Borrow lifecycle APIs create, approve, hand over, return and cancel safely
         OR: [
           { recipient_user_id: { in: created.users } },
           { related_entity_type: 'BORROW_REQUEST', related_entity_id: { in: created.requests } },
+          { related_entity_type: 'ASSET_ISSUE', related_entity_id: { in: created.issueIds } },
         ],
       },
     });
+    await prisma.asset_issues.deleteMany({ where: { id: { in: created.issueIds } } });
     await prisma.borrow_histories.deleteMany({ where: { id: { in: created.histories } } });
     await prisma.borrow_request_details.deleteMany({ where: { id: { in: created.details } } });
     await prisma.borrow_requests.deleteMany({ where: { id: { in: created.requests } } });
@@ -64,9 +66,10 @@ test('Borrow lifecycle APIs create, approve, hand over, return and cancel safely
   const cancelAsset = await createAsset(`BOR-CANCEL-${suffix}`);
   const bulkAvailableAsset = await createAsset(`BOR-BULK-OK-${suffix}`);
   const bulkConflictAsset = await createAsset(`BOR-BULK-CONFLICT-${suffix}`);
+  const damagedReturnAsset = await createAsset(`BOR-DAMAGED-RETURN-${suffix}`);
 
   const createUser = async (name: string, sequence: number) => {
-    const user = await prisma.users.create({ data: { department_id: department.id, name, email: `borrow.${sequence}.${suffix}@test.local`, phone: `${String(700 + sequence).padStart(3, '0')}${suffix}`, password: 'not-used-by-token-test' } });
+    const user = await prisma.users.create({ data: { user_code: `BI26${suffix}${sequence}`, department_id: department.id, name, email: `borrow.${sequence}.${suffix}@test.local`, phone: `${String(700 + sequence).padStart(3, '0')}${suffix}`, password: 'not-used-by-token-test' } });
     created.users.push(user.id);
     return user;
   };
@@ -79,21 +82,31 @@ test('Borrow lifecycle APIs create, approve, hand over, return and cancel safely
 
   const invalidDate = await request('/borrow-requests', borrowerToken, {
     method: 'POST',
-    body: JSON.stringify({ items: [{ assetId: lifecycleAsset.id, expectedReturnDate: '2099-01-01T00:00:00.000Z' }] }),
+    body: JSON.stringify({ note: 'Invalid date validation', items: [{ assetId: lifecycleAsset.id, expectedReturnDate: '2099-01-01T00:00:00.000Z' }] }),
   });
   assert.equal(invalidDate.status, 400);
 
   const duplicateAsset = await request('/borrow-requests', borrowerToken, {
     method: 'POST',
-    body: JSON.stringify({ items: [
+    body: JSON.stringify({ note: 'Duplicate asset validation', items: [
       { assetId: lifecycleAsset.id, expectedReturnDate: '2099-01-01' },
       { assetId: lifecycleAsset.id, expectedReturnDate: '2099-01-02' },
     ] }),
   });
   assert.equal(duplicateAsset.status, 409);
-  assert.equal((await request('/borrow-requests', noPermissionToken, {
+  const missingPurpose = await request('/borrow-requests', borrowerToken, {
     method: 'POST',
     body: JSON.stringify({ items: [{ assetId: lifecycleAsset.id, expectedReturnDate: '2099-01-01' }] }),
+  });
+  assert.equal(missingPurpose.status, 400);
+  const blankPurpose = await request('/borrow-requests', borrowerToken, {
+    method: 'POST',
+    body: JSON.stringify({ note: '   ', items: [{ assetId: lifecycleAsset.id, expectedReturnDate: '2099-01-01' }] }),
+  });
+  assert.equal(blankPurpose.status, 400);
+  assert.equal((await request('/borrow-requests', noPermissionToken, {
+    method: 'POST',
+    body: JSON.stringify({ note: 'Permission validation', items: [{ assetId: lifecycleAsset.id, expectedReturnDate: '2099-01-01' }] }),
   })).status, 403);
 
   const createLifecycle = await request('/borrow-requests', borrowerToken, {
@@ -187,6 +200,48 @@ test('Borrow lifecycle APIs create, approve, hand over, return and cancel safely
   assert.ok(Array.isArray(allHistory.body.data.items));
   assert.equal((await request('/borrow-histories', borrowerToken)).status, 403);
   assert.equal((await request(`/borrow-histories/${historyId}/return`, reviewerToken, { method: 'POST' })).status, 409);
+
+  const damagedRequest = await request('/borrow-requests', borrowerToken, {
+    method: 'POST',
+    body: JSON.stringify({ note: 'Damaged return integration test', items: [{ assetId: damagedReturnAsset.id, expectedReturnDate: '2099-03-01' }] }),
+  });
+  assert.equal(damagedRequest.status, 201, JSON.stringify(damagedRequest.body));
+  const damagedRequestId = damagedRequest.body.data.id as number;
+  const damagedDetailId = damagedRequest.body.data.details[0].id as number;
+  created.requests.push(damagedRequestId);
+  created.details.push(damagedDetailId);
+  assert.equal((await request(`/borrow-request-details/${damagedDetailId}/approve`, reviewerToken, { method: 'POST' })).status, 200);
+  const damagedHandover = await request(`/borrow-request-details/${damagedDetailId}/handover`, reviewerToken, { method: 'POST' });
+  assert.equal(damagedHandover.status, 200, JSON.stringify(damagedHandover.body));
+  const damagedHistoryId = damagedHandover.body.data.historyId as number;
+  created.histories.push(damagedHistoryId);
+  const missingDescription = await request(`/borrow-histories/${damagedHistoryId}/return-damaged`, reviewerToken, {
+    method: 'POST',
+    body: JSON.stringify({ description: '   ' }),
+  });
+  assert.equal(missingDescription.status, 400);
+  const damagedReturn = await request(`/borrow-histories/${damagedHistoryId}/return-damaged`, reviewerToken, {
+    method: 'POST',
+    body: JSON.stringify({ description: 'Screen has a visible horizontal line.' }),
+  });
+  assert.equal(damagedReturn.status, 200, JSON.stringify(damagedReturn.body));
+  const damagedIssueId = damagedReturn.body.data.issueId as number;
+  assert.equal(typeof damagedIssueId, 'number');
+  assert.deepEqual(Object.keys(damagedReturn.body.data).sort(), ['historyId', 'issueId', 'returnCondition', 'returned'].sort());
+  assert.equal(damagedReturn.body.data.historyId, damagedHistoryId);
+  assert.equal(damagedReturn.body.data.returned, true);
+  assert.equal(damagedReturn.body.data.returnCondition, 'DAMAGED');
+  created.issueIds.push(damagedIssueId);
+  assert.equal((await prisma.borrow_histories.findUniqueOrThrow({ where: { id: damagedHistoryId } })).return_condition, 'DAMAGED');
+  assert.equal((await prisma.assets.findUniqueOrThrow({ where: { id: damagedReturnAsset.id } })).status, 'damaged');
+  const damagedIssue = await prisma.asset_issues.findUniqueOrThrow({ where: { id: damagedIssueId } });
+  assert.equal(damagedIssue.status, 'CONFIRMED');
+  assert.equal(damagedIssue.reported_by, operator.id);
+  assert.equal(damagedIssue.handled_by, operator.id);
+  assert.equal((await request(`/borrow-histories/${damagedHistoryId}/return-damaged`, reviewerToken, {
+    method: 'POST',
+    body: JSON.stringify({ description: 'Duplicate return attempt.' }),
+  })).status, 409);
 
   const rejectRequest = await request('/borrow-requests', borrowerToken, {
     method: 'POST',

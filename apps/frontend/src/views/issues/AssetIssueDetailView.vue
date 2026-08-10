@@ -36,10 +36,10 @@ const modalOpen = ref(false)
 const workflow = ref('start')
 const form = reactive({ repairProvider: '', startDate: '', endDate: '', cost: null, result: '', note: '' })
 
-const canReview = computed(() => authStore.hasPermission('repair_log.update'))
-const canStart = computed(() => authStore.hasPermission('repair_log.create'))
-const canUpdate = computed(() => authStore.hasPermission('repair_log.update'))
-const canClose = computed(() => authStore.hasPermission('repair_log.close'))
+const canReview = computed(() => authStore.hasPermission('asset_issue.update'))
+const canStart = computed(() => authStore.hasPermission('asset_issue.create'))
+const canUpdate = computed(() => authStore.hasPermission('asset_issue.update'))
+const canClose = computed(() => authStore.hasPermission('asset_issue.close'))
 const modalTitle = computed(() => ({ start: 'Start Repair', update: 'Update Repair', complete: 'Complete Repair', fail: 'Mark Repair as Failed' })[workflow.value])
 const requiresResult = computed(() => ['update', 'complete', 'fail'].includes(workflow.value))
 const timeline = computed(() => {
@@ -113,7 +113,7 @@ function payload() {
   if (form.startDate) body.startDate = new Date(form.startDate).toISOString()
   if (form.endDate) body.endDate = new Date(form.endDate).toISOString()
   if (form.cost !== null && form.cost !== '') body.cost = Number(form.cost)
-  if (form.result.trim()) body.result = form.result.trim()
+  if (workflow.value !== 'start' && form.result.trim()) body.result = form.result.trim()
   if (form.note.trim()) body.note = form.note.trim()
   return body
 }
@@ -199,8 +199,8 @@ onMounted(load)
             <a-form-item label="Start date"><a-input v-model:value="form.startDate" type="datetime-local" /></a-form-item>
             <a-form-item v-if="workflow !== 'start'" label="End date"><a-input v-model:value="form.endDate" type="datetime-local" /></a-form-item>
           </div>
-          <a-form-item :label="requiresResult ? 'Repair result *' : 'Repair result'"><a-textarea v-model:value="form.result" :rows="3" :maxlength="5000" show-count placeholder="Describe the repair result" /></a-form-item>
-          <a-form-item label="Notes"><a-textarea v-model:value="form.note" :rows="3" :maxlength="5000" show-count placeholder="Add operational notes" /></a-form-item>
+          <a-form-item v-if="workflow !== 'start'" :label="requiresResult ? 'Repair result *' : 'Repair result'"><a-textarea v-model:value="form.result" :rows="3" :maxlength="5000" show-count placeholder="Describe the repair result" /></a-form-item>
+          <a-form-item :label="workflow === 'start' ? 'Diagnosis / Initial notes' : 'Notes'"><a-textarea v-model:value="form.note" :rows="3" :maxlength="5000" show-count :placeholder="workflow === 'start' ? 'Describe the initial diagnosis or planned repair.' : 'Add operational notes'" /></a-form-item>
         </a-form>
       </a-modal>
     </main>

@@ -103,6 +103,7 @@ test('Asset management APIs enforce the Release 1 read/write/catalog/retire/QR c
   const createUser = async (offset: number) => {
     const user = await prisma.users.create({
       data: {
+        user_code: `BI26${suffix}${offset}`,
         department_id: department.id,
         name: `Asset API User ${offset}`,
         email: `asset${offset}.${suffix}@test.local`,

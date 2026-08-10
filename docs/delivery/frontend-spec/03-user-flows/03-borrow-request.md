@@ -19,7 +19,7 @@ User đã đăng nhập; có ít nhất một asset `AVAILABLE` để chọn.
 ## Main Flow
 
 1. User mở `SCR-F03-01` và chọn một hoặc nhiều asset trong Asset List selection mode.
-2. User nhập expected return date hợp lệ cho từng detail theo form được chốt.
+2. User nhập Borrowing Purpose không rỗng và expected return date hợp lệ cho từng detail theo form được chốt.
 3. User gửi phiếu.
 4. Hệ thống tạo header và các detail `PENDING`.
 5. User được đưa tới My Borrow Requests hoặc Request Detail mới tạo.
@@ -30,7 +30,7 @@ User đã đăng nhập; có ít nhất một asset `AVAILABLE` để chọn.
 
 ## Error / Invalid States
 
-- Không có asset, asset trùng trong phiếu, expected return date không hợp lệ hoặc asset không còn AVAILABLE: không tạo dữ liệu sai; hiển thị validation phù hợp.
+- Không có asset, Borrowing Purpose rỗng, asset trùng trong phiếu, expected return date không hợp lệ hoặc asset không còn AVAILABLE: không tạo dữ liệu sai; hiển thị validation phù hợp.
 
 ## Result
 

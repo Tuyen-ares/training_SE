@@ -10,7 +10,7 @@ Allow an employee to request one or more available assets for work.
 
 - Primary actor: employee.
 - The user is authenticated and has `borrow_request.create`.
-- The user has selected at least one asset and supplies an expected return date.
+- The user has selected at least one asset, supplies a non-blank borrowing purpose and an expected return date.
 
 ## Trigger
 
@@ -18,7 +18,7 @@ The employee submits a borrow request.
 
 ## Main flow
 
-1. The employee selects one or more assets and enters the expected return date.
+1. The employee selects one or more assets, enters a borrowing purpose and enters the expected return date.
 2. The system validates the request input.
 3. The system validates that every asset exists, is `AVAILABLE`, and appears once only.
 4. The system creates one request header owned by the current user.
@@ -27,7 +27,7 @@ The employee submits a borrow request.
 
 ## Alternative and exception flows
 
-- No asset is selected or the return date is invalid: reject the request with validation feedback.
+- No asset is selected, the borrowing purpose is blank, or the return date is invalid: reject the request with validation feedback.
 - An asset is duplicated, missing, or no longer `AVAILABLE`: reject the invalid submission and create no incorrect data.
 - Multiple users request the same `AVAILABLE` asset: each request may be created as `PENDING`; no reservation occurs here.
 

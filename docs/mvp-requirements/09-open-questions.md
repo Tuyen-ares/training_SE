@@ -28,7 +28,7 @@ Hiện chưa còn câu hỏi nghiệp vụ bắt buộc để viết bộ Requir
 | D-02 | Spec cũ duyệt cấp header và chuyển thẳng asset sang borrowed. | Duyệt theo detail tạo reservation; chỉ bàn giao mới chuyển BORROWED. |
 | D-03 | Một số tài liệu dùng repair_logs. | Baseline hiện tại dùng asset_issues. |
 | D-04 | ERD/SRS cũ đề xuất inventory, location và asset history. | Các module/bảng này ngoài MVP và không được thêm vào schema. |
-| D-05 | Permission registry cũ dùng nhóm code repair_log.*. | Tên permission issue/repair cần được thống nhất khi implementation; requirement dùng hành vi, không phụ thuộc code cũ. |
+| D-05 | Permission registry cũ dùng nhóm code `repair_log.*`. | Đã xử lý bằng migration giữ nguyên permission ID khi có thể và thay runtime contract bằng `asset_issue.view/create/update/close`; role assignment được bảo toàn. |
 | D-06 | Auth spec cũ tạo trực tiếp tài khoản active từ public registration. | Registration tạo yêu cầu `PENDING`; reviewer có permission duyệt/từ chối trước khi tài khoản được tạo và active. |
 | D-07 | Spec cũ mô tả khác nhau về CRUD role/permission. | MVP chỉ cho gán/gỡ role có sẵn; không CRUD role hoặc permission code. |
 

@@ -17,6 +17,7 @@ const selectedAssetId = ref()
 const loadingAssets = ref(true)
 const submitting = ref(false)
 const errorMessage = ref('')
+const purposeError = ref('')
 const form = reactive({ note: '', items: [] })
 const today = new Intl.DateTimeFormat('en-CA', { timeZone: 'Asia/Ho_Chi_Minh' }).format(new Date())
 const selectedIds = computed(() => new Set(form.items.map((item) => item.asset.id)))
@@ -42,10 +43,16 @@ function addAsset() {
 async function submit() {
   if (!form.items.length) return message.warning('Add at least one asset.')
   if (form.items.some((item) => !item.expectedReturnDate)) return message.warning('Choose an expected return date for every asset.')
+  const note = form.note.trim()
+  if (!note) {
+    purposeError.value = 'Borrowing purpose is required.'
+    return
+  }
+  purposeError.value = ''
   submitting.value = true
   try {
     const created = await createBorrowRequest(authStore.api, {
-      note: form.note.trim() || null,
+      note,
       items: form.items.map((item) => ({ assetId: item.asset.id, expectedReturnDate: item.expectedReturnDate })),
     })
     message.success('Borrow request submitted.')
@@ -67,7 +74,15 @@ onMounted(loadAssets)
           <section class="panel general-panel">
             <h2>General Information</h2>
             <label>Borrowing Purpose <span class="required">*</span></label>
-            <a-textarea v-model:value="form.note" :maxlength="2000" :rows="4" placeholder="Describe why these assets are needed..." />
+            <a-textarea
+              v-model:value="form.note"
+              :maxlength="2000"
+              :rows="4"
+              :status="purposeError ? 'error' : undefined"
+              placeholder="Describe why these assets are needed..."
+              @input="purposeError = ''"
+            />
+            <div v-if="purposeError" class="field-error">{{ purposeError }}</div>
           </section>
           <section class="panel asset-selection">
             <header><h2>Asset List <a-tag>{{ form.items.length }}</a-tag></h2></header>
@@ -96,5 +111,5 @@ onMounted(loadAssets)
 </template>
 
 <style scoped>
-.borrow-page{padding:24px;min-height:calc(100vh - 68px)}.screen-code{color:#8c8c8c}.create-grid{display:grid;grid-template-columns:minmax(0,1fr) 320px;gap:24px;max-width:1280px;margin:auto}.create-main{display:grid;gap:20px}.panel{background:#fff;border:1px solid #f0f0f0;border-radius:8px;padding:22px}.panel h2{font-size:18px;margin:0 0 18px}.general-panel label{display:block;font-weight:600;margin-bottom:8px}.required{color:#ff4d4f}.asset-selection{padding:0}.asset-selection header{padding:18px 22px 0}.asset-picker{display:flex;gap:10px;padding:0 22px 18px}.asset-picker :deep(.ant-select){flex:1}.asset-row{display:grid;grid-template-columns:auto minmax(0,1fr) 170px auto;gap:14px;align-items:center;border-top:1px solid #f0f0f0;padding:16px 22px}.asset-copy{display:grid;gap:3px}.asset-copy span{color:#595959;font-size:12px}.asset-copy :deep(.ant-tag){justify-self:start}.date-field{display:grid;gap:5px;font-size:12px;color:#595959}.date-field input{border:1px solid #d9d9d9;border-radius:6px;height:32px;padding:0 9px}.summary-panel{align-self:start}.summary-panel dl{display:grid;grid-template-columns:1fr auto;gap:14px;margin:0 0 22px;padding:18px 0;border-block:1px solid #f0f0f0}.summary-panel dt{color:#595959}.summary-panel dd{margin:0;text-align:right}.summary-panel :deep(.ant-btn){margin-top:10px}@media(max-width:900px){.create-grid{grid-template-columns:1fr}.summary-panel{order:-1}.asset-row{grid-template-columns:auto 1fr auto}.date-field{grid-column:2/3}}@media(max-width:600px){.borrow-page{padding:12px}.asset-picker{flex-direction:column}.asset-row{grid-template-columns:1fr}.date-field{grid-column:auto}}
+.borrow-page{padding:24px;min-height:calc(100vh - 68px)}.screen-code{color:#8c8c8c}.create-grid{display:grid;grid-template-columns:minmax(0,1fr) 320px;gap:24px;max-width:1280px;margin:auto}.create-main{display:grid;gap:20px}.panel{background:#fff;border:1px solid #f0f0f0;border-radius:8px;padding:22px}.panel h2{font-size:18px;margin:0 0 18px}.general-panel label{display:block;font-weight:600;margin-bottom:8px}.required{color:#ff4d4f}.field-error{color:#ff4d4f;font-size:12px;margin-top:6px}.asset-selection{padding:0}.asset-selection header{padding:18px 22px 0}.asset-picker{display:flex;gap:10px;padding:0 22px 18px}.asset-picker :deep(.ant-select){flex:1}.asset-row{display:grid;grid-template-columns:auto minmax(0,1fr) 170px auto;gap:14px;align-items:center;border-top:1px solid #f0f0f0;padding:16px 22px}.asset-copy{display:grid;gap:3px}.asset-copy span{color:#595959;font-size:12px}.asset-copy :deep(.ant-tag){justify-self:start}.date-field{display:grid;gap:5px;font-size:12px;color:#595959}.date-field input{border:1px solid #d9d9d9;border-radius:6px;height:32px;padding:0 9px}.summary-panel{align-self:start}.summary-panel dl{display:grid;grid-template-columns:1fr auto;gap:14px;margin:0 0 22px;padding:18px 0;border-block:1px solid #f0f0f0}.summary-panel dt{color:#595959}.summary-panel dd{margin:0;text-align:right}.summary-panel :deep(.ant-btn){margin-top:10px}@media(max-width:900px){.create-grid{grid-template-columns:1fr}.summary-panel{order:-1}.asset-row{grid-template-columns:auto 1fr auto}.date-field{grid-column:2/3}}@media(max-width:600px){.borrow-page{padding:12px}.asset-picker{flex-direction:column}.asset-row{grid-template-columns:1fr}.date-field{grid-column:auto}}
 </style>

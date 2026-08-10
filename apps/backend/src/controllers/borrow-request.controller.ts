@@ -32,7 +32,7 @@ function parseBusinessDate(value: string): Date | null {
 }
 
 const createBorrowRequestSchema = z.strictObject({
-    note: z.string().trim().max(2000).nullable().optional(),
+    note: z.string().trim().min(1, 'Borrowing purpose is required').max(2000),
     items: z.array(z.strictObject({
       assetId: z.number().int().positive(),
       expectedReturnDate: z.string().refine(

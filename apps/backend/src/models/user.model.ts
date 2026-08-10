@@ -10,6 +10,7 @@ export interface UserDepartmentDto {
 
 export interface UserResponseDto {
   id: number;
+  userCode: string;
   departmentId: number;
   department: UserDepartmentDto;
   name: string;

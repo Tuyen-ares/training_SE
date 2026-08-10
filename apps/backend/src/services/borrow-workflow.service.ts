@@ -131,6 +131,44 @@ export class BorrowWorkflowService {
     });
   }
 
+  async returnDamaged(
+    historyId: number,
+    actorId: number,
+    description: string,
+  ): Promise<number> {
+    return this.repository.transaction(async (transaction) => {
+      const history = await this.repository.findHistoryForAction(historyId, transaction);
+      if (!history) throw new BorrowError('REQUEST_NOT_FOUND');
+      if (history.returnedAt || history.assetStatus !== 'borrowed') {
+        throw new BorrowError('INVALID_ASSET_SELECTION');
+      }
+
+      await this.repository.completeReturn(historyId, actorId, 'DAMAGED', transaction);
+      await this.assets.returnAsset(history.assetId, 'damaged', transaction);
+      const issueId = await this.repository.createConfirmedIssueForDamagedReturn(
+        history.assetId,
+        actorId,
+        description,
+        transaction,
+      );
+
+      const detail = await this.repository.findActionDetail(history.detailId, transaction);
+      if (detail) {
+        await this.repository.refreshRequestStatus(detail.requestId, transaction);
+        await this.notifyRequester(
+          history.requesterId,
+          'ASSET_RETURNED_DAMAGED',
+          'Damaged asset return confirmed',
+          `A damaged asset return for borrow request #${detail.requestId} was confirmed.`,
+          detail.requestId,
+          transaction,
+        );
+      }
+      await this.notifyIssueHandlers(issueId, actorId, transaction);
+      return issueId;
+    });
+  }
+
   async withdraw(requestId: number, actorId: number): Promise<void> {
     await this.repository.transaction(async (transaction) => {
       const assetIds = await this.repository.withdraw(requestId, actorId, transaction);
@@ -177,5 +215,27 @@ export class BorrowWorkflowService {
       relatedEntityType: 'BORROW_REQUEST',
       relatedEntityId: requestId,
     }, transaction);
+  }
+
+  private async notifyIssueHandlers(
+    issueId: number,
+    excludedUserId: number,
+    transaction: Parameters<IBorrowRequestRepository['findActionDetail']>[1],
+  ): Promise<void> {
+    if (!this.notifications) return;
+    const recipients = await this.notifications.findActiveUserIdsByPermissions([
+      'asset_issue.view',
+      'asset_issue.update',
+    ]);
+    await Promise.all(recipients
+      .filter((recipientUserId) => recipientUserId !== excludedUserId)
+      .map((recipientUserId) => this.notifications!.create({
+        recipientUserId,
+        notificationType: 'ASSET_ISSUE_CONFIRMED',
+        title: 'Asset issue confirmed from damaged return',
+        message: `Asset issue #${issueId} was confirmed from a damaged return.`,
+        relatedEntityType: 'ASSET_ISSUE',
+        relatedEntityId: issueId,
+      }, transaction)));
   }
 }

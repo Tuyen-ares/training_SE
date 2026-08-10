@@ -9,7 +9,7 @@ export type BorrowRequestStatus =
 export type BorrowDetailStatus = 'PENDING' | 'APPROVED' | 'REJECTED';
 
 export interface CreateBorrowRequestDto {
-  note?: string | null;
+  note: string;
   items: Array<{
     assetId: number;
     expectedReturnDate: Date;
@@ -54,13 +54,14 @@ export interface BorrowRequestDto {
   id: number;
   requester: {
     id: number;
+    userCode: string;
     name: string;
     email: string;
     avatarUrl: string | null;
     department: { id: number; name: string } | null;
   };
   status: BorrowRequestStatus;
-  note: string | null;
+  note: string;
   createdAt: Date;
   details: BorrowRequestDetailDto[];
 }
@@ -114,7 +115,7 @@ export interface BorrowHistoryDto {
     status: string;
     model: { id: number; name: string };
   };
-  borrower: { id: number; name: string; avatarUrl: string | null };
+  borrower: { id: number; userCode: string; name: string; avatarUrl: string | null };
   expectedReturnDate: string;
   handedOverBy: { id: number; name: string } | null;
   borrowedAt: Date;
@@ -128,10 +129,11 @@ export interface BorrowHistoryDetailDto {
   request: {
     id: number;
     status: BorrowRequestStatus;
-    note: string | null;
+    note: string;
     createdAt: Date;
     requester: {
       id: number;
+      userCode: string;
       name: string;
       email: string;
       avatarUrl: string | null;

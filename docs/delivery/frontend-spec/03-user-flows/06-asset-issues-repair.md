@@ -104,8 +104,9 @@ Issue CONFIRMED và asset DAMAGED để bắt đầu sửa.
 
 1. User mở Issue Detail và chọn bắt đầu sửa.
 2. Hệ thống chuyển issue/asset cùng sang IN_REPAIR, ghi người xử lý/ngày bắt đầu phù hợp.
-3. User cập nhật repair provider, thời gian, cost, result hoặc note ở giai đoạn cho phép.
-4. UI hiển thị thông tin repair mới trên cùng Issue Detail.
+3. Ở Start Repair, UI chỉ yêu cầu thông tin khởi tạo: repair provider, cost, start date và diagnosis/initial notes; không hiển thị trường Repair result.
+4. Ở Update/Complete/Fail, user cập nhật repair provider, thời gian, cost, result hoặc note ở giai đoạn cho phép.
+5. UI hiển thị thông tin repair mới trên cùng Issue Detail.
 
 ## Alternative Flows
 
@@ -168,7 +169,8 @@ Issue kết thúc và asset có state chính xác, không tự retire.
 ## Implementation alignment — 2026-08-05
 
 - Routes: `/asset-issues` and `/asset-issues/:id`.
-- Issue List is API-backed, permission-guarded by `repair_log.view`, filterable by status/asset and server-paginated.
+- Issue List is API-backed, permission-guarded by `asset_issue.view`, filterable by status/asset and server-paginated.
 - Issue Detail is the single repair context. Confirm/reject/start/update/complete/fail actions are shown from effective permissions and current issue status.
 - Repair data entry uses Ant Design modal states; invalid HTTP 409 transitions show safe feedback and reload canonical issue data.
+- Start Repair uses the note field as `Diagnosis / Initial notes`; `Repair result` is shown only for Update/Complete/Fail, and is required when completing a repair.
 - The timeline only renders milestones supported by both persisted status and timestamps; it does not infer a lifecycle from inconsistent legacy dates.

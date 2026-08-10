@@ -51,6 +51,10 @@ asset.checkin
 ## Asset issues
 
 asset_issue.report
+asset_issue.view
+asset_issue.create
+asset_issue.update
+asset_issue.close
 
 ## Borrow requests
 
@@ -66,13 +70,6 @@ borrow_request.reject
 
 borrow_history.view_own
 borrow_history.view_all
-
-## Repair logs
-
-repair_log.view
-repair_log.create
-repair_log.update
-repair_log.close
 
 ## Users
 

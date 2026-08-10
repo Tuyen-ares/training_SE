@@ -1788,36 +1788,24 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/Error'
-    delete:
-      tags:
-        - F08 - Administration
-      summary: Vô hiệu hóa người dùng
-      description: Vô hiệu hóa user mà không xóa lịch sử.
-      operationId: deactivateUser
-      parameters:
-        - $ref: '#/components/parameters/UserId'
-      responses:
-        '204':
-          description: Vô hiệu hóa thành công
-        '400':
-          $ref: '#/components/responses/BadRequest'
-        '403':
-          $ref: '#/components/responses/Forbidden'
-        '404':
-          description: Không tìm thấy người dùng
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/Error'
-  /users/{id}/activate:
+  /users/{id}/status:
     patch:
       tags:
         - F08 - Administration
       summary: Kích hoạt/vô hiệu hóa người dùng
-      description: Chuyển trạng thái active của user mà không xóa lịch sử.
-      operationId: activateUser
+      description: >-
+        Gửi isActive=true để kích hoạt hoặc false để vô hiệu hóa user mà không
+        xóa lịch sử. Kích hoạt yêu cầu permission user.update; vô hiệu hóa yêu
+        cầu permission user.delete.
+      operationId: updateUserStatus
       parameters:
         - $ref: '#/components/parameters/UserId'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/UpdateUserStatusInput'
       responses:
         '200':
           description: User sau khi thay đổi trạng thái
@@ -2194,6 +2182,10 @@ components:
       properties:
         id:
           type: integer
+        userCode:
+          type: string
+          pattern: '^BI[0-9]{5,}$'
+          description: Mã user bất biến, được cấp theo năm account tạo.
         name:
           type: string
         avatarUrl:
@@ -2217,6 +2209,7 @@ components:
             type: string
       required:
         - id
+        - userCode
         - name
         - email
         - phone
@@ -2500,8 +2493,8 @@ components:
       properties:
         note:
           type: string
+          minLength: 1
           maxLength: 2000
-          nullable: true
         items:
           type: array
           minItems: 1
@@ -2520,6 +2513,7 @@ components:
               - expectedReturnDate
             additionalProperties: false
       required:
+        - note
         - items
       additionalProperties: false
     BorrowRequest:
@@ -2532,6 +2526,9 @@ components:
           properties:
             id:
               type: integer
+            userCode:
+              type: string
+              pattern: '^BI[0-9]{5,}$'
             name:
               type: string
             avatarUrl:
@@ -2539,12 +2536,12 @@ components:
               nullable: true
           required:
             - id
+            - userCode
             - name
         status:
           $ref: '#/components/schemas/BorrowRequestStatus'
         note:
           type: string
-          nullable: true
         createdAt:
           type: string
           format: date-time
@@ -2786,6 +2783,9 @@ components:
           properties:
             id:
               type: integer
+            userCode:
+              type: string
+              pattern: '^BI[0-9]{5,}$'
             name:
               type: string
             avatarUrl:
@@ -2793,6 +2793,7 @@ components:
               nullable: true
           required:
             - id
+            - userCode
             - name
         expectedReturnDate:
           type: string
@@ -3096,6 +3097,10 @@ components:
       properties:
         id:
           type: integer
+        userCode:
+          type: string
+          pattern: '^BI[0-9]{5,}$'
+          description: Mã user bất biến, không dùng làm khóa chính hoặc khóa ngoại.
         departmentId:
           type: integer
         department:
@@ -3118,6 +3123,7 @@ components:
             $ref: '#/components/schemas/Reference'
       required:
         - id
+        - userCode
         - departmentId
         - department
         - name
@@ -3199,6 +3205,14 @@ components:
           items:
             type: integer
             minimum: 1
+      additionalProperties: false
+    UpdateUserStatusInput:
+      type: object
+      properties:
+        isActive:
+          type: boolean
+      required:
+        - isActive
       additionalProperties: false
     ReplaceUserRolesInput:
       type: object

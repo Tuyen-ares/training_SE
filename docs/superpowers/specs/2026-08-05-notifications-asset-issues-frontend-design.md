@@ -47,7 +47,7 @@ The persistent header bell displays the unread badge and navigates to Notificati
 
 The list uses a table suitable for operational comparison. It includes issue ID, asset/model, reporter, current status, created time, handler, and a View Details action. Filters include issue status and asset ID where useful. Pagination is server-driven.
 
-The screen is available only with `repair_log.view`. Navigation and routes use effective permission codes rather than role names.
+The screen is available only with `asset_issue.view`. Navigation and routes use effective permission codes rather than role names.
 
 ### Issue Detail
 
@@ -60,9 +60,9 @@ Issue Detail follows the Repair Details Stitch composition:
 
 Actions:
 
-- `REPORTED`: Confirm or Reject for `repair_log.update`.
-- `CONFIRMED`: Start Repair for `repair_log.create`.
-- `IN_REPAIR`: Update Progress for `repair_log.update`; Complete or Mark Failed for `repair_log.close`.
+- `REPORTED`: Confirm or Reject for `asset_issue.update`.
+- `CONFIRMED`: Start Repair for `asset_issue.create`.
+- `IN_REPAIR`: Update Progress for `asset_issue.update`; Complete or Mark Failed for `asset_issue.close`.
 - Terminal states: read-only.
 
 Start Repair, Update Repair, Complete Repair, and Failed Repair use focused Ant Design modals based on the fields supported by the backend: repair provider, dates, cost, result, and notes. They remain workflow states of Issue Detail rather than separate routes.

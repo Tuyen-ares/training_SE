@@ -142,13 +142,13 @@ const router = createRouter({
       path: '/asset-issues',
       name: 'asset-issues',
       component: () => import('../views/issues/AssetIssueListView.vue'),
-      meta: { requiresAuth: true, permission: 'repair_log.view' },
+      meta: { requiresAuth: true, permission: 'asset_issue.view' },
     },
     {
       path: '/asset-issues/:id',
       name: 'asset-issue-detail',
       component: () => import('../views/issues/AssetIssueDetailView.vue'),
-      meta: { requiresAuth: true, permission: 'repair_log.view' },
+      meta: { requiresAuth: true, permission: 'asset_issue.view' },
     },
     {
       path: '/notifications',

@@ -10,7 +10,7 @@ export interface IRestController {
   getById: RequestHandler
   create: RequestHandler
   update: RequestHandler
-  delete: RequestHandler
+  delete?: RequestHandler
 }
 
 export interface RouterOptions {
@@ -36,7 +36,7 @@ export function createRestRouter(controller: IRestController, options?: RouterOp
   router.get('/:id', ...globalMiddleware, ...getByIdMw, controller.getById)
   router.post('/', ...globalMiddleware, ...createMw, controller.create)
   router.patch('/:id', ...globalMiddleware, ...updateMw, controller.update)
-  if (deleteMw !== false) {
+  if (deleteMw !== false && controller.delete) {
     router.delete('/:id', ...globalMiddleware, ...deleteMw, controller.delete)
   }
 

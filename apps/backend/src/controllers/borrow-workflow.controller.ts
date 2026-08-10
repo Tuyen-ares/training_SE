@@ -23,6 +23,9 @@ const historyQuerySchema = pageQuerySchema.extend({
 });
 
 const normalReturnSchema = z.strictObject({});
+const damagedReturnSchema = z.strictObject({
+  description: z.string().trim().min(1).max(2000),
+});
 
 function readPositiveId(value: string | string[] | undefined): number | null {
   const id = Number(typeof value === 'string' ? value : '');
@@ -160,6 +163,18 @@ export class BorrowWorkflowController {
     } catch {
       return ApiResponse.internalError(res);
     }
+  };
+
+  returnDamaged = async (req: Request, res: Response): Promise<void> => {
+    const parsed = parseRequestBody(damagedReturnSchema, req.body ?? {});
+    if (parsed.success === false) return ApiResponse.badRequest(res, parsed.errors);
+
+    return this.runAction(req, res, async (actorId, historyId) => ({
+      historyId,
+      returned: true,
+      returnCondition: 'DAMAGED',
+      issueId: await this.service.returnDamaged(historyId, actorId, parsed.data.description),
+    }));
   };
 
   detail = async (req: Request, res: Response): Promise<void> => {

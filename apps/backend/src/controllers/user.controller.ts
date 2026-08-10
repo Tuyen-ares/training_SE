@@ -52,6 +52,10 @@ const updateUserSchema: z.ZodType<UpdateUserInputDto> = z
 
 const statusSchema = z.enum(['active', 'inactive', 'all']);
 
+const updateStatusSchema = z.strictObject({
+  isActive: z.boolean(),
+});
+
 function parsePositiveId(value: string | string[] | undefined): number | null {
   if (Array.isArray(value)) return null;
   const id = Number(value);
@@ -156,29 +160,24 @@ export default class UserController {
     }
   };
 
-  delete = async (req: Request, res: Response): Promise<void> => {
+  updateStatus = async (req: Request, res: Response): Promise<void> => {
     const id = parsePositiveId(req.params.id);
     if (!id) {
       return ApiResponse.badRequest(res, { id: ['User ID must be a positive integer'] });
     }
 
-    try {
-      const deactivated = await this.service.deactivate(id);
-      if (!deactivated) return ApiResponse.notFound(res, 'User not found');
-      return ApiResponse.noContent(res);
-    } catch {
-      return ApiResponse.internalError(res);
+    const parsed = parseRequestBody(updateStatusSchema, req.body);
+    if (parsed.success === false) {
+      return ApiResponse.badRequest(res, parsed.errors);
     }
-  };
 
-  activate = async (req: Request, res: Response): Promise<void> => {
-    const id = parsePositiveId(req.params.id);
-    if (!id) {
-      return ApiResponse.badRequest(res, { id: ['User ID must be a positive integer'] });
+    const requiredPermission = parsed.data.isActive ? 'user.update' : 'user.delete';
+    if (!req.auth?.permissionCodes.includes(requiredPermission)) {
+      return ApiResponse.forbidden(res, 'Missing required permission');
     }
 
     try {
-      const user = await this.service.activate(id);
+      const user = await this.service.setStatus(id, parsed.data.isActive);
       if (!user) return ApiResponse.notFound(res, 'User not found');
       return ApiResponse.ok(res, user);
     } catch {

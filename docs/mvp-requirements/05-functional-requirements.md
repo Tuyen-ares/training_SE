@@ -30,8 +30,8 @@
 
 | ID | Yêu cầu chức năng |
 |---|---|
-| FR-F03-01 | Hệ thống phải cho phép nhân viên tạo phiếu gồm một hoặc nhiều asset `AVAILABLE`. |
-| FR-F03-02 | Hệ thống phải kiểm tra asset tồn tại, không trùng trong phiếu và ngày trả dự kiến hợp lệ. |
+| FR-F03-01 | Hệ thống phải cho phép nhân viên tạo phiếu gồm một hoặc nhiều asset `AVAILABLE` và Borrowing Purpose hợp lệ. |
+| FR-F03-02 | Hệ thống phải kiểm tra Borrowing Purpose không rỗng, asset tồn tại, không trùng trong phiếu và ngày trả dự kiến hợp lệ. |
 | FR-F03-03 | Hệ thống phải cho phép nhân viên xem danh sách phiếu do mình tạo. |
 | FR-F03-04 | Hệ thống phải cho phép nhân viên xem chi tiết và trạng thái từng asset trong phiếu của mình. |
 | FR-F03-05 | Hệ thống phải cho phép nhân viên thu hồi toàn bộ phiếu khi chưa có asset nào được bàn giao. |
@@ -84,10 +84,10 @@
 
 | ID | Yêu cầu chức năng |
 |---|---|
-| FR-F08-01 | Hệ thống phải cho phép Admin có quyền xem và tìm danh sách user. |
-| FR-F08-02 | Hệ thống phải cho phép Admin có quyền tạo user với department hợp lệ và avatar_url tùy chọn. |
-| FR-F08-03 | Hệ thống phải cho phép Admin có quyền cập nhật thông tin và avatar_url của user. |
-| FR-F08-04 | Hệ thống phải cho phép Admin có quyền kích hoạt hoặc vô hiệu hóa user. |
+| FR-F08-01 | Hệ thống phải cho phép Admin có quyền xem và tìm danh sách user, bao gồm mã user. |
+| FR-F08-02 | Hệ thống phải cho phép Admin có quyền tạo user với department hợp lệ và avatar_url tùy chọn; hệ thống tự cấp mã user duy nhất theo format `BI[YY][Sequence]`. |
+| FR-F08-03 | Hệ thống phải cho phép Admin có quyền cập nhật thông tin và avatar_url của user, nhưng không được sửa mã user. |
+| FR-F08-04 | Hệ thống phải cho phép Admin có quyền kích hoạt hoặc vô hiệu hóa user mà không thay đổi mã user. |
 | FR-F08-05 | Hệ thống phải hiển thị các role có sẵn phục vụ việc phân vai trò. |
 | FR-F08-06 | Hệ thống phải cho phép Admin có quyền gán hoặc gỡ role có sẵn của user. |
 | FR-F08-07 | Hệ thống phải từ chối thao tác quản trị khi người thực hiện thiếu permission tương ứng. |

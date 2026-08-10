@@ -27,3 +27,7 @@ export const listMyBorrowHistory = (api, params) => api(`/borrow-histories/me${q
 export const listAllBorrowHistory = (api, params) => api(`/borrow-histories${queryString(params)}`)
 export const getBorrowHistoryDetail = (api, historyId) => api(`/borrow-histories/${historyId}`)
 export const receiveNormalReturn = (api, historyId) => api(`/borrow-histories/${historyId}/return`, { method: 'POST' })
+export const receiveDamagedReturn = (api, historyId, description) => api(`/borrow-histories/${historyId}/return-damaged`, {
+  method: 'POST',
+  body: { description },
+})

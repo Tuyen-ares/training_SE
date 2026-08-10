@@ -157,6 +157,7 @@ test('database constraints and conditional updates resolve races in User, Auth, 
         const suffix = uniqueSuffix();
         const user = await prisma.users.create({
           data: {
+            user_code: `BI26${suffix}1`,
             department_id: department.id,
             name: 'Refresh Race User',
             email: `race.auth.${suffix}@test.local`,
@@ -330,6 +331,7 @@ test('database constraints and conditional updates resolve races in User, Auth, 
         const suffix = uniqueSuffix();
         const user = await prisma.users.create({
           data: {
+            user_code: `BI26${suffix}2`,
             department_id: department.id,
             name: 'RBAC Race User',
             email: `race.rbac.${suffix}@test.local`,

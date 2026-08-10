@@ -3,6 +3,7 @@ import UserController from '@/controllers/user.controller.js';
 import { requireAuth } from '@/middleware/auth.middleware.js';
 import {
   requirePermission,
+  requireAnyPermission,
   requireRoleAssignWhenRoleIdsProvided,
 } from '@/middleware/rbac.middleware.js';
 import { PrismaRbacRepository } from '@/repositories/rbac.prisma.repository.js';
@@ -38,14 +39,14 @@ const router = createRestRouter(controller, {
     requirePermission('user.update'),
     requireRoleAssignWhenRoleIdsProvided(),
   ],
-  delete: [requirePermission('user.delete')],
+  delete: false,
 });
 
 router.patch(
-  '/:id/activate',
+  '/:id/status',
   requireAuth,
-  requirePermission('user.update'),
-  controller.activate,
+  requireAnyPermission('user.update', 'user.delete'),
+  controller.updateStatus,
 );
 
 export default {

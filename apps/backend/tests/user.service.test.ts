@@ -47,6 +47,7 @@ function createHarness(options: HarnessOptions = {}) {
       storedPasswordHash = data.passwordHash;
       user = {
         id: 1,
+        userCode: 'BI26001',
         departmentId: data.departmentId,
         department: { id: data.departmentId, name: 'IT' },
         name: data.name,
@@ -178,7 +179,7 @@ test('create assigns explicitly selected roles instead of the employee default',
   assert.deepEqual(result.roles, [{ id: 3, name: 'asset_manager' }]);
 });
 
-test('deactivate keeps the user record and revokes every refresh token session', async () => {
+test('setStatus deactivates the user and revokes every refresh token session', async () => {
   const harness = createHarness();
   await harness.service.create({
     departmentId: 1,
@@ -188,7 +189,7 @@ test('deactivate keeps the user record and revokes every refresh token session',
     password: '123456',
   });
 
-  assert.equal(await harness.service.deactivate(1), true);
+  assert.equal((await harness.service.setStatus(1, false))?.isActive, false);
   assert.equal((await harness.service.getById(1))?.isActive, false);
   assert.equal(harness.getRevokedUserId(), 1);
 });
@@ -265,7 +266,7 @@ test('partial update changes only supplied fields, rehashes password and replace
   );
 });
 
-test('activate and status filters expose active/inactive state without deleting the user', async () => {
+test('setStatus and status filters expose active/inactive state without deleting the user', async () => {
   const harness = createHarness();
   await harness.service.create({
     departmentId: 1,
@@ -275,20 +276,20 @@ test('activate and status filters expose active/inactive state without deleting 
     password: '123456',
   });
 
-  await harness.service.deactivate(1);
+  await harness.service.setStatus(1, false);
   assert.equal((await harness.service.getAll('active')).length, 0);
   assert.equal((await harness.service.getAll('inactive')).length, 1);
   assert.equal((await harness.service.getAll('all')).length, 1);
 
-  const activated = await harness.service.activate(1);
+  const activated = await harness.service.setStatus(1, true);
   assert.equal(activated?.isActive, true);
   assert.equal((await harness.service.getAll('active')).length, 1);
 });
 
-test('update, activate and deactivate return not found when the user does not exist', async () => {
+test('update and setStatus return not found when the user does not exist', async () => {
   const harness = createHarness();
 
   assert.equal(await harness.service.update(999, { name: 'Missing' }), null);
-  assert.equal(await harness.service.activate(999), null);
-  assert.equal(await harness.service.deactivate(999), false);
+  assert.equal(await harness.service.setStatus(999, true), null);
+  assert.equal(await harness.service.setStatus(999, false), null);
 });

@@ -19,11 +19,18 @@ Người báo sự cố; User có permission xử lý issue/sửa chữa.
 
 ## Business Rules áp dụng
 
-`BR-ISS-01..06`, `BR-AST-01..04`.
+`BR-ISS-01..08`, `BR-AST-01..04`.
 
 ## Functional Requirements liên quan
 
 `FR-F06-01..08`.
+
+## Quy ước dữ liệu sửa chữa
+
+- Khi bắt đầu sửa chữa, người xử lý ghi thông tin khởi tạo như đơn vị sửa, ngày bắt đầu, chi phí và chẩn đoán/ghi chú ban đầu.
+- `result` là kết quả kỹ thuật sau khi xử lý; không phải tên trạng thái issue và không cần nhập ở bước Start Repair.
+- `result` được nhập khi cập nhật hoặc kết thúc sửa chữa; Complete Repair bắt buộc có kết quả, còn Fail Repair dùng kết quả để ghi nguyên nhân/kết quả thất bại.
+- Report Issue chỉ nhập mô tả sự cố, không nhập repair result.
 
 ## Dependencies
 

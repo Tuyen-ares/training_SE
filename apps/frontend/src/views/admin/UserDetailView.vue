@@ -36,8 +36,10 @@ async function changeStatus() {
   if (!window.confirm(active ? `Deactivate ${user.value.name}? Existing business history will be preserved.` : `Reactivate ${user.value.name}?`)) return
   mutating.value = true
   try {
-    if (active) await authStore.api(`/users/${user.value.id}`, { method: 'DELETE' })
-    else await authStore.api(`/users/${user.value.id}/activate`, { method: 'PATCH' })
+    await authStore.api(`/users/${user.value.id}/status`, {
+      method: 'PATCH',
+      body: { isActive: !active },
+    })
     await loadUser()
   } catch {
     errorMessage.value = `We could not ${active ? 'deactivate' : 'reactivate'} this account.`
@@ -71,7 +73,7 @@ onMounted(loadUser)
         <div class="detail-grid">
           <aside class="profile-card">
             <a-avatar :size="92" :src="user.avatarUrl">{{ initials }}</a-avatar>
-            <h2>{{ user.name }}</h2><p>ID: EMP-{{ String(user.id).padStart(4, '0') }}</p>
+            <h2>{{ user.name }}</h2><p>{{ user.userCode || 'User code unavailable' }}</p>
             <StatusTag :status="user.isActive ? 'ACTIVE' : 'INACTIVE'" />
             <a-divider />
             <dl>

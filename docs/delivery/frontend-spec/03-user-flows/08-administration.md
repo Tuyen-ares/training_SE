@@ -19,10 +19,10 @@ User đang đăng nhập và có từng capability cần thiết.
 ## Main Flow
 
 1. User mở User List từ navigation/Dashboard.
-2. User search/filter user theo thông tin được hỗ trợ.
+2. User search/filter user theo user code và các thông tin được hỗ trợ; danh sách luôn hiển thị user code.
 3. User mở User Form ở create hoặc edit mode.
-4. User nhập thông tin/department/avatar URL hợp lệ và lưu.
-5. Từ User List/Form, user thực hiện activate/deactivate khi có permission; UI yêu cầu xác nhận trạng thái có tác động truy cập.
+4. User nhập thông tin/department/avatar URL hợp lệ và lưu; user code do hệ thống cấp và chỉ hiển thị, không có ô chỉnh sửa.
+5. Từ User List/Form, user thực hiện activate/deactivate khi có permission; UI yêu cầu xác nhận trạng thái có tác động truy cập và giữ nguyên user code.
 
 ## Alternative Flows
 

@@ -21,6 +21,7 @@ router.get('/current', requireAuth, requirePermission('borrow_history.view_own')
 router.get('/me', requireAuth, requirePermission('borrow_history.view_own'), controller.ownHistory);
 router.get('/', requireAuth, requirePermission('borrow_history.view_all'), controller.allHistory);
 router.get('/:historyId', requireAuth, requireAnyPermission('borrow_history.view_own', 'borrow_history.view_all'), controller.detail);
+router.post('/:historyId/return-damaged', requireAuth, requirePermission('asset.checkin'), controller.returnDamaged);
 router.post('/:historyId/return', requireAuth, requirePermission('asset.checkin'), controller.returnNormal);
 
 export default { resource: 'borrow-histories', router };

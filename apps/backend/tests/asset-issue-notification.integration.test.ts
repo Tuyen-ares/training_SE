@@ -43,12 +43,15 @@ test('Asset issue and notification APIs enforce lifecycle and ownership', async 
   created.typeIds.push(type.id); created.brandIds.push(brand.id); created.modelIds.push(model.id);
   const asset = await prisma.assets.create({ data: { asset_model_id: model.id, department_id: department.id, serial_number: `ISS-${suffix}`, qr_code: crypto.randomUUID() } });
   created.assetIds.push(asset.id);
-  const reporter = await prisma.users.create({ data: { department_id: department.id, name: 'Issue Reporter', email: `issue.reporter.${suffix}@test.local`, phone: `81${suffix}0`.slice(0, 10), password: 'not-used' } });
-  const handler = await prisma.users.create({ data: { department_id: department.id, name: 'Issue Handler', email: `issue.handler.${suffix}@test.local`, phone: `82${suffix}0`.slice(0, 10), password: 'not-used' } });
+  const rejectAsset = await prisma.assets.create({ data: { asset_model_id: model.id, department_id: department.id, serial_number: `ISS-REJECT-${suffix}`, qr_code: crypto.randomUUID() } });
+  const failAsset = await prisma.assets.create({ data: { asset_model_id: model.id, department_id: department.id, serial_number: `ISS-FAIL-${suffix}`, qr_code: crypto.randomUUID() } });
+  created.assetIds.push(rejectAsset.id, failAsset.id);
+  const reporter = await prisma.users.create({ data: { user_code: `BI26${suffix}1`, department_id: department.id, name: 'Issue Reporter', email: `issue.reporter.${suffix}@test.local`, phone: `81${suffix}0`.slice(0, 10), password: 'not-used' } });
+  const handler = await prisma.users.create({ data: { user_code: `BI26${suffix}2`, department_id: department.id, name: 'Issue Handler', email: `issue.handler.${suffix}@test.local`, phone: `82${suffix}0`.slice(0, 10), password: 'not-used' } });
   created.userIds.push(reporter.id, handler.id);
 
   const reporterToken = tokenService.createAccessToken(reporter.id, ['asset_issue.report']);
-  const handlerToken = tokenService.createAccessToken(handler.id, ['repair_log.view', 'repair_log.create', 'repair_log.update', 'repair_log.close']);
+  const handlerToken = tokenService.createAccessToken(handler.id, ['asset_issue.view', 'asset_issue.create', 'asset_issue.update', 'asset_issue.close']);
 
   const report = await request(`/assets/${asset.id}/report-damaged`, reporterToken, {
     method: 'POST', body: JSON.stringify({ description: 'Display flickers intermittently' }),
@@ -57,6 +60,34 @@ test('Asset issue and notification APIs enforce lifecycle and ownership', async 
   const issueId = Number(report.body.data.id);
   created.issueIds.push(issueId);
   assert.equal((await prisma.assets.findUniqueOrThrow({ where: { id: asset.id } })).status, 'available');
+
+  const rejectReport = await request(`/assets/${rejectAsset.id}/report-damaged`, reporterToken, {
+    method: 'POST', body: JSON.stringify({ description: 'Rejectable issue' }),
+  });
+  assert.equal(rejectReport.status, 201, JSON.stringify(rejectReport.body));
+  const rejectIssueId = Number(rejectReport.body.data.id);
+  created.issueIds.push(rejectIssueId);
+  const rejected = await request(`/asset-issues/${rejectIssueId}/reject`, handlerToken, {
+    method: 'POST', body: '{}',
+  });
+  assert.equal(rejected.status, 200, JSON.stringify(rejected.body));
+  assert.equal(rejected.body.data.status, 'REJECTED');
+  assert.equal((await prisma.assets.findUniqueOrThrow({ where: { id: rejectAsset.id } })).status, 'available');
+
+  const failReport = await request(`/assets/${failAsset.id}/report-damaged`, reporterToken, {
+    method: 'POST', body: JSON.stringify({ description: 'Repair failure test' }),
+  });
+  assert.equal(failReport.status, 201, JSON.stringify(failReport.body));
+  const failIssueId = Number(failReport.body.data.id);
+  created.issueIds.push(failIssueId);
+  assert.equal((await request(`/asset-issues/${failIssueId}/confirm`, handlerToken, { method: 'POST' })).status, 200);
+  assert.equal((await request(`/asset-issues/${failIssueId}/start-repair`, handlerToken, { method: 'POST', body: '{}' })).status, 200);
+  const failed = await request(`/asset-issues/${failIssueId}/fail`, handlerToken, {
+    method: 'POST', body: JSON.stringify({ result: 'Repair not economical' }),
+  });
+  assert.equal(failed.status, 200, JSON.stringify(failed.body));
+  assert.equal(failed.body.data.status, 'FAILED');
+  assert.equal((await prisma.assets.findUniqueOrThrow({ where: { id: failAsset.id } })).status, 'damaged');
 
   const list = await request('/asset-issues?status=REPORTED', handlerToken);
   assert.equal(list.status, 200);

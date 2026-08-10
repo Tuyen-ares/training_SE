@@ -32,7 +32,7 @@ const canViewOperationalAssetOverview = computed(() => authStore.hasPermission('
 const canViewOwnRequests = computed(() => authStore.hasPermission('borrow_request.view_own'))
 const canReviewRequests = computed(() => authStore.hasPermission('borrow_request.approve') || authStore.hasPermission('borrow_request.reject'))
 const canViewBorrowingActivity = computed(() => authStore.hasPermission('borrow_history.view_own') || authStore.hasPermission('borrow_history.view_all'))
-const canManageIssues = computed(() => authStore.hasPermission('asset_issue.report') || authStore.hasPermission('repair_log.view'))
+const canManageIssues = computed(() => authStore.hasPermission('asset_issue.report') || authStore.hasPermission('asset_issue.view'))
 const canManageUsers = computed(() => authStore.hasPermission('user.view'))
 const userFirstName = computed(() => authStore.user?.name?.trim().split(/\s+/)[0] || 'there')
 const canViewPersonalSummary = computed(() => canViewOwnRequests.value || canViewBorrowingActivity.value)

@@ -8,8 +8,8 @@ tôi muốn **xem và tìm tài khoản trong công ty**,
 
 ## Acceptance Criteria
 
-- AC-US-F08-01-01: Given có permission, when mở danh sách, then hệ thống hiển thị user và trạng thái active.
-- AC-US-F08-01-02: Then có thể tìm theo thông tin được hỗ trợ.
+- AC-US-F08-01-01: Given có permission, when mở danh sách, then hệ thống hiển thị user code cùng user và trạng thái active.
+- AC-US-F08-01-02: Then có thể tìm theo user code và các thông tin được hỗ trợ.
 - AC-US-F08-01-03: Then dữ liệu không chứa mật khẩu hoặc hash mật khẩu.
 - AC-US-F08-01-04: Given thiếu permission, then hệ thống từ chối truy cập.
 

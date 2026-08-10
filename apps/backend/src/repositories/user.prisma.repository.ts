@@ -8,8 +8,24 @@ import type { IUserRepository } from '@/repositories/user.repository.js';
 import { UserError } from '@/shared/app-error.js';
 import type { PrismaTransaction } from '@/shared/prisma-transaction.js';
 
+const USER_CODE_PREFIX = 'BI';
+const BUSINESS_TIME_ZONE = 'Asia/Ho_Chi_Minh';
+const businessYearFormatter = new Intl.DateTimeFormat('en-CA', {
+  timeZone: BUSINESS_TIME_ZONE,
+  year: 'numeric',
+});
+
+function getBusinessYear(): number {
+  return Number(businessYearFormatter.format(new Date()));
+}
+
+function formatUserCode(year: number, sequence: number): string {
+  return `${USER_CODE_PREFIX}${String(year).slice(-2)}${String(sequence).padStart(3, '0')}`;
+}
+
 const userResponseSelect = {
   id: true,
+  user_code: true,
   department_id: true,
   name: true,
   avatar_url: true,
@@ -43,6 +59,7 @@ type UserDatabase = PrismaClient | PrismaTransaction;
 function toUserResponseDto(user: UserQueryResult): UserResponseDto {
   return {
     id: user.id,
+    userCode: user.user_code,
     departmentId: user.department_id,
     department: user.department,
     name: user.name,
@@ -137,8 +154,16 @@ export class PrismaUserRepository implements IUserRepository {
 
   async create(data: CreateUserData, transaction: PrismaTransaction): Promise<number> {
     try {
+      const year = getBusinessYear();
+      const sequence = await transaction.user_code_sequences.upsert({
+        where: { year },
+        create: { year, last_sequence: 1 },
+        update: { last_sequence: { increment: 1 } },
+        select: { last_sequence: true },
+      });
       const user = await transaction.users.create({
         data: {
+          user_code: formatUserCode(year, sequence.last_sequence),
           department_id: data.departmentId,
           name: data.name,
           avatar_url: data.avatarUrl,

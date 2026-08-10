@@ -96,6 +96,7 @@ and creation time, and never changes the asset status. It returns `400` for an
 invalid description, `403` for an authenticated but ineligible reporter, and
 `404` for a missing asset.
 
-Release 1 maps `asset_issue.report` to `admin` and `asset_manager` through an
-idempotent data migration. Runtime authorization checks permission codes only;
-there is no role inheritance or role-name check.
+The effective permission assignment determines who can report issues. Runtime
+authorization checks permission codes only; there is no role inheritance or
+role-name check. Seed/migration data may assign the capability to existing
+roles, but the business logic does not depend on those role names.

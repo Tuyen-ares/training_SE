@@ -24,6 +24,7 @@ const requestInclude = {
   users: {
     select: {
       id: true,
+      user_code: true,
       name: true,
       email: true,
       avatar_url: true,
@@ -49,7 +50,7 @@ const historyInclude = {
   borrow_request_details: {
     include: {
       borrow_requests: {
-        include: { users: { select: { id: true, name: true, avatar_url: true } } },
+        include: { users: { select: { id: true, user_code: true, name: true, avatar_url: true } } },
       },
       assets: { include: { asset_models: { select: { id: true, name: true } } } },
     },
@@ -66,6 +67,7 @@ const historyDetailInclude = {
           users: {
             select: {
               id: true,
+              user_code: true,
               name: true,
               email: true,
               avatar_url: true,
@@ -97,6 +99,7 @@ function mapHistory(history: any): BorrowHistoryDto {
     },
     borrower: {
       id: detail.borrow_requests.users.id,
+      userCode: detail.borrow_requests.users.user_code,
       name: detail.borrow_requests.users.name,
       avatarUrl: detail.borrow_requests.users.avatar_url,
     },
@@ -122,6 +125,7 @@ function mapHistoryDetail(history: any): BorrowHistoryDetailDto {
       createdAt: request.created_at,
       requester: {
         id: request.users.id,
+        userCode: request.users.user_code,
         name: request.users.name,
         email: request.users.email,
         avatarUrl: request.users.avatar_url,
@@ -158,6 +162,7 @@ function mapRequest(request: any): BorrowRequestDto {
     id: request.id,
     requester: {
       id: request.users.id,
+      userCode: request.users.user_code,
       name: request.users.name,
       email: request.users.email,
       avatarUrl: request.users.avatar_url,
@@ -218,7 +223,7 @@ export class PrismaBorrowRequestRepository implements IBorrowRequestRepository {
       const request = await transaction.borrow_requests.create({
         data: {
           user_id: requesterId,
-          note: dto.note ?? null,
+          note: dto.note,
           borrow_request_details: {
             create: dto.items.map((item) => ({
               asset_id: item.assetId,
@@ -307,6 +312,27 @@ export class PrismaBorrowRequestRepository implements IBorrowRequestRepository {
 
   async completeReturn(historyId: number, receiverId: number, condition: string, transaction: BorrowTransaction): Promise<void> {
     await transaction.borrow_histories.update({ where: { id: historyId }, data: { received_by: receiverId, return_date: new Date(), return_condition: condition } });
+  }
+
+  async createConfirmedIssueForDamagedReturn(
+    assetId: number,
+    actorId: number,
+    description: string,
+    transaction: BorrowTransaction,
+  ): Promise<number> {
+    const issue = await transaction.asset_issues.create({
+      data: {
+        asset_id: assetId,
+        reported_by: actorId,
+        handled_by: actorId,
+        description,
+        status: 'CONFIRMED',
+        created_at: new Date(),
+        updated_at: new Date(),
+      },
+      select: { id: true },
+    });
+    return issue.id;
   }
 
   async refreshRequestStatus(requestId: number, transaction: BorrowTransaction): Promise<void> {

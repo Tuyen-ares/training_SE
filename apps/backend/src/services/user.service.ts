@@ -120,24 +120,17 @@ export class UserService {
     });
   }
 
-  async deactivate(id: number): Promise<boolean> {
-    if (!(await this.repository.findById(id))) return false;
-
-    return this.prisma.$transaction(async (transaction) => {
-      const updated = await this.repository.setActive(id, false, transaction);
-      if (!updated) return false;
-
-      await this.sessionService.revokeAllForUser(id, transaction);
-      return true;
-    });
-  }
-
-  async activate(id: number): Promise<UserResponseDto | null> {
+  async setStatus(id: number, isActive: boolean): Promise<UserResponseDto | null> {
     if (!(await this.repository.findById(id))) return null;
 
     return this.prisma.$transaction(async (transaction) => {
-      const updated = await this.repository.setActive(id, true, transaction);
+      const updated = await this.repository.setActive(id, isActive, transaction);
       if (!updated) return null;
+
+      if (!isActive) {
+        await this.sessionService.revokeAllForUser(id, transaction);
+      }
+
       return this.repository.findById(id, transaction);
     });
   }

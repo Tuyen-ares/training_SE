@@ -34,7 +34,7 @@ const navigationItems = computed(() => [
   { key: 'approval-queue', label: 'Approval Queue', icon: CheckSquareOutlined, routeName: 'approval-queue', visible: hasAnyPermission('borrow_request.approve', 'borrow_request.reject') },
   { key: 'handover-return', label: 'Handover & Return', icon: SettingOutlined, routeName: 'handover-return', visible: hasAnyPermission('asset.checkout', 'asset.checkin') },
   { key: 'borrowing-activity', label: 'Borrowing Activity', icon: HistoryOutlined, routeName: 'borrowing-activity', visible: hasAnyPermission('borrow_history.view_own', 'borrow_history.view_all') },
-  { key: 'asset-issues', label: 'Asset Issues & Repairs', icon: ToolOutlined, routeName: 'asset-issues', visible: authStore.hasPermission('repair_log.view') },
+  { key: 'asset-issues', label: 'Asset Issues & Repairs', icon: ToolOutlined, routeName: 'asset-issues', visible: authStore.hasPermission('asset_issue.view') },
   { key: 'asset-catalog', label: 'Asset Catalog', icon: AppstoreOutlined, routeName: 'asset-catalog', visible: hasAnyPermission('brand.create', 'brand.update', 'asset_type.create', 'asset_type.update', 'asset_model.create', 'asset_model.update') },
   { key: 'users', label: 'User Management', icon: TeamOutlined, routeName: 'users', visible: authStore.hasPermission('user.view') },
   { key: 'notifications', label: 'Notifications', icon: BellOutlined, routeName: 'notifications', visible: authStore.isAuthenticated },

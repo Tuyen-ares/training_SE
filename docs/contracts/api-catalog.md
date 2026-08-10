@@ -102,7 +102,7 @@
 | `GET /api/users/:userId` | Get user | Xem chi tiết người dùng | Read one user's profile and assigned roles. / Xem hồ sơ và role của một user. | Existing |
 | `POST /api/users` | Create user | Tạo người dùng | Create an administrative user account. / Tạo user từ màn quản trị. | Existing |
 | `PATCH /api/users/:userId` | Update user | Cập nhật người dùng | Update user profile, department or allowed roles. / Cập nhật hồ sơ, department hoặc role được phép. | Existing |
-| `PATCH /api/users/:userId/activate` | Change user active status | Kích hoạt/vô hiệu hóa người dùng | Activate or deactivate a user without deleting history. / Kích hoạt/vô hiệu hóa user mà không xóa lịch sử. | Existing |
+| `PATCH /api/users/:userId/status` | Change user active status | Kích hoạt/vô hiệu hóa người dùng | Set `isActive` to `true` or `false` without deleting history. / Gửi `isActive` là `true` hoặc `false` để đổi trạng thái mà không xóa lịch sử. | Existing |
 | `GET /api/rbac/roles` | List available roles | Xem role có sẵn | List roles available for assignment. / Liệt kê role có thể gán. | Existing |
 | `PUT /api/rbac/users/:userId/roles` | Replace user roles | Gán/gỡ role người dùng | Replace a user's assigned fixed roles. / Thay thế danh sách role cố định của user. | Existing |
 | `GET /api/departments` | List departments | Xem phòng ban | List departments for asset and user assignment. / Liệt kê department phục vụ gán asset/user. | Existing |

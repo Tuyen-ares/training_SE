@@ -89,7 +89,7 @@ export class AssetIssueController {
   updateRepair = async (req: Request, res: Response): Promise<void> => {
     const id = positiveId(req.params.id);
     if (!id) return ApiResponse.badRequest(res, { id: ['A positive issue id is required'] });
-    const parsed = parseRequestBody(repairCloseSchema, req.body);
+    const parsed = parseRequestBody(repairUpdateSchema, req.body);
     if (parsed.success === false) return ApiResponse.badRequest(res, parsed.errors);
     try {
       return ApiResponse.ok(res, await this.service.updateRepair(id, parsed.data));

@@ -5,6 +5,7 @@ export interface AuthRoleRecord {
 
 export interface AuthUserRecord {
   id: number;
+  userCode: string;
   departmentId: number;
   name: string;
   avatarUrl: string | null;

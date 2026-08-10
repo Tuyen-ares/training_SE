@@ -82,6 +82,7 @@ async function createAuthHarness(
 ) {
   const user: AuthUserRecord = {
     id: 1,
+    userCode: 'BI26001',
     departmentId: 1,
     name: 'Nguyen Van A',
     passwordHash: await hashPassword('123456'),

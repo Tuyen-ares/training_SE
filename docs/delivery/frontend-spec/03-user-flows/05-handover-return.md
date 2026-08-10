@@ -104,9 +104,12 @@ Borrow history chưa trả; asset BORROWED; người nhận xác nhận conditio
 ## Main Flow
 
 1. User mở return workflow trong Fulfillment Queue.
-2. User chọn condition DAMAGED và xác nhận.
-3. Hệ thống ghi return, tạo asset issue `CONFIRMED` và chuyển asset BORROWED sang DAMAGED.
-4. UI phản ánh return thành công và mở/link đến Issue Detail phù hợp.
+2. User chọn action `Confirm Damaged Return`, nhập mô tả hư hỏng bắt buộc và xác nhận.
+3. Hệ thống gọi `POST /api/borrow-histories/:historyId/return-damaged`, ghi return,
+   tạo asset issue `CONFIRMED` và chuyển asset BORROWED sang DAMAGED trong cùng
+   transaction.
+4. UI phản ánh return thành công, nhận `issueId` từ response và có thể mở/link đến
+   Issue Detail khi user có quyền xem issue.
 
 ## Alternative Flows
 

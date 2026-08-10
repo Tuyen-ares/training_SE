@@ -48,28 +48,30 @@ export class AssetIssueService {
       throw new AssetIssueError('REPORT_FORBIDDEN');
     }
 
-    const issue = await this.issueRepository.createReport({
-      assetId: input.assetId,
-      reportedBy: input.reporterId,
-      description: input.description,
+    return this.issueRepository.transaction(async (transaction) => {
+      const issue = await this.issueRepository.createReport({
+        assetId: input.assetId,
+        reportedBy: input.reporterId,
+        description: input.description,
+      }, transaction);
+      if (this.notificationRepository) {
+        const recipients = await this.notificationRepository.findActiveUserIdsByPermissions([
+          'asset_issue.view',
+          'asset_issue.update',
+        ]);
+        await Promise.all(recipients
+          .filter((id) => id !== input.reporterId)
+          .map((recipientUserId) => this.notificationRepository!.create({
+            recipientUserId,
+            notificationType: 'ASSET_ISSUE_REPORTED',
+            title: 'New asset issue reported',
+            message: `Asset issue #${issue.id} requires review.`,
+            relatedEntityType: 'ASSET_ISSUE',
+            relatedEntityId: issue.id,
+          }, transaction)));
+      }
+      return issue;
     });
-    if (this.notificationRepository) {
-      const recipients = await this.notificationRepository.findActiveUserIdsByPermissions([
-        'repair_log.view',
-        'repair_log.update',
-      ]);
-      await Promise.all(recipients
-        .filter((id) => id !== input.reporterId)
-        .map((recipientUserId) => this.notificationRepository!.create({
-          recipientUserId,
-          notificationType: 'ASSET_ISSUE_REPORTED',
-          title: 'New asset issue reported',
-          message: `Asset issue #${issue.id} requires review.`,
-          relatedEntityType: 'ASSET_ISSUE',
-          relatedEntityId: issue.id,
-        })));
-    }
-    return issue;
   }
 
   list(query: AssetIssueListQuery): Promise<AssetIssuePage> {

@@ -116,7 +116,7 @@ async function openRelated(notification) {
   await markRead(notification)
   if (!notification.relatedEntityId) return message.info('This notification has no related record.')
 
-  if (notification.relatedEntityType === 'ASSET_ISSUE' && authStore.hasPermission('repair_log.view')) {
+  if (notification.relatedEntityType === 'ASSET_ISSUE' && authStore.hasPermission('asset_issue.view')) {
     return router.push({ name: 'asset-issue-detail', params: { id: notification.relatedEntityId } })
   }
   if (notification.relatedEntityType === 'BORROW_REQUEST') {

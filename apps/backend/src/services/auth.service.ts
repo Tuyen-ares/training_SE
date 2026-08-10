@@ -16,6 +16,7 @@ import { verifyPassword } from '@/shared/security/password-hasher.js';
 function toAuthenticatedUserDto(user: AuthUserRecord): AuthenticatedUserDto {
   return {
     id: user.id,
+    userCode: user.userCode,
     name: user.name,
     avatarUrl: user.avatarUrl,
     email: user.email,

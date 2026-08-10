@@ -52,6 +52,8 @@ test('User API creates safe responses, enforces role.assign and deactivates inst
     'role.assign',
   ]);
   const createOnlyToken = tokenService.createAccessToken(1, ['user.create']);
+  const updateOnlyToken = tokenService.createAccessToken(1, ['user.update']);
+  const deleteOnlyToken = tokenService.createAccessToken(1, ['user.delete']);
   const suffix = Date.now().toString().slice(-8);
 
   async function request(
@@ -87,6 +89,7 @@ test('User API creates safe responses, enforces role.assign and deactivates inst
 
   assert.equal(explicitRoleResponse.status, 201);
   createdUserIds.push(explicitRoleResponse.body.data.id);
+  assert.match(explicitRoleResponse.body.data.userCode, /^BI\d{5,}$/);
   assert.equal(explicitRoleResponse.body.data.roles[0].name, 'asset_manager');
   assert.equal('password' in explicitRoleResponse.body.data, false);
   assert.equal('passwordHash' in explicitRoleResponse.body.data, false);
@@ -107,6 +110,7 @@ test('User API creates safe responses, enforces role.assign and deactivates inst
     fullAccessToken,
   );
   assert.equal(readResponse.status, 200);
+  assert.equal(readResponse.body.data.userCode, explicitRoleResponse.body.data.userCode);
   assert.equal('password' in readResponse.body.data, false);
 
   const forbiddenResponse = await request('/users', createOnlyToken, {
@@ -155,6 +159,7 @@ test('User API creates safe responses, enforces role.assign and deactivates inst
   });
   assert.equal(defaultRoleResponse.status, 201);
   createdUserIds.push(defaultRoleResponse.body.data.id);
+  assert.match(defaultRoleResponse.body.data.userCode, /^BI\d{5,}$/);
   assert.equal(defaultRoleResponse.body.data.roles[0].id, employeeRole.id);
 
   const refreshJti = randomUUID();
@@ -167,12 +172,12 @@ test('User API creates safe responses, enforces role.assign and deactivates inst
     },
   });
 
-  const deleteResponse = await request(
-    `/users/${explicitRoleResponse.body.data.id}`,
+  const deactivateResponse = await request(
+    `/users/${explicitRoleResponse.body.data.id}/status`,
     fullAccessToken,
-    { method: 'DELETE' },
+    { method: 'PATCH', body: JSON.stringify({ isActive: false }) },
   );
-  assert.equal(deleteResponse.status, 204);
+  assert.equal(deactivateResponse.status, 200);
 
   const deactivatedUser = await prisma.users.findUnique({
     where: { id: explicitRoleResponse.body.data.id },
@@ -185,4 +190,26 @@ test('User API creates safe responses, enforces role.assign and deactivates inst
     select: { is_revoked: true },
   });
   assert.deepEqual(revokedToken, { is_revoked: true });
+
+  const activateResponse = await request(
+    `/users/${explicitRoleResponse.body.data.id}/status`,
+    fullAccessToken,
+    { method: 'PATCH', body: JSON.stringify({ isActive: true }) },
+  );
+  assert.equal(activateResponse.status, 200);
+  assert.equal(activateResponse.body.data.isActive, true);
+
+  const forbiddenDeactivateResponse = await request(
+    `/users/${explicitRoleResponse.body.data.id}/status`,
+    updateOnlyToken,
+    { method: 'PATCH', body: JSON.stringify({ isActive: false }) },
+  );
+  assert.equal(forbiddenDeactivateResponse.status, 403);
+
+  const forbiddenActivateResponse = await request(
+    `/users/${explicitRoleResponse.body.data.id}/status`,
+    deleteOnlyToken,
+    { method: 'PATCH', body: JSON.stringify({ isActive: true }) },
+  );
+  assert.equal(forbiddenActivateResponse.status, 403);
 });

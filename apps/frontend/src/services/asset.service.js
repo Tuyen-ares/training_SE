@@ -56,6 +56,6 @@ export function listAssetLookups(api) {
 export function reportAssetIssue(api, assetId, description) {
   return api(`/assets/${assetId}/report-damaged`, {
     method: 'POST',
-    body: JSON.stringify({ description }),
+    body: { description },
   })
 }
