@@ -110,13 +110,22 @@ and reach, and open or create a role. Role deletion is not supported.
 - Type: neutral or informational `System`/`Custom` tag.
 - Permissions: numeric count.
 - Assigned users: numeric count.
-- Updated: date/time when available; otherwise omit the column rather than show
-  invented data.
 - Action: `Open` informational link.
+
+The current `RoleSummary` API returns only `id`, `name`, `isSystem`,
+`permissionCount`, and `userCount`. It does not return `updatedAt`, so the Stitch
+table must not contain an Updated column or mock update timestamps.
 
 The mockup contains representative rows for Administrator, Asset Manager,
 Employee, and Quality Auditor so the table structure is visually meaningful.
 There is no Delete action.
+
+`Create Role` and `Open` lead to the retained existing Role Create/Detail flow,
+represented by Stitch source `0e574f09c51a46daae829f30c75372d7` and the shared
+frontend `RoleFormView`. Create mode accepts a name and permission set. Detail
+mode supports custom-role rename and permission replacement; system role names
+remain protected. That flow is outside this three-screen visual redesign and is
+not undefined or newly introduced by these actions.
 
 ## Screen 2: Registration Requests
 
@@ -183,7 +192,9 @@ The desktop content uses a 16+8 Ant grid after the breadcrumb and page header.
    - reviewer and reviewed timestamp when terminal.
 3. `Account Impact` info alert or bounded section explaining that approval creates
    an active user, allocates a userCode, assigns the selected department and roles,
-   links the created user, and completes the request atomically.
+   links the created user, and completes the request atomically. It must explicitly
+   state that when no initial role is selected, the backend assigns the default
+   Employee role.
 
 Readonly applicant and audit data use descriptions, not disabled form inputs.
 
