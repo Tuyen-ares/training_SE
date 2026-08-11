@@ -10,6 +10,12 @@ Before implementing a feature or fixing a bug:
 4. Inspect the current code before making assumptions.
 5. Do not use `docs/future/**` as current requirements.
 
+Whenever an API is added, changed or removed, update the same task's API
+documentation: `apps/backend/openapi.yaml`, `docs/contracts/api-catalog.md`,
+and the relevant contract/spec file. Verify the documented method, path,
+permission, request/response shape and error cases against the registered
+route and controller before considering the task complete.
+
 After implementation:
 
 1. Run the relevant verification/tests.

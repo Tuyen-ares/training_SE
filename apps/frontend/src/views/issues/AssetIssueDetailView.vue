@@ -165,7 +165,7 @@ onMounted(load)
               <a-descriptions-item label="Reported by">{{ issue.reporter?.name || 'Unknown user' }}</a-descriptions-item>
               <a-descriptions-item label="Reported at">{{ formatDate(issue.createdAt) }}</a-descriptions-item>
               <a-descriptions-item label="Description" :span="2">{{ issue.description }}</a-descriptions-item>
-              <a-descriptions-item label="Handler">{{ issue.handledBy ? `User #${issue.handledBy}` : 'Unassigned' }}</a-descriptions-item>
+              <a-descriptions-item label="Handler">{{ issue.handledBy?.name || 'Unassigned' }}</a-descriptions-item>
               <a-descriptions-item label="Last updated">{{ formatDate(issue.updatedAt) }}</a-descriptions-item>
             </a-descriptions>
           </section>

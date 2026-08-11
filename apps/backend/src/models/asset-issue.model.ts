@@ -6,7 +6,7 @@ export interface AssetIssue {
   status: string;
   createdAt: Date | null;
   updatedAt: Date | null;
-  handledBy: number | null;
+  handledBy: { id: number; name: string } | null;
   repairProvider: string | null;
   startDate: Date | null;
   endDate: Date | null;

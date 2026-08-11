@@ -92,7 +92,9 @@ test('Asset issue and notification APIs enforce lifecycle and ownership', async 
   const list = await request('/asset-issues?status=REPORTED', handlerToken);
   assert.equal(list.status, 200);
   assert.ok(list.body.data.items.some((item: any) => item.id === issueId));
-  assert.equal((await request(`/asset-issues/${issueId}/confirm`, handlerToken, { method: 'POST' })).status, 200);
+  const confirmed = await request(`/asset-issues/${issueId}/confirm`, handlerToken, { method: 'POST' });
+  assert.equal(confirmed.status, 200, JSON.stringify(confirmed.body));
+  assert.deepEqual(confirmed.body.data.handledBy, { id: handler.id, name: handler.name });
   assert.equal((await prisma.assets.findUniqueOrThrow({ where: { id: asset.id } })).status, 'damaged');
   assert.equal((await request(`/asset-issues/${issueId}/start-repair`, handlerToken, { method: 'POST', body: '{}' })).status, 200);
   assert.equal((await prisma.assets.findUniqueOrThrow({ where: { id: asset.id } })).status, 'in_repair');

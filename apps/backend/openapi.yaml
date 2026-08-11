@@ -38,36 +38,118 @@ tags:
   - name: F08 - Administration
     description: Quản trị người dùng, phân quyền và phòng ban
 paths:
-  /auth/register:
+  /registration-requests:
     post:
-      tags:
-        - F01 - Authentication
-      summary: Đăng ký trực tiếp (legacy)
-      description: >-
-        Endpoint hiện tại tạo user trực tiếp. Sẽ được thay thế bởi luồng yêu cầu đăng ký.
-      operationId: register
+      tags: [F01 - Authentication]
+      summary: Gửi yêu cầu đăng ký
+      operationId: submitRegistrationRequest
       security: []
       requestBody:
         required: true
         content:
           application/json:
             schema:
-              $ref: '#/components/schemas/RegisterInput'
+              $ref: '#/components/schemas/RegistrationSubmitInput'
       responses:
         '201':
-          description: Đăng ký thành công
+          description: Request PENDING đã được tạo; không tạo user hoặc session
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/MessageResponse'
-        '400':
-          $ref: '#/components/responses/BadRequest'
+                type: object
+                properties:
+                  data:
+                    $ref: '#/components/schemas/RegistrationSubmission'
+        '400': { $ref: '#/components/responses/BadRequest' }
         '409':
-          description: Email hoặc số điện thoại đã được sử dụng
+          description: Email/phone đã thuộc user hoặc một request PENDING khác
+    get:
+      tags: [F08 - Administration]
+      summary: Danh sách yêu cầu đăng ký
+      operationId: listRegistrationRequests
+      parameters:
+        - name: status
+          in: query
+          schema: { type: string, enum: [PENDING, APPROVED, REJECTED], default: PENDING }
+        - name: q
+          in: query
+          schema: { type: string, maxLength: 100 }
+        - $ref: '#/components/parameters/Page'
+        - $ref: '#/components/parameters/PageSize'
+      responses:
+        '200':
+          description: Trang registration requests; yêu cầu `user_registration.review`
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/Error'
+                type: object
+                properties:
+                  data:
+                    $ref: '#/components/schemas/RegistrationRequestPage'
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+  /registration-requests/{requestId}:
+    get:
+      tags: [F08 - Administration]
+      summary: Chi tiết yêu cầu đăng ký
+      operationId: getRegistrationRequest
+      parameters:
+        - $ref: '#/components/parameters/RequestId'
+      responses:
+        '200':
+          description: Chi tiết request; yêu cầu `user_registration.review`
+          content:
+            application/json:
+              schema:
+                type: object
+                properties: { data: { $ref: '#/components/schemas/RegistrationRequest' } }
+        '403': { $ref: '#/components/responses/Forbidden' }
+        '404': { description: Không tìm thấy request }
+  /registration-requests/{requestId}/approve:
+    post:
+      tags: [F08 - Administration]
+      summary: Duyệt và tạo user
+      description: Tạo user/userCode, department, initial roles, link createdUserId và clear hash trong một transaction.
+      operationId: approveRegistrationRequest
+      parameters:
+        - $ref: '#/components/parameters/RequestId'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/RegistrationApproveInput' }
+      responses:
+        '200':
+          description: Request APPROVED; yêu cầu `user_registration.review`
+          content:
+            application/json:
+              schema:
+                type: object
+                properties: { data: { $ref: '#/components/schemas/RegistrationRequest' } }
+        '400': { $ref: '#/components/responses/BadRequest' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+        '404': { description: Không tìm thấy request }
+        '409': { description: Request đã review hoặc email/phone đã thuộc user; transaction rollback }
+  /registration-requests/{requestId}/reject:
+    post:
+      tags: [F08 - Administration]
+      summary: Từ chối yêu cầu đăng ký
+      description: Rejection reason optional; password hash và pending keys luôn được clear.
+      operationId: rejectRegistrationRequest
+      parameters:
+        - $ref: '#/components/parameters/RequestId'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/RegistrationRejectInput' }
+      responses:
+        '200':
+          description: Request REJECTED; yêu cầu `user_registration.review`
+        '400': { $ref: '#/components/responses/BadRequest' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+        '404': { description: Không tìm thấy request }
+        '409': { description: Request đã được review }
   /auth/login:
     post:
       tags:
@@ -1203,6 +1285,44 @@ paths:
           $ref: '#/components/responses/BadRequest'
         '403':
           $ref: '#/components/responses/Forbidden'
+  /borrow-histories/{historyId}:
+    get:
+      tags:
+        - F05 - Handover, Return & History
+      summary: Chi tiết lịch sử mượn
+      description: >-
+        Trả chi tiết history trong phạm vi effective permission. `borrow_history.view_own`
+        chỉ đọc được history thuộc request của chính user; `borrow_history.view_all` đọc
+        được history toàn công ty. Response gồm request reason, requester, approval,
+        handover và return metadata đã ghi nhận.
+      operationId: getBorrowHistoryDetail
+      parameters:
+        - name: historyId
+          in: path
+          required: true
+          schema:
+            type: integer
+            minimum: 1
+      responses:
+        '200':
+          description: Chi tiết lịch sử mượn
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data:
+                    $ref: '#/components/schemas/BorrowHistoryDetail'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          description: Không tìm thấy lịch sử mượn trong phạm vi được phép
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
   /borrow-histories/{historyId}/return:
     post:
       tags:
@@ -1241,6 +1361,55 @@ paths:
                 $ref: '#/components/schemas/Error'
         '409':
           description: Lịch sử đã trả hoặc asset không BORROWED
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+  /borrow-histories/{historyId}/return-damaged:
+    post:
+      tags:
+        - F05 - Handover, Return & History
+      summary: Xác nhận trả thiết bị hỏng
+      description: >-
+        Atomic operation: ghi nhận history đã trả với `returnCondition=DAMAGED`, chuyển
+        asset `BORROWED → DAMAGED`, tạo asset issue `CONFIRMED` và trả `issueId` của issue
+        mới tạo. Nếu một bước lỗi, toàn bộ thay đổi rollback.
+      operationId: confirmDamagedReturn
+      parameters:
+        - name: historyId
+          in: path
+          required: true
+          schema:
+            type: integer
+            minimum: 1
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/DamagedReturnInput'
+      responses:
+        '200':
+          description: Trả thiết bị hỏng thành công
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data:
+                    $ref: '#/components/schemas/DamagedReturnResult'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          description: Không tìm thấy lịch sử mượn
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '409':
+          description: History đã trả hoặc asset không còn BORROWED
           content:
             application/json:
               schema:
@@ -1830,7 +1999,8 @@ paths:
     get:
       tags:
         - F08 - Administration
-      summary: Danh sách role có thể gán
+      summary: Danh sách role
+      description: Yêu cầu `role.view`, `role.assign` hoặc `user_registration.review`.
       operationId: listRoles
       responses:
         '200':
@@ -1843,11 +2013,118 @@ paths:
                   data:
                     type: array
                     items:
-                      $ref: '#/components/schemas/Reference'
+                      $ref: '#/components/schemas/RoleSummary'
         '401':
           $ref: '#/components/responses/Unauthorized'
         '403':
           $ref: '#/components/responses/Forbidden'
+    post:
+      tags: [F08 - Administration]
+      summary: Tạo custom role
+      description: Yêu cầu `role.create`; permission set phải có ít nhất một phần tử.
+      operationId: createRole
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/CreateRoleInput' }
+      responses:
+        '201':
+          description: Role đã tạo
+          content:
+            application/json:
+              schema:
+                type: object
+                properties: { data: { $ref: '#/components/schemas/RoleDetail' } }
+        '400': { $ref: '#/components/responses/BadRequest' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+        '409': { description: Tên role đã tồn tại }
+  /rbac/roles/{roleId}:
+    get:
+      tags: [F08 - Administration]
+      summary: Chi tiết role và permission set
+      description: Yêu cầu `role.view`.
+      operationId: getRole
+      parameters:
+        - name: roleId
+          in: path
+          required: true
+          schema: { type: integer, minimum: 1 }
+      responses:
+        '200':
+          description: Role detail
+          content:
+            application/json:
+              schema:
+                type: object
+                properties: { data: { $ref: '#/components/schemas/RoleDetail' } }
+        '403': { $ref: '#/components/responses/Forbidden' }
+        '404': { description: Không tìm thấy role }
+    patch:
+      tags: [F08 - Administration]
+      summary: Đổi tên custom role
+      description: Yêu cầu `role.update`; system role name được bảo vệ.
+      operationId: updateRoleName
+      parameters:
+        - name: roleId
+          in: path
+          required: true
+          schema: { type: integer, minimum: 1 }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [name]
+              additionalProperties: false
+              properties: { name: { type: string, minLength: 1, maxLength: 30 } }
+      responses:
+        '200': { description: Role đã cập nhật }
+        '400': { $ref: '#/components/responses/BadRequest' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+        '404': { description: Không tìm thấy role }
+        '409': { description: System role hoặc duplicate name }
+  /rbac/roles/{roleId}/permissions:
+    put:
+      tags: [F08 - Administration]
+      summary: Thay thế permission set của role
+      description: Yêu cầu `role.update`; rollback nếu vi phạm essential-admin invariant.
+      operationId: replaceRolePermissions
+      parameters:
+        - name: roleId
+          in: path
+          required: true
+          schema: { type: integer, minimum: 1 }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/ReplaceRolePermissionsInput' }
+      responses:
+        '200': { description: Permission set đã thay thế }
+        '400': { $ref: '#/components/responses/BadRequest' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+        '404': { description: Không tìm thấy role }
+        '409': { description: Mutation sẽ làm mất essential administration access }
+  /rbac/permissions:
+    get:
+      tags: [F08 - Administration]
+      summary: Danh sách permission read-only
+      description: Yêu cầu `permission.view`; không có permission write API.
+      operationId: listPermissions
+      responses:
+        '200':
+          description: Permission codes và English descriptions
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data:
+                    type: array
+                    items: { $ref: '#/components/schemas/Permission' }
+        '403': { $ref: '#/components/responses/Forbidden' }
   /rbac/users/{userId}/roles:
     put:
       tags:
@@ -1880,6 +2157,8 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/Error'
+        '409':
+          description: Mutation sẽ làm mất essential administration access
   /departments:
     get:
       tags:
@@ -2133,35 +2412,6 @@ components:
             - message
       required:
         - data
-    RegisterInput:
-      type: object
-      properties:
-        departmentId:
-          type: integer
-          minimum: 1
-        name:
-          type: string
-          minLength: 1
-          maxLength: 30
-        password:
-          type: string
-          minLength: 6
-          maxLength: 72
-        email:
-          type: string
-          format: email
-          maxLength: 40
-        phone:
-          type: string
-          minLength: 1
-          maxLength: 10
-      required:
-        - departmentId
-        - name
-        - password
-        - email
-        - phone
-      additionalProperties: false
     LoginInput:
       type: object
       properties:
@@ -2752,6 +3002,34 @@ components:
       required:
         - historyId
         - returned
+    DamagedReturnInput:
+      type: object
+      properties:
+        description:
+          type: string
+          minLength: 1
+          maxLength: 2000
+      required:
+        - description
+      additionalProperties: false
+    DamagedReturnResult:
+      type: object
+      properties:
+        historyId:
+          type: integer
+        returned:
+          type: boolean
+        returnCondition:
+          type: string
+          enum:
+            - DAMAGED
+        issueId:
+          type: integer
+      required:
+        - historyId
+        - returned
+        - returnCondition
+        - issueId
     BorrowHistory:
       type: object
       properties:
@@ -2837,6 +3115,158 @@ components:
         - borrower
         - expectedReturnDate
         - borrowedAt
+    BorrowHistoryDetail:
+      type: object
+      properties:
+        id:
+          type: integer
+        request:
+          type: object
+          properties:
+            id:
+              type: integer
+            status:
+              $ref: '#/components/schemas/BorrowRequestStatus'
+            note:
+              type: string
+            createdAt:
+              type: string
+              format: date-time
+            requester:
+              type: object
+              properties:
+                id:
+                  type: integer
+                userCode:
+                  type: string
+                name:
+                  type: string
+                email:
+                  type: string
+                  format: email
+                avatarUrl:
+                  type: string
+                  nullable: true
+                department:
+                  type: object
+                  nullable: true
+                  properties:
+                    id:
+                      type: integer
+                    name:
+                      type: string
+                  required:
+                    - id
+                    - name
+              required:
+                - id
+                - userCode
+                - name
+                - email
+                - avatarUrl
+                - department
+          required:
+            - id
+            - status
+            - note
+            - createdAt
+            - requester
+        asset:
+          type: object
+          properties:
+            id:
+              type: integer
+            serialNumber:
+              type: string
+              nullable: true
+            qrCode:
+              type: string
+            imageUrl:
+              type: string
+              nullable: true
+            status:
+              $ref: '#/components/schemas/AssetStatus'
+            model:
+              $ref: '#/components/schemas/AssetSummary'
+          required:
+            - id
+            - serialNumber
+            - qrCode
+            - imageUrl
+            - status
+            - model
+        expectedReturnDate:
+          type: string
+          format: date
+        approvalStatus:
+          $ref: '#/components/schemas/BorrowDetailStatus'
+        approvedBy:
+          type: object
+          nullable: true
+          properties:
+            id:
+              type: integer
+            name:
+              type: string
+          required:
+            - id
+            - name
+        approvedAt:
+          type: string
+          format: date-time
+          nullable: true
+        rejectionReason:
+          type: string
+          nullable: true
+        handedOverBy:
+          type: object
+          nullable: true
+          properties:
+            id:
+              type: integer
+            name:
+              type: string
+          required:
+            - id
+            - name
+        borrowedAt:
+          type: string
+          format: date-time
+        receivedBy:
+          type: object
+          nullable: true
+          properties:
+            id:
+              type: integer
+            name:
+              type: string
+          required:
+            - id
+            - name
+        returnedAt:
+          type: string
+          format: date-time
+          nullable: true
+        returnCondition:
+          type: string
+          enum:
+            - NORMAL
+            - DAMAGED
+          nullable: true
+      required:
+        - id
+        - request
+        - asset
+        - expectedReturnDate
+        - approvalStatus
+        - approvedBy
+        - approvedAt
+        - rejectionReason
+        - handedOverBy
+        - borrowedAt
+        - receivedBy
+        - returnedAt
+        - returnCondition
     BorrowHistoryPage:
       type: object
       properties:
@@ -2888,8 +3318,17 @@ components:
           format: date-time
           nullable: true
         handledBy:
-          type: integer
+          type: object
           nullable: true
+          description: Người xác nhận hoặc xử lý trạng thái gần nhất của issue.
+          properties:
+            id:
+              type: integer
+            name:
+              type: string
+          required:
+            - id
+            - name
         repairProvider:
           type: string
           nullable: true
@@ -3214,6 +3653,123 @@ components:
       required:
         - isActive
       additionalProperties: false
+    RegistrationSubmitInput:
+      type: object
+      required: [name, email, phone, password]
+      additionalProperties: false
+      properties:
+        name: { type: string, minLength: 1, maxLength: 30 }
+        email: { type: string, format: email, maxLength: 40 }
+        phone: { type: string, pattern: '^\d{10}$' }
+        password: { type: string, minLength: 6, maxLength: 72, writeOnly: true }
+    RegistrationSubmission:
+      type: object
+      required: [id, status, createdAt]
+      properties:
+        id: { type: integer }
+        status: { type: string, enum: [PENDING] }
+        createdAt: { type: string, format: date-time }
+    RegistrationPerson:
+      type: object
+      required: [id, name]
+      properties:
+        id: { type: integer }
+        name: { type: string }
+    RegistrationRequest:
+      type: object
+      required: [id, name, email, phone, status, rejectionReason, reviewer, reviewedAt, createdUser, createdAt, updatedAt]
+      properties:
+        id: { type: integer }
+        name: { type: string }
+        email: { type: string, format: email }
+        phone: { type: string }
+        status: { type: string, enum: [PENDING, APPROVED, REJECTED] }
+        rejectionReason: { type: string, nullable: true }
+        reviewer:
+          allOf: [{ $ref: '#/components/schemas/RegistrationPerson' }]
+          nullable: true
+        reviewedAt: { type: string, format: date-time, nullable: true }
+        createdUser:
+          allOf: [{ $ref: '#/components/schemas/RegistrationPerson' }]
+          nullable: true
+        createdAt: { type: string, format: date-time }
+        updatedAt: { type: string, format: date-time }
+    RegistrationRequestPage:
+      type: object
+      required: [items, page, pageSize, total]
+      properties:
+        items:
+          type: array
+          items: { $ref: '#/components/schemas/RegistrationRequest' }
+        page: { type: integer }
+        pageSize: { type: integer }
+        total: { type: integer }
+    RegistrationApproveInput:
+      type: object
+      required: [departmentId]
+      additionalProperties: false
+      properties:
+        departmentId: { type: integer, minimum: 1 }
+        roleIds:
+          type: array
+          minItems: 1
+          maxItems: 10
+          uniqueItems: true
+          items: { type: integer, minimum: 1 }
+    RegistrationRejectInput:
+      type: object
+      additionalProperties: false
+      properties:
+        rejectionReason: { type: string, maxLength: 1000 }
+    Permission:
+      type: object
+      required: [id, name, code, description]
+      properties:
+        id: { type: integer }
+        name: { type: string }
+        code: { type: string }
+        description: { type: string }
+    RoleSummary:
+      type: object
+      required: [id, name, isSystem, permissionCount, userCount]
+      properties:
+        id: { type: integer }
+        name: { type: string }
+        isSystem: { type: boolean }
+        permissionCount: { type: integer }
+        userCount: { type: integer }
+    RoleDetail:
+      allOf:
+        - $ref: '#/components/schemas/RoleSummary'
+        - type: object
+          required: [permissions]
+          properties:
+            permissions:
+              type: array
+              items: { $ref: '#/components/schemas/Permission' }
+    CreateRoleInput:
+      type: object
+      required: [name, permissionIds]
+      additionalProperties: false
+      properties:
+        name: { type: string, minLength: 1, maxLength: 30 }
+        permissionIds:
+          type: array
+          minItems: 1
+          maxItems: 100
+          uniqueItems: true
+          items: { type: integer, minimum: 1 }
+    ReplaceRolePermissionsInput:
+      type: object
+      required: [permissionIds]
+      additionalProperties: false
+      properties:
+        permissionIds:
+          type: array
+          minItems: 1
+          maxItems: 100
+          uniqueItems: true
+          items: { type: integer, minimum: 1 }
     ReplaceUserRolesInput:
       type: object
       properties:

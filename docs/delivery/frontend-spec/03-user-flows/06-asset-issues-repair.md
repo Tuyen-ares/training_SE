@@ -172,5 +172,6 @@ Issue kết thúc và asset có state chính xác, không tự retire.
 - Issue List is API-backed, permission-guarded by `asset_issue.view`, filterable by status/asset and server-paginated.
 - Issue Detail is the single repair context. Confirm/reject/start/update/complete/fail actions are shown from effective permissions and current issue status.
 - Repair data entry uses Ant Design modal states; invalid HTTP 409 transitions show safe feedback and reload canonical issue data.
+- Issue responses expose `handledBy` as the confirming/handling user object (`id`, `name`); the UI displays the person's name and never formats a synthetic `User #<id>` label.
 - Start Repair uses the note field as `Diagnosis / Initial notes`; `Repair result` is shown only for Update/Complete/Fail, and is required when completing a repair.
 - The timeline only renders milestones supported by both persisted status and timestamps; it does not infer a lifecycle from inconsistent legacy dates.

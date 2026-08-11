@@ -71,7 +71,7 @@ onMounted(load)
           <a-table-column title="Reported by" key="reporter" :width="170"><template #default="{ record }">{{ record.reporter?.name || 'Unknown user' }}</template></a-table-column>
           <a-table-column title="Status" key="status" :width="150"><template #default="{ record }"><StatusTag :status="record.status" /></template></a-table-column>
           <a-table-column title="Reported" key="createdAt" :width="180"><template #default="{ record }">{{ formatDate(record.createdAt) }}</template></a-table-column>
-          <a-table-column title="Handler" key="handler" :width="110"><template #default="{ record }">{{ record.handledBy ? `User #${record.handledBy}` : 'Unassigned' }}</template></a-table-column>
+          <a-table-column title="Handler" key="handler" :width="170"><template #default="{ record }">{{ record.handledBy?.name || 'Unassigned' }}</template></a-table-column>
           <a-table-column title="Action" key="action" fixed="right" :width="130"><template #default="{ record }"><a-button type="link" :icon="h(EyeOutlined)" @click="router.push({ name: 'asset-issue-detail', params: { id: record.id } })">View details</a-button></template></a-table-column>
         </a-table>
         <footer><span>Showing {{ result.items.length }} of {{ result.total }} issues</span><a-pagination :current="result.page" :page-size="result.pageSize" :total="result.total" :show-size-changer="false" @change="changePage" /></footer>

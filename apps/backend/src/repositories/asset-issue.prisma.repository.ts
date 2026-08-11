@@ -36,6 +36,7 @@ const issueSelect = {
     },
   },
   reported_by_users: { select: { id: true, name: true } },
+  handled_by_users: { select: { id: true, name: true } },
 } as const;
 
 function mapIssue(issue: any): AssetIssue {
@@ -45,7 +46,9 @@ function mapIssue(issue: any): AssetIssue {
     reportedBy: issue.reported_by,
     description: issue.description ?? '',
     status: issue.status ?? 'REPORTED',
-    handledBy: issue.handled_by,
+    handledBy: issue.handled_by_users
+      ? { id: issue.handled_by_users.id, name: issue.handled_by_users.name }
+      : null,
     repairProvider: issue.repair_provider,
     startDate: issue.start_date,
     endDate: issue.end_date,
