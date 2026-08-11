@@ -1,12 +1,11 @@
-# Registration Administration Stitch Redesign
+# Registration Administration — Ant Design Workspace Redesign
 
-## Goal
+## Decision
 
-Redesign three existing Stitch screens in place so they use BigIn's Ant Design
-visual language, present meaningful operational data, and support the approved
-registration-review and role-management workflows.
-
-The existing screen IDs and canvas positions remain stable:
+Redesign the following existing Stitch screens in place using approach A: a
+high-density Ant Design workspace that matches the established English BigIn
+mockups, especially `System Borrowing History - BigIn Asset (English)`
+(`7880cfa8838c4d9c8db678f6b07c376d`).
 
 | Screen | Stitch screen ID |
 | --- | --- |
@@ -14,286 +13,159 @@ The existing screen IDs and canvas positions remain stable:
 | Registration Requests | `9884061c33ae48158e15925b1781c2b0` |
 | Registration Approval Detail | `f9d37a6af05c4ca39c3dd4b81e5297b4` |
 
-The screens stay in English because they belong to the English reference cluster.
-
-## Source of truth
-
-The redesign follows these sources in order:
-
-1. registration-review and RBAC requirements and business rules;
-2. `design/DESIGN.md` and `design/DESIGN_SYSTEM.md`;
-3. current API contract and backend behavior;
-4. existing English BigIn screens as composition references;
-5. Operational Excellence System as a color-palette reference only.
-
-The Operational Excellence System must not supply the shell, page layout,
-typography, card treatment, table density, or elevation model.
-
-## Verified backend fallback
-
-Approval accepts `{ departmentId, roleIds? }`. The controller allows `roleIds` to
-be omitted and rejects an explicitly supplied empty array. The registration
-service passes the optional value to `RbacService.resolveInitialRoleIds()`. When
-the value is absent, that service resolves `DEFAULT_REGISTER_ROLE_NAME`, falling
-back to `employee` when the environment variable is not configured.
-
-This behavior is covered by the RBAC service test for missing role input and is
-also recorded in the API contract. The detail screen may therefore show:
-
-> Employee will be assigned by default when no initial role is selected.
-
-The frontend must omit `roleIds` rather than send an empty array when the reviewer
-uses the fallback.
-
-## Visual contract
-
-### Palette
-
-| Purpose | Token/value |
-| --- | --- |
-| Primary and brand | `#FF6B00` |
-| Secondary text/icon | `#595959` |
-| Informational link/accent | `#007BFF` |
-| Primary text | `#1F1F1F` |
-| Page background | `#F5F5F5` |
-| Panel surface | `#FFFFFF` |
-| Inset/table header | `#FAFAFA` |
-| Default border | `#D9D9D9` |
-| Subtle divider | `#F0F0F0` |
-| Success | `#52C41A` |
-| Warning | `#FAAD14` |
-| Error | `#FF4D4F` |
-
-Orange is reserved for the primary CTA, active navigation/tab, focus state,
-links that use the primary interaction treatment, and small brand accents. Blue
-may be used for ordinary informational links. Semantic colors communicate status
-only and always appear with text or an icon.
-
-### BigIn Ant Design language
-
-- White 248px sidebar with a light right border.
-- White 64px header with breadcrumb/context on the left and user identity on the
-  right.
-- Neutral page background with 24px desktop content padding.
-- Flat white panels, 8px surface radius, light borders, and minimal shadow.
-- Controls are 32px high with 6px radius.
-- One 24/32px, weight-600 page title per screen.
-- Body and table text use 14/22px; supporting metadata uses 12/20px.
-- No dark structural shell, gradients, glass treatment, deep shadows, or large
-  orange surfaces.
-
-All screens use one Administration navigation item and the horizontal tabs Users,
-Registration Requests, and Roles. The active tab uses orange text and underline.
-
-## Screen 1: Role List
-
-### Purpose
-
-Allow a permitted administrator to find existing roles, understand their type
-and reach, and open or create a role. Role deletion is not supported.
-
-### Layout
-
-1. Shared AppShell and Administration tabs.
-2. Page header with title `Roles`, a one-line description, and the single primary
-   action `Create Role` when the user has `role.create`.
-3. One white data panel containing:
-   - search by role name;
-   - System/Custom type filter;
-   - result count and optional refresh icon;
-   - a dense Ant table;
-   - pagination or total count footer.
-
-### Table columns
-
-- Role: role name as the primary identifier.
-- Type: neutral or informational `System`/`Custom` tag.
-- Permissions: numeric count.
-- Assigned users: numeric count.
-- Action: `Open` informational link.
-
-The current `RoleSummary` API returns only `id`, `name`, `isSystem`,
-`permissionCount`, and `userCount`. It does not return `updatedAt`, so the Stitch
-table must not contain an Updated column or mock update timestamps.
-
-The mockup contains representative rows for Administrator, Asset Manager,
-Employee, and Quality Auditor so the table structure is visually meaningful.
-There is no Delete action.
-
-`Create Role` and `Open` lead to the retained existing Role Create/Detail flow,
-represented by Stitch source `0e574f09c51a46daae829f30c75372d7` and the shared
-frontend `RoleFormView`. Create mode accepts a name and permission set. Detail
-mode supports custom-role rename and permission replacement; system role names
-remain protected. That flow is outside this three-screen visual redesign and is
-not undefined or newly introduced by these actions.
-
-## Screen 2: Registration Requests
-
-### Purpose
-
-Help a reviewer find pending work first while retaining access to approved and
-rejected history.
-
-### Layout
-
-1. Shared AppShell and Administration tabs.
-2. Page header with title `Registration Requests`, description, and a compact
-   pending-count status treatment. It does not add unsupported analytics.
-3. One white data panel containing:
-   - search by applicant name, email, or phone;
-   - segmented status filter for Pending, Approved, and Rejected;
-   - active result count and refresh;
-   - request table;
-   - pagination and total count.
-
-### Table columns
-
-- Applicant: initials avatar, full name, and email.
-- Phone.
-- Submitted.
-- Status.
-- Reviewed by: `—` while pending.
-- Action: `Review` for pending requests and `View` for terminal requests.
-
-Pending data is presented oldest first. Approved and rejected history is newest
-first. The representative dataset includes multiple pending applicants plus one
-terminal-state example so status and action differences are clear.
-
-### Empty and error states
-
-An empty state stays inside the data panel and distinguishes no pending requests
-from no filter results. Recoverable load errors use an inline alert with Retry and
-preserve filter values. The page must never become a large unexplained blank
-surface.
-
-## Screen 3: Registration Approval Detail
-
-### Purpose
-
-Give the reviewer enough context to make one safe decision and preview the user
-account that approval will create.
-
-### Layout
-
-The desktop content uses a 16+8 Ant grid after the breadcrumb and page header.
-
-#### Main column
-
-1. `Applicant Summary` panel:
-   - initials/avatar;
-   - full name;
-   - email;
-   - phone;
-   - submitted date/time.
-2. `Registration Context` section:
-   - request ID;
-   - current status;
-   - submitted timestamp;
-   - reviewer and reviewed timestamp when terminal.
-3. `Account Impact` info alert or bounded section explaining that approval creates
-   an active user, allocates a userCode, assigns the selected department and roles,
-   links the created user, and completes the request atomically. It must explicitly
-   state that when no initial role is selected, the backend assigns the default
-   Employee role.
-
-Readonly applicant and audit data use descriptions, not disabled form inputs.
-
-#### Decision column
-
-One `Approval Decision` workflow panel contains:
-
-- required Department searchable select;
-- Initial Roles multi-selection using meaningful checkbox/selection rows with
-  role name, System/Custom metadata, and a short description when available;
-- selected-role count;
-- the verified employee fallback copy when no role is selected;
-- an impact summary showing the chosen department and roles before approval;
-- an action footer with `Reject` as a danger-outline action and
-  `Approve & Create User` as the only orange primary action.
-
-### Reject interaction
-
-Reject opens a 520px confirmation modal. It identifies the applicant, explains
-that no user will be created and the applicant can submit again later, and offers
-an optional rejection-reason textarea. The action order is Cancel then danger
-`Reject Request`.
-
-### Terminal outcome
-
-Approved and rejected requests replace the editable decision panel with `Review
-Outcome`. It shows reviewer, review time, created user link for approval, or the
-optional rejection reason for rejection. Terminal requests expose no mutation
-actions.
-
-## Data and interaction flow
-
-1. Reviewer opens Registration Requests with Pending selected by default.
-2. Search/status/pagination update the table without losing context.
-3. Review opens the detail screen with the request identity in the breadcrumb.
-4. Approval requires a department. Role selection is optional because the API
-   supports the employee fallback.
-5. The UI omits `roleIds` when using the fallback and sends selected IDs otherwise.
-6. Approve and reject enter a loading state and prevent double submission.
-7. Success refetches/replaces the request with its terminal outcome.
-8. Failure keeps the request pending, preserves inputs, and displays an actionable
-   inline error.
-
-Authorization remains based on `user_registration.review`; role names do not
-authorize the workflow.
-
-## Required states
-
-Each data-driven screen includes:
-
-- skeleton loading that preserves the final geometry;
-- empty state with a clear explanation and relevant next step;
-- inline recoverable error with Retry;
-- forbidden handling without rendering sensitive applicant data;
-- mutation loading and disabled controls;
-- terminal success/outcome state;
-- stale/partial warning if old data is retained after refresh failure.
-
-## Responsive behavior
-
-- Desktop uses the full white AppShell and 24px content gutter.
-- Tablet wraps toolbars and may reduce secondary table columns.
-- Mobile uses drawer navigation, a single-column detail flow, and a mobile list or
-  horizontally scrollable table with applicant/action priority preserved.
-- The approval actions remain visible without covering content.
-- Modal and selection controls fit the viewport with at least 16px side space.
-
-## Accessibility
-
-- Every input has a visible label and associated validation message.
-- Status is never represented by color alone.
-- Selection rows maintain checkbox state, selected border, and selected background
-  together.
-- Focus order follows the visual order and focus-visible uses the orange focus
-  treatment.
-- Icon-only controls have accessible names and tooltips.
-- Approve/reject feedback is announced and modal focus is trapped/restored.
-
-## Non-goals
-
-- No role deletion.
-- No permission creation or editing from the Role List.
-- No department CRUD.
-- No bulk registration approval.
-- No invented KPI dashboard, charts, or registration analytics.
-- No authorization based on the names Administrator, Asset Manager, or Employee.
-- No change to the screen IDs, canvas grouping, backend contract, or production
-  frontend in this Stitch-only redesign.
-
-## Stitch review checklist
-
-- The three target IDs are edited in place and remain beneath the English cluster.
-- Shared shell geometry and Administration tabs match across all three screens.
-- Both registration screens show meaningful cards/table content in the first
-  viewport and never render as blank canvases.
-- Palette follows Operational Excellence System swatches while composition follows
-  BigIn Ant Design.
-- There is one orange primary CTA per region.
-- Registration detail visibly supports department, role selection, employee
-  fallback, approve, reject, and terminal outcome.
-- Loading, empty, error, and terminal states are represented in the screen design
-  or clearly attached workflow variants.
+The screens remain in English and stay in their existing English-screen cluster.
+Role Create and Role Detail/Edit are retained existing flows outside this
+three-screen redesign. No target screen may imply delete-role support.
+
+## Sources of truth
+
+1. `docs/contracts/registration-review-and-role-management.md` and the active
+   registration/RBAC requirements;
+2. current backend DTOs and frontend views;
+3. existing English BigIn operational mocks, chiefly `7880...`;
+4. the `Ant-Industrial Precision` Stitch design system for layout and Ant Design
+   component conventions;
+5. the Operational Excellence System only for palette tokens.
+
+Operational Excellence must not introduce its dark sidebar, its page treatment,
+or non-BigIn typography/layout into these screens.
+
+## Shared visual contract
+
+- White 248px persistent sidebar with a `#F0F0F0` right border; compact BigIn
+  Asset logo at the top; Administration is the active navigation item with a
+  soft `#FFF2E6` fill, orange text, and a 3px orange edge accent.
+- White 64px top header with contextual breadcrumb/title at left and notification
+  plus avatar/profile controls at right. Do not add decorative header content.
+- `#F5F5F5` page background, 24px desktop page padding, a 4px spacing rhythm,
+  16px grid gutter, Inter typography, 14px default control/table text.
+- Panels are white with a 1px `#D9D9D9` border, 8px radius, and no static shadow.
+  Tables use `#FAFAFA` headers, compact 12px vertical / 16px horizontal cells,
+  and `#F0F0F0` row dividers.
+- Inputs and buttons are 32px with a 6px radius. Orange `#FF6B00` is reserved
+  for one primary CTA per region, active navigation, and focus. Blue `#007BFF`
+  is for ordinary informational links. Statuses use semantic colors only.
+- Administration secondary tabs sit directly below the header: Users,
+  Registration Requests, Roles. Their active state uses orange text/underline,
+  not a large filled tab.
+- No gradients, dark shell, oversized headings, deep shadows, card-per-row
+  layout, dashboard metrics, unsupported analytics, or blank decorative space.
+
+## Screen 1 — Role List
+
+### Purpose and data
+
+The page supports finding a role, assessing its scope, creating a new role, and
+opening the retained Role Detail/Edit flow. The role summary API supplies only
+`id`, `name`, `isSystem`, `permissionCount`, and `userCount`; it has no
+`updatedAt`, so Updated is omitted.
+
+### Layout and controls
+
+1. Compact page heading: `Roles`, a short scope sentence, and right-aligned
+   orange `Create Role` when the viewer has `role.create`.
+2. One meaningful white table panel. Its top toolbar contains an Ant search
+   input (`Search roles`) and a compact local `All / System / Custom` filter.
+   The filter is visualized as client-side filtering because roles are fetched as
+   one summary collection; it does not pretend to be a separate backend query.
+3. Dense table: `Role`, `Type`, `Permissions`, `Assigned users`, `Action`.
+   Role name is the primary scan target; Type is a neutral `System` or `Custom`
+   tag; numeric columns are right aligned. The action is blue `View & edit`, not
+   a destructive or overflow action.
+4. The panel footer shows the result count. No mocked update time, no delete,
+   and no fabricated permission-description data in the list.
+
+Representative rows use the actual model shape: Administrator, Asset Manager,
+Employee, and Quality Auditor with permission and assigned-user counts.
+
+## Screen 2 — Registration Requests
+
+### Purpose and data
+
+The queue prioritizes pending registration work but retains terminal history.
+It displays DTO-supported values only: applicant name/email, phone, submitted
+time, status, reviewer when present, and terminal outcome context.
+
+### Layout and controls
+
+1. Compact page heading: `Registration Requests` and a short operational
+   description. It has no unsupported KPI tiles.
+2. One white table panel. The top row has a search input for name, email, or
+   phone. Directly below it, Ant tabs filter `Pending`, `Approved`, and
+   `Rejected`; Pending is active by default. A small count is shown in the tab
+   label or beside the results, never as a large statistic card.
+3. Dense table: `Applicant`, `Phone`, `Submitted`, `Status`, `Reviewed by`,
+   `Action`. Applicant is two-line (name then subdued email); Submitted is
+   compact date/time; status is a semantic tag.
+4. Pending rows have a compact orange `Review` button because it starts the
+   primary workflow. Approved and rejected rows use blue `View` because they are
+   read-only. Row hover is subtle; clicking the identity or action opens the
+   separate Approval Detail screen.
+5. The panel footer holds total/pagination. Empty, loading, and retry-error
+   states remain inside this panel so the page never appears as an empty canvas.
+
+Ordering follows the API: Pending oldest-first; Approved/Rejected newest-first.
+
+## Screen 3 — Registration Approval Detail
+
+### Purpose and data
+
+This separate screen lets a reviewer make exactly one safe decision for a
+pending registration. Approval requires `departmentId`; selected `roleIds` are
+optional. If no initial role is selected, the client omits `roleIds` and the
+backend assigns its default Employee role. Rejection reason is optional.
+
+### Layout and controls
+
+1. Breadcrumb `Administration / Registration Requests / Request #ID`, followed
+   by a compact title row showing applicant name, request number, submitted time,
+   and semantic status. A blue `Back to requests` link returns to the queue.
+2. One 7/5 operational workspace, not a card grid:
+   - **Applicant & request**: one white description panel containing avatar or
+     initials, full name, email, phone, request ID, submission time, and current
+     status. This data is contiguous rather than split into several empty cards.
+   - **Approval decision**: one white workflow panel with required searchable
+     Department select, Initial roles multi-select, selected-role count, and a
+     visible info alert: `No initial role selected — the default Employee role
+     will be assigned.` The roles control uses only `id`, `name`, and
+     `isSystem`, the fields actually returned by the roles API.
+3. A concise `Account impact` strip within the decision panel says approval
+   creates the user, allocates the user code, assigns the chosen department and
+   selected/default role, links `createdUserId`, clears the password hash, and
+   marks the request terminal in one transaction.
+4. The decision panel has a fixed local footer: outlined danger `Reject` on the
+   left and the only orange primary `Approve & create user` on the right. The
+   approve button is disabled until a department is selected and both mutations
+   use a pending state to prevent duplicate handling.
+5. Reject opens an Ant confirmation modal with applicant identity, a concise
+   warning that no user is created and the password hash is cleared, optional
+   reason textarea, `Cancel`, and danger `Reject request`.
+6. For Approved/Rejected records the decision panel becomes a read-only
+   `Review outcome` panel: reviewer, reviewed time, linked created user for
+   approval, or optional rejection reason for rejection. No mutation buttons
+   remain.
+
+## Authorization and behavior
+
+- Registration review is gated by `user_registration.review`, not by role name.
+- Role List actions reflect `role.view`, `role.create`, and retained Role
+  Detail/Edit permissions; role deletion is absent.
+- Approve/reject requests are single-use. A conflict or validation failure keeps
+  the request pending, preserves the entered department/roles/reason, and shows
+  an inline Ant error alert.
+- Loading uses skeleton geometry; empty, forbidden, retry-error, mutation
+  pending, and terminal outcome states are all represented without changing the
+  shell or losing context.
+
+## Acceptance checklist for the Stitch edit
+
+- All three existing IDs are edited in place.
+- Sidebar, logo, header, Administration tabs, color usage, control sizes, and
+  table density visibly match `7880...` and the Ant-Industrial Precision system.
+- Role List has only supported fields and direct non-destructive actions.
+- Registration Requests gives Pending work a clear primary Review action and
+  history a read-only View action.
+- Approval Detail has exactly two meaningful work panels, no card forest, and
+  makes the department/default-Employee behavior explicit.
+- No target screen introduces role delete, permission authoring, bulk approval,
+  or hard-coded authorization by role name.
