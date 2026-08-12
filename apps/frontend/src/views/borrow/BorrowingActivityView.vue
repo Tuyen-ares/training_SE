@@ -149,7 +149,7 @@ onMounted(() => load());
 </template>
 <style scoped>
 .screen-code {
-  color: #8c8c8c;
+  color: var(--bigin-text-tertiary);
 }
 .history-page {
   padding: 24px;
@@ -161,18 +161,18 @@ onMounted(() => load());
   margin: 0;
 }
 .history-page header p {
-  color: #8c8c8c;
+  color: var(--bigin-text-tertiary);
   margin: 4px 0 18px;
 }
 .panel {
-  background: #fff;
-  border: 1px solid #f0f0f0;
+  background: var(--bigin-surface-panel);
+  border: 1px solid var(--bigin-border-secondary);
   border-radius: 8px;
   min-height: 600px;
   padding: 16px;
 }
 small {
-  color: #8c8c8c;
+  color: var(--bigin-text-tertiary);
 }
 .asset-cell {
   align-items: center;
@@ -187,7 +187,7 @@ footer {
   justify-content: space-between;
   align-items: center;
   padding: 14px 8px;
-  color: #8c8c8c;
+  color: var(--bigin-text-tertiary);
 }
 @media (max-width: 600px) {
   .history-page {

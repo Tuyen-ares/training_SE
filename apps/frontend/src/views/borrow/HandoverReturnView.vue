@@ -175,7 +175,7 @@ onMounted(load);
 </template>
 <style scoped>
 .screen-code {
-  color: #8c8c8c;
+  color: var(--bigin-text-tertiary);
 }
 .return-page {
   padding: 24px;
@@ -187,12 +187,12 @@ onMounted(load);
   margin: 0;
 }
 .return-page header p {
-  color: #8c8c8c;
+  color: var(--bigin-text-tertiary);
   margin: 4px 0 18px;
 }
 .panel {
-  background: #fff;
-  border: 1px solid #f0f0f0;
+  background: var(--bigin-surface-panel);
+  border: 1px solid var(--bigin-border-secondary);
   border-radius: 8px;
   min-height: 580px;
   padding: 0;
@@ -200,7 +200,7 @@ onMounted(load);
 .panel h2 {
   padding: 18px;
   margin: 0;
-  border-bottom: 1px solid #f0f0f0;
+  border-bottom: 1px solid var(--bigin-border-secondary);
 }
 .return-row {
   display: grid;
@@ -208,14 +208,14 @@ onMounted(load);
   gap: 18px;
   align-items: center;
   padding: 18px 22px;
-  border-bottom: 1px solid #f0f0f0;
+  border-bottom: 1px solid var(--bigin-border-secondary);
 }
 .return-row > div {
   display: grid;
 }
 .return-row span {
   font-size: 12px;
-  color: #8c8c8c;
+  color: var(--bigin-text-tertiary);
 }
 .return-row dl {
   display: grid;
@@ -225,7 +225,7 @@ onMounted(load);
 }
 .return-row dt {
   font-size: 10px;
-  color: #8c8c8c;
+  color: var(--bigin-text-tertiary);
   text-transform: uppercase;
 }
 .return-row dd {

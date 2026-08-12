@@ -4,6 +4,7 @@ import { EyeInvisibleOutlined, EyeOutlined, SaveOutlined } from '@ant-design/ico
 import { useRoute, useRouter } from 'vue-router'
 
 import WorkspaceLayout from '../../components/layout/WorkspaceLayout.vue'
+import AdministrationTabs from '../../components/administration/AdministrationTabs.vue'
 import StatusTag from '../../components/common/StatusTag.vue'
 import { useAuthStore } from '../../stores/auth'
 
@@ -56,13 +57,17 @@ async function submit() {
     errorMessage.value = 'Password is required for a new user.'
     return
   }
+  if (isEdit.value && authStore.hasPermission('role.assign') && !form.roleIds.length) {
+    errorMessage.value = 'Every user must keep at least one role.'
+    return
+  }
   submitting.value = true
   try {
     const payload = {
       name: form.name.trim(), email: form.email.trim(), phone: form.phone.trim(), departmentId: Number(form.departmentId),
       avatarUrl: form.avatarUrl.trim() || null,
       ...(form.password ? { password: form.password } : {}),
-      ...(authStore.hasPermission('role.assign') && form.roleIds.length ? { roleIds: [...form.roleIds] } : {}),
+      ...(authStore.hasPermission('role.assign') && (isEdit.value || form.roleIds.length) ? { roleIds: [...form.roleIds] } : {}),
     }
     const saved = await authStore.api(isEdit.value ? `/users/${route.params.id}` : '/users', {
       method: isEdit.value ? 'PATCH' : 'POST', body: payload,
@@ -83,7 +88,8 @@ onMounted(loadPage)
 
 <template>
   <WorkspaceLayout>
-    <template #context><strong>{{ screenTitle }}</strong></template>
+    <template #context><strong>Administration</strong></template>
+    <AdministrationTabs />
     <main class="form-page">
       <div class="form-heading"><div><a-breadcrumb v-if="isEdit"><a-breadcrumb-item>Admin</a-breadcrumb-item><a-breadcrumb-item>Employee</a-breadcrumb-item><a-breadcrumb-item>Edit</a-breadcrumb-item></a-breadcrumb><h1>{{ screenTitle }}</h1><p>{{ isEdit ? 'Update information and assigned roles for this employee.' : 'Create an account and assign system access permissions.' }}</p></div></div>
       <a-skeleton v-if="loading" active :paragraph="{ rows: 10 }" />
@@ -125,10 +131,10 @@ onMounted(loadPage)
 </template>
 
 <style scoped>
-.form-page { margin: 0 auto; max-width: 1160px; padding: 24px 28px 48px; }.muted,.helper { color: #8c8c8c; }.divider { color: #bfbfbf; }.form-heading h1 { font-size: 20px; margin: 10px 0 4px; }.form-heading p { color: #8c8c8c; margin: 0 0 18px; }.form-alert { margin-bottom: 16px; }
-.user-form-card { background: #fff; border: 1px solid #f0f0f0; border-radius: 8px; display: grid; grid-template-columns: minmax(0, 1.5fr) minmax(280px, .8fr); overflow: hidden; }.user-form-card section,.user-form-card aside { padding: 24px; }.user-form-card aside { border-left: 1px solid #f0f0f0; }.user-form-card h2 { font-size: 15px; margin: 0 0 16px; }.user-form-card h2 small { color: #8c8c8c; float: right; font-size: 11px; font-weight: 400; }
-.field-grid { display: grid; gap: 16px; grid-template-columns: 1fr 1fr; }.field-grid label { display: grid; gap: 7px; }.field-grid label > span { font-size: 13px; font-weight: 600; }.field-grid b { color: #ff4d4f; }.full-width { grid-column: 1 / -1; }.full-control { width: 100%; }.helper { font-size: 12px; margin: -8px 0 14px; }.visibility-button { background: transparent; border: 0; color: #8c8c8c; cursor: pointer; padding: 0; }
-.role-list { display: grid; gap: 10px; }.role-option { align-items: flex-start; background: #fff; border: 1px solid #f0f0f0; border-radius: 6px; cursor: pointer; display: flex; gap: 10px; padding: 12px; text-align: left; }.role-option--selected { background: #fff7e6; border-color: #ffbb96; }.role-radio { color: #ff6b00; }.role-option span:last-child { display: grid; gap: 3px; text-transform: capitalize; }.role-option small { color: #8c8c8c; line-height: 1.35; text-transform: none; }
-.user-form-card footer { border-top: 1px solid #f0f0f0; display: flex; gap: 10px; grid-column: 1 / -1; justify-content: flex-end; padding: 14px 24px; }.primary-action { background: #ff6b00; }
-@media (max-width: 800px) { .user-form-card { grid-template-columns: 1fr; }.user-form-card aside { border-left: 0; border-top: 1px solid #f0f0f0; }.field-grid { grid-template-columns: 1fr; }.full-width { grid-column: auto; }.form-page { padding: 16px; } }
+.form-page { margin: 0 auto; max-width: 1160px; padding: 24px 28px 48px; }.muted,.helper { color: var(--bigin-text-tertiary); }.divider { color: var(--bigin-text-disabled); }.form-heading h1 { font-size: 20px; margin: 10px 0 4px; }.form-heading p { color: var(--bigin-text-tertiary); margin: 0 0 18px; }.form-alert { margin-bottom: 16px; }
+.user-form-card { background: var(--bigin-surface-panel); border: 1px solid var(--bigin-border-secondary); border-radius: 8px; display: grid; grid-template-columns: minmax(0, 1.5fr) minmax(280px, .8fr); overflow: hidden; }.user-form-card section,.user-form-card aside { padding: 24px; }.user-form-card aside { border-left: 1px solid var(--bigin-border-secondary); }.user-form-card h2 { font-size: 15px; margin: 0 0 16px; }.user-form-card h2 small { color: var(--bigin-text-tertiary); float: right; font-size: 11px; font-weight: 400; }
+.field-grid { display: grid; gap: 16px; grid-template-columns: 1fr 1fr; }.field-grid label { display: grid; gap: 7px; }.field-grid label > span { font-size: 13px; font-weight: 600; }.field-grid b { color: var(--bigin-color-error); }.full-width { grid-column: 1 / -1; }.full-control { width: 100%; }.helper { font-size: 12px; margin: -8px 0 14px; }.visibility-button { background: transparent; border: 0; color: var(--bigin-icon-muted); cursor: pointer; padding: 0; }
+.role-list { display: grid; gap: 10px; }.role-option { align-items: flex-start; background: var(--bigin-surface-panel); border: 1px solid var(--bigin-border-secondary); border-radius: 6px; cursor: pointer; display: flex; gap: 10px; padding: 12px; text-align: left; }.role-option--selected { background: var(--bigin-surface-primary-soft); border-color: var(--bigin-border-primary); }.role-radio { color: var(--bigin-color-primary); }.role-option span:last-child { display: grid; gap: 3px; text-transform: capitalize; }.role-option small { color: var(--bigin-text-tertiary); line-height: 1.35; text-transform: none; }
+.user-form-card footer { border-top: 1px solid var(--bigin-border-secondary); display: flex; gap: 10px; grid-column: 1 / -1; justify-content: flex-end; padding: 14px 24px; }.primary-action { background: var(--bigin-color-primary); }
+@media (max-width: 800px) { .user-form-card { grid-template-columns: 1fr; }.user-form-card aside { border-left: 0; border-top: 1px solid var(--bigin-border-secondary); }.field-grid { grid-template-columns: 1fr; }.full-width { grid-column: auto; }.form-page { padding: 16px; } }
 </style>

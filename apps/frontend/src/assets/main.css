@@ -1,3 +1,4 @@
+@import "./tokens.css";
 @import "./base.css";
 
 #app {
@@ -5,29 +6,29 @@
 }
 
 .color-primary {
-  color: #34495E;
+  color: var(--bigin-color-primary);
 }
 
 .btn-main {
-  background: #34495E;
+  background: var(--bigin-color-primary);
   padding: 0.4rem 1.6rem;
-  color: #fff;
+  color: var(--bigin-text-inverse);
   border-radius: 4px;
   cursor: pointer;
 }
 
 .btn-main:hover {
-  background: #243241;
+  background: var(--bigin-color-primary-hover);
 }
 
 .btn-action {
-  background: #40b883;
+  background: var(--bigin-color-success);
   padding: 0.4rem 1.6rem;
-  color: #fff;
+  color: var(--bigin-text-inverse);
   border-radius: 4px;
   cursor: pointer;
 }
 
 .btn-action:hover {
-  background: #33956b;
+  background: var(--bigin-color-success-text);
 }

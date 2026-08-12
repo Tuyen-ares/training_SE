@@ -24,6 +24,36 @@ giá trị lâu dài cho việc đọc, triển khai và debug project.
 - User legacy được backfill năm 2026 theo `users.id ASC`; bảng `user_code_sequences` giữ sequence cuối để user mới tiếp tục đúng chuỗi. User code không được dùng làm PK/FK.
 - Migration backfill dùng temporary staging table có primary key vì database runtime bật `sql_require_primary_key`.
 
+### 2026-08-12 — Authenticated workspace theme/token architecture
+
+**Feature:** Frontend design system and dark mode.
+
+**Decision:** Light remains the default reference theme and dark is an explicit
+user preference persisted in `localStorage.theme`. The frontend owns a shared
+semantic token layer in `apps/frontend/src/assets/tokens.css` with light and
+dark scopes; authenticated views consume surface, text, border, icon and
+semantic status roles instead of hard-coded neutral colors. Ant Design Vue's
+`ConfigProvider` uses the matching default/dark algorithm and maps its layout,
+container, elevated, text, border, inset, hover and selected tokens to the
+same contract.
+
+**Reason:** A single semantic source keeps the BigIn primary action and status
+meaning stable while allowing panels, tables, forms, overlays and navigation to
+adapt to dark surfaces. Explicit persistence prevents the operating system
+from unexpectedly overriding a user's choice.
+
+**Affected areas:** `apps/frontend/src/assets`, `App.vue`, app store, workspace
+shell, authenticated dashboard/administration, asset, borrowing, issue and
+notification views, and design-system documentation. Login/register and
+training/legacy routes remain outside this migration. Authentication routes are
+explicitly light-only; the persisted preference is restored when the user
+returns to the authenticated workspace.
+
+**Verification:** Frontend production build, static audit for business-view
+neutral hard-codes and `prefers-color-scheme` conflicts, plus manual light/dark
+checks for shell, tables, forms, overlays, status colors, focus, hover,
+disabled and loading states.
+
 ## Important Business/Technical Gotchas
 
 - Approve All có thể partial success; detail không giữ được asset không tự chuyển `REJECTED`.
@@ -57,6 +87,20 @@ Các ghi chú deployment trên chỉ là context; khi sửa phải kiểm tra lo
 - **Status:** Future candidate; không implement từ future docs.
 
 ## Important Recent Decisions
+
+### 2026-08-11 — Registration requests tách khỏi users và guard essential admin theo permission
+
+**Feature:** F01/F08 Registration Review and RBAC Management.
+
+**Decision:** Guest submission tạo `registration_requests(PENDING)`, không tạo inactive user. Nullable unique pending email/phone keys bảo vệ concurrency và được clear cùng password hash ở approve/reject. Approve khóa request và tạo user/userCode/department/initial roles/link trong một transaction. Role management hỗ trợ list/detail/create/custom rename/permission replace-set; không delete role hoặc permission CRUD.
+
+Sensitive role-permission, user-role và user-deactivation mutations khóa tập permission thiết yếu cố định rồi kiểm tra còn ít nhất một active user có effective union đầy đủ. Guard không dùng tên role. Permission changes có hiệu lực ở access token được cấp ở login/refresh tiếp theo.
+
+**Gotcha:** Prisma CLI trước đây dùng `DATABASE_URL` trong khi runtime adapter dùng `DB_HOST/DB_NAME`, làm migration có thể chạy nhầm datasource. `prisma.config.ts` hiện dựng URL từ cùng bộ `DB_*`, fallback về `DATABASE_URL` chỉ khi runtime fields không đủ.
+
+**Affected areas:** Prisma schema/migration, Registration/RBAC/User services and routes, Administration Vue screens, OpenAPI/contracts/requirements, integration tests and Stitch screens.
+
+**Verification:** Backend typecheck/unit tests, registration/RBAC DB integration including concurrent duplicate submission and atomic hash cleanup, frontend build, OpenAPI parse, Stitch queue/detail generation.
 
 ### 2026-08-10 — Gom active-status thành một API PATCH
 

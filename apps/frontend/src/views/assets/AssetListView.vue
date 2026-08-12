@@ -39,6 +39,7 @@ const canCreateAsset = computed(() => authStore.hasPermission('asset.create'))
 const canUpdateAsset = computed(() => authStore.hasPermission('asset.update'))
 const columns = [
   { title: 'Asset Name/ID', key: 'asset', width: 220 },
+  { title: 'Type', key: 'type', width: 150 },
   { title: 'Model & Brand', key: 'modelBrand', width: 190 },
   { title: 'Department', key: 'department', width: 170 },
   { title: 'Serial Number', key: 'serial', width: 170 },
@@ -186,6 +187,7 @@ onMounted(() => {
                   </div>
                 </div>
               </template>
+              <a-typography-text v-else-if="column.key === 'type'">{{ record.type?.name || '—' }}</a-typography-text>
               <a-typography-text v-else-if="column.key === 'modelBrand'">{{ record.model.name }} / {{ record.brand.name }}</a-typography-text>
               <a-typography-text v-else-if="column.key === 'department'">{{ record.department?.name || 'Unassigned' }}</a-typography-text>
               <a-typography-text v-else-if="column.key === 'serial'">{{ record.serialNumber || '—' }}</a-typography-text>
@@ -209,21 +211,21 @@ onMounted(() => {
 
 <style scoped>
 .asset-page { min-height: calc(100vh - 64px); padding: 20px; }
-.asset-page__screen-id { color: #8c8c8c; }
-.asset-page__filters, .asset-page__table-surface { border: 1px solid #f0f0f0; border-radius: 8px; background: #fff; box-shadow: 0 2px 8px rgb(0 0 0 / 4%); }
+.asset-page__screen-id { color: var(--bigin-text-tertiary); }
+.asset-page__filters, .asset-page__table-surface { border: 1px solid var(--bigin-border-secondary); border-radius: 8px; background: var(--bigin-surface-panel); box-shadow: var(--bigin-shadow-panel); }
 .asset-page__filters { margin-bottom: 16px; padding: 14px; }
 .asset-page__filter-topline { align-items: center; display: flex; gap: 12px; }
 .asset-page__search, .asset-page__scan { width: 224px; }
 .asset-page__toolbar-actions { display: flex; gap: 10px; margin-left: auto; }
 .asset-page__filter-grid { display: grid; gap: 14px; grid-template-columns: repeat(5, minmax(0, 1fr)); margin-top: 16px; max-width: 860px; }
-.asset-page__filter-grid label { display: grid; gap: 5px; color: #1f1f1f; font-size: 12px; font-weight: 600; }
+.asset-page__filter-grid label { display: grid; gap: 5px; color: var(--bigin-text-primary); font-size: 12px; font-weight: 600; }
 .asset-page__table-surface { min-height: 600px; overflow: hidden; }
 .asset-page__table-surface :deep(.ant-table) { font-size: 13px; }
-.asset-page__table-surface :deep(.ant-table-thead > tr > th) { color: #595959; font-size: 11px; font-weight: 700; letter-spacing: .02em; text-transform: uppercase; }
+.asset-page__table-surface :deep(.ant-table-thead > tr > th) { color: var(--bigin-text-secondary); font-size: 11px; font-weight: 700; letter-spacing: .02em; text-transform: uppercase; }
 .asset-page__table-surface :deep(.ant-table-tbody > tr > td) { padding-block: 14px; }
 .asset-page__asset-cell { align-items: center; display: flex; gap: 10px; }
-.asset-page__asset-cell :deep(.ant-avatar) { flex: 0 0 auto; background: #fff7e6; border: 1px solid #f0f0f0; }
-.asset-page__qr-icon { color: #262626; font-size: 16px; }
+.asset-page__asset-cell :deep(.ant-avatar) { flex: 0 0 auto; background: var(--bigin-surface-primary-soft); border: 1px solid var(--bigin-border-secondary); }
+.asset-page__qr-icon { color: var(--bigin-icon-default); font-size: 16px; }
 .asset-page__footer { align-items: center; display: flex; justify-content: space-between; padding: 12px 14px; }
 @media (max-width: 900px) { .asset-page__filter-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); max-width: none; }.asset-page__filter-topline { align-items: stretch; flex-wrap: wrap; }.asset-page__toolbar-actions { margin-left: 0; }.asset-page__search, .asset-page__scan { flex: 1 1 220px; } }
 @media (max-width: 640px) { .asset-page { padding: 12px; }.asset-page__filter-grid { grid-template-columns: 1fr; }.asset-page__toolbar-actions { width: 100%; }.asset-page__toolbar-actions :deep(.ant-btn) { flex: 1; }.asset-page__footer { align-items: flex-start; flex-direction: column; gap: 12px; } }

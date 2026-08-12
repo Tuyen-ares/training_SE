@@ -187,7 +187,7 @@ onMounted(load);
 </template>
 <style scoped>
 .screen-code {
-  color: #8c8c8c;
+  color: var(--bigin-text-tertiary);
 }
 .detail-page {
   padding: 20px 24px;
@@ -211,7 +211,7 @@ onMounted(load);
   gap: 10px;
 }
 .detail-heading p {
-  color: #8c8c8c;
+  color: var(--bigin-text-tertiary);
   margin: 3px 0;
 }
 .detail-grid {
@@ -225,8 +225,8 @@ onMounted(load);
   gap: 18px;
 }
 .panel {
-  background: #fff;
-  border: 1px solid #f0f0f0;
+  background: var(--bigin-surface-panel);
+  border: 1px solid var(--bigin-border-secondary);
   border-radius: 8px;
   padding: 18px;
 }
@@ -234,7 +234,7 @@ onMounted(load);
   font-size: 17px;
   margin: 0 0 14px;
   padding-bottom: 12px;
-  border-bottom: 1px solid #f0f0f0;
+  border-bottom: 1px solid var(--bigin-border-secondary);
 }
 .panel dl {
   display: grid;
@@ -242,18 +242,18 @@ onMounted(load);
 }
 .panel dt {
   font-size: 11px;
-  color: #8c8c8c;
+  color: var(--bigin-text-tertiary);
   text-transform: uppercase;
 }
 .panel dd {
   margin: 0 0 8px;
 }
 .reason-box {
-  background: #f5f5f5;
-  border: 1px solid #e6e6e6;
+  background: var(--bigin-surface-inset);
+  border: 1px solid var(--bigin-border-subtle);
   border-radius: 4px;
   padding: 12px;
-  color: #434343;
+  color: var(--bigin-text-secondary);
   line-height: 1.55;
 }
 .requester {
@@ -273,13 +273,13 @@ onMounted(load);
   min-width: 0;
 }
 .requester-meta {
-  color: #595959;
+  color: var(--bigin-text-secondary);
   font-size: 13px;
   line-height: 1.35;
   overflow-wrap: anywhere;
 }
 .requester-meta :deep(svg) {
-  color: #8c8c8c;
+  color: var(--bigin-icon-muted);
   margin-right: 4px;
 }
 .asset-list {
@@ -290,7 +290,7 @@ onMounted(load);
 }
 .reason {
   font-size: 12px;
-  color: #cf1322;
+  color: var(--bigin-color-error-text);
   margin: 4px 0 0;
 }
 .asset-cell {

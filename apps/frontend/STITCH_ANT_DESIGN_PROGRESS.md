@@ -334,4 +334,21 @@ local contract. A canonical Markdown upload was accepted as a temporary
 with `Request contains an invalid argument`; it was therefore not applied to
 the screens. Do not apply the green asset or the older `Operational Excellence`
 asset. The temporary upload must be hidden/removed in Stitch before treating
-the asset-import gate as complete.
+  the asset-import gate as complete.
+
+### Phase 11 — Frontend light/dark token compatibility
+
+The Stitch desktop reference remains the light visual reference. The Vue
+authenticated workspace now adds an explicit dark theme without changing the
+Stitch screen IDs, workflow, permission mapping or primary orange action.
+
+- Light shell roles remain page `#F5F5F5` and panel/header/sidebar `#FFFFFF`.
+- Dark shell roles are page `#141414`, panel/header/sidebar `#1F1F1F`, and
+  inset/elevated `#262626`.
+- The frontend consumes semantic tokens from `src/assets/tokens.css`; views
+  should not copy Stitch neutral hex values into one-off CSS.
+- User theme choice is persisted in `localStorage.theme`. OS preference does
+  not override an explicit choice.
+- This compatibility layer is implementation guidance for Vue. It does not
+  claim that the fixed-size Stitch desktop canvas proves dark-mode or
+  responsive behavior; those remain frontend verification concerns.

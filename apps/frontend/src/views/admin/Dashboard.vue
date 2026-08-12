@@ -356,16 +356,16 @@ onMounted(() => {
 .dashboard-page__section > :deep(.ant-typography-title) { margin-bottom: 16px; }
 .dashboard-page__metric { min-height: 116px; }
 .dashboard-page__personal-section { margin-top: 0; }
-.dashboard-page__personal-metric { min-height: 104px; border-color: #d9d9d9; }
+.dashboard-page__personal-metric { min-height: 104px; border-color: var(--bigin-border-default); }
 .dashboard-page__personal-metric :deep(.ant-card-body) { align-items: center; display: flex; gap: 16px; }
 .dashboard-page__personal-icon { border-radius: 12px; font-size: 22px; padding: 14px; }
-.dashboard-page__personal-metric--orange .dashboard-page__personal-icon { background: #fff1e6; color: #ff6b00; }
-.dashboard-page__personal-metric--slate .dashboard-page__personal-icon { background: #f2f4f7; color: #667085; }
-.dashboard-page__personal-metric--red .dashboard-page__personal-icon { background: #fff1f0; color: #e53935; }
-.dashboard-page__personal-metric :deep(.ant-statistic-title) { color: #5f6b7a; font-size: 12px; font-weight: 700; letter-spacing: .06em; text-transform: uppercase; }
+.dashboard-page__personal-metric--orange .dashboard-page__personal-icon { background: var(--bigin-surface-primary-soft); color: var(--bigin-color-primary); }
+.dashboard-page__personal-metric--slate .dashboard-page__personal-icon { background: var(--bigin-surface-neutral); color: var(--bigin-color-neutral); }
+.dashboard-page__personal-metric--red .dashboard-page__personal-icon { background: var(--bigin-surface-error); color: var(--bigin-color-error); }
+.dashboard-page__personal-metric :deep(.ant-statistic-title) { color: var(--bigin-text-secondary); font-size: 12px; font-weight: 700; letter-spacing: .06em; text-transform: uppercase; }
 .dashboard-page__personal-metric :deep(.ant-statistic-content) { font-size: 28px; }
 .dashboard-page__alert { margin-bottom: 16px; }
-.dashboard-page__activity-card { overflow: hidden; border: 1px solid #d9d9d9; }
+.dashboard-page__activity-card { overflow: hidden; border: 1px solid var(--bigin-border-default); }
 .dashboard-page__work-card, .dashboard-page__shortcut { height: 100%; min-height: 184px; }
 .dashboard-page__work-card :deep(.ant-card-body), .dashboard-page__shortcut :deep(.ant-card-body) { align-items: flex-start; display: flex; flex-direction: column; }
 .dashboard-page__work-card :deep(.ant-typography-title), .dashboard-page__shortcut :deep(.ant-typography-title) { margin: 12px 0 4px; }

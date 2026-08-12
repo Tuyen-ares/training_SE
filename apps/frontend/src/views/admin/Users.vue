@@ -4,6 +4,7 @@ import { PlusOutlined, SearchOutlined } from '@ant-design/icons-vue'
 import { useRouter } from 'vue-router'
 
 import WorkspaceLayout from '../../components/layout/WorkspaceLayout.vue'
+import AdministrationTabs from '../../components/administration/AdministrationTabs.vue'
 import StatusTag from '../../components/common/StatusTag.vue'
 import { useAuthStore } from '../../stores/auth'
 
@@ -89,8 +90,9 @@ onMounted(loadPage)
 <template>
   <WorkspaceLayout>
     <template #context>
-      <strong>User List</strong>
+      <strong>Administration</strong>
     </template>
+    <AdministrationTabs />
 
     <main class="user-list-page">
       <section class="user-toolbar" aria-label="User filters">
@@ -183,13 +185,13 @@ onMounted(loadPage)
 
 <style scoped>
 .user-list-page { padding: 24px 28px; }
-.screen-code { color: #8c8c8c; }.context-divider { color: #bfbfbf; }
-.user-toolbar { align-items: center; background: #fff; border: 1px solid #f0f0f0; border-radius: 8px; display: flex; gap: 12px; margin-bottom: 16px; padding: 16px; }
-.user-search { width: min(360px, 100%); }.toolbar-select { min-width: 150px; }.primary-action { background: #ff6b00; margin-left: auto; }
-.page-alert { margin-bottom: 16px; }.user-table-panel { background: #fff; border: 1px solid #f0f0f0; border-radius: 8px; overflow: hidden; }
+.screen-code { color: var(--bigin-text-tertiary); }.context-divider { color: var(--bigin-text-disabled); }
+.user-toolbar { align-items: center; background: var(--bigin-surface-panel); border: 1px solid var(--bigin-border-secondary); border-radius: 8px; display: flex; gap: 12px; margin-bottom: 16px; padding: 16px; }
+.user-search { width: min(360px, 100%); }.toolbar-select { min-width: 150px; }.primary-action { background: var(--bigin-color-primary); margin-left: auto; }
+.page-alert { margin-bottom: 16px; }.user-table-panel { background: var(--bigin-surface-panel); border: 1px solid var(--bigin-border-secondary); border-radius: 8px; overflow: hidden; }
 .identity-link { align-items: center; background: transparent; border: 0; color: inherit; cursor: pointer; display: flex; gap: 10px; padding: 0; text-align: left; }
-.identity-link span { display: grid; }.identity-link small { color: #8c8c8c; font-size: 11px; margin-top: 2px; }
-:deep(.ant-table-thead > tr > th) { background: #fafafa; font-size: 12px; text-transform: uppercase; }
-:deep(.ant-pagination-item-active) { border-color: #ff6b00; }:deep(.ant-pagination-item-active a) { color: #ff6b00; }
+.identity-link span { display: grid; }.identity-link small { color: var(--bigin-text-tertiary); font-size: 11px; margin-top: 2px; }
+:deep(.ant-table-thead > tr > th) { background: var(--bigin-surface-subtle); font-size: 12px; text-transform: uppercase; }
+:deep(.ant-pagination-item-active) { border-color: var(--bigin-color-primary); }:deep(.ant-pagination-item-active a) { color: var(--bigin-color-primary); }
 @media (max-width: 900px) { .user-toolbar { align-items: stretch; flex-wrap: wrap; }.primary-action { margin-left: 0; }.user-list-page { padding: 16px; } }
 </style>

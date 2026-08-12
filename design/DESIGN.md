@@ -210,7 +210,7 @@ components:
 
 ## Overview
 
-This document describes the default light theme of **Ant Design v6**. The system follows semantic versioning: major releases (v5 → v6) signal an overhaul of the design language, while minor and patch releases keep this document stable. Refer to [CHANGELOG.en-US.md](https://github.com/ant-design/ant-design/blob/master/CHANGELOG.en-US.md) for the per-release token drift inside a major.
+This document describes the light and dark theme contract of **Ant Design v6**. Light is the default reference theme; dark is an explicit user preference for the authenticated workspace. The system follows semantic versioning: major releases (v5 → v6) signal an overhaul of the design language, while minor and patch releases keep this document stable. Refer to [CHANGELOG.en-US.md](https://github.com/ant-design/ant-design/blob/master/CHANGELOG.en-US.md) for the per-release token drift inside a major.
 
 Ant Design is the open-source design system Ant Group uses to ship enterprise software — primarily mid- and back-office consoles, dashboards, and operational tools. The system was created in 2015 to give large product teams a shared, opinionated foundation so they could ship dense, data-rich interfaces without re-deciding the basics on every screen.
 
@@ -335,3 +335,35 @@ The primary theme configuration entry is `ConfigProvider`'s `theme` prop:
 5. **Token consumption and output.** Use `theme.useToken()` inside React and `theme.getDesignToken()` outside React to consume resolved tokens. Use `theme.cssVar` when CSS variables are needed, and `theme.zeroRuntime` with prebuilt or extracted CSS when runtime style generation must be disabled.
 
 For custom theme generation, keep Ant Design's interaction structure, density, state feedback, and component semantics first. Then change the smallest necessary seed set: usually `colorPrimary`, status colors, `borderRadius`, `fontFamily`, `fontSize`, and neutral surface bases. Brand pages may look distinct, but forms, tables, navigation, overlays, focus states, and validation feedback should still feel like Ant Design. Avoid generating custom CSS rules that bypass tokens, algorithms, `theme.components`, CSS variables, or extracted static styles; if a theme cannot be expressed through those official layers, treat that as a design-system extension rather than a one-off page style.
+
+## BigIn light/dark theme contract
+
+The authenticated workspace supports two semantic themes. Light is the default
+when no preference is stored. The selected value is persisted in
+`localStorage.theme`; an explicit user choice always wins over the operating
+system and `prefers-color-scheme` is not used to override it.
+
+| Semantic role | Light | Dark |
+| --- | --- | --- |
+| Page surface | `#F5F5F5` | `#141414` |
+| Panel/header/sidebar | `#FFFFFF` | `#1F1F1F` |
+| Inset/elevated surface | `#FAFAFA` / `#FFFFFF` | `#262626` |
+| Primary text | `#1F1F1F` | `#F5F5F5` |
+| Secondary text | `#595959` | `#BFBFBF` |
+| Default border | `#D9D9D9` | `#434343` |
+| Subtle border | `#F0F0F0` | `#303030` |
+| Selected/hover surface | `#FFF2E6` / `#FFF7E6` | `#3A2618` / `#2A2018` |
+
+The implementation source is `apps/frontend/src/assets/tokens.css`, imported
+by `main.css`. It exposes `--bigin-surface-*`, `--bigin-text-*`,
+`--bigin-icon-*`, `--bigin-border-*`, primary tokens, semantic status tokens,
+shadow tokens and focus-ring tokens under `:root/[data-theme='light']` and
+`[data-theme='dark']`. Authenticated views consume roles, not raw neutral
+hexes. `#FF6B00` remains the BigIn primary action and selected-navigation
+accent in both themes.
+
+Success, warning, error and info retain their business meaning in dark mode;
+only their surface, text and border values adapt for contrast. Status must also
+have a text label or icon, so color is never the only signal. New or migrated
+components must verify normal, hover, focus-visible, disabled, loading, modal,
+dropdown, table and pagination states in both themes.

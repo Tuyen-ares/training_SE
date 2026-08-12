@@ -148,7 +148,8 @@ view.
 ### 4.1 Token CSS chuẩn
 
 ```css
-:root {
+:root,
+[data-theme='light'] {
   /* Brand */
   --bigin-color-primary: #ff6b00;
   --bigin-color-primary-hover: #ff8533;
@@ -218,6 +219,47 @@ view.
   --bigin-motion-fast: 100ms;
   --bigin-motion-mid: 200ms;
   --bigin-motion-slow: 300ms;
+}
+
+[data-theme='dark'] {
+  --bigin-color-primary: #ff6b00;
+  --bigin-color-primary-hover: #ff8533;
+  --bigin-color-primary-active: #d95a00;
+  --bigin-color-primary-soft: #3a2618;
+  --bigin-color-primary-text: #ffa940;
+
+  --bigin-color-success: #73d13d;
+  --bigin-color-success-bg: #162312;
+  --bigin-color-warning: #ffc53d;
+  --bigin-color-warning-bg: #2b2111;
+  --bigin-color-error: #ff7875;
+  --bigin-color-error-bg: #2c1618;
+  --bigin-color-info: #69b1ff;
+  --bigin-color-info-strong: #91caff;
+  --bigin-color-info-bg: #111b26;
+
+  --bigin-surface-page: #141414;
+  --bigin-surface-panel: #1f1f1f;
+  --bigin-surface-inset: #262626;
+  --bigin-surface-elevated: #262626;
+
+  --bigin-text-primary: #f5f5f5;
+  --bigin-text-secondary: #bfbfbf;
+  --bigin-text-tertiary: #8c8c8c;
+  --bigin-text-placeholder: #737373;
+  --bigin-text-disabled: #737373;
+  --bigin-text-inverse: #141414;
+
+  --bigin-icon-default: #bfbfbf;
+  --bigin-icon-hover: #ff8533;
+  --bigin-icon-disabled: #737373;
+
+  --bigin-border-default: #434343;
+  --bigin-border-subtle: #303030;
+
+  --bigin-selection-background: #3a2618;
+  --bigin-selection-border: #ff6b00;
+  --bigin-focus-ring: 0 0 0 3px rgb(255 107 0 / 45%);
 }
 ```
 
@@ -1446,3 +1488,35 @@ Khi cần component/pattern chưa có:
 8. mới áp dụng rộng.
 
 Không tạo pattern mới chỉ vì một screen “trông khác” trên mockup.
+
+## 31. Theme contract và semantic token usage
+
+BigIn có light và dark theme cho toàn bộ authenticated business app. Light là
+default và là visual reference chính. Theme do người dùng chọn được lưu trong
+`localStorage.theme`; không dùng `prefers-color-scheme` để ghi đè lựa chọn
+explicit sau khi reload.
+
+Shell contract:
+
+| Role | Light | Dark |
+| --- | --- | --- |
+| Page | `#F5F5F5` | `#141414` |
+| Panel, header, sidebar | `#FFFFFF` | `#1F1F1F` |
+| Inset/elevated | `#FAFAFA` / `#FFFFFF` | `#262626` |
+
+Runtime CSS roles live in
+[`apps/frontend/src/assets/tokens.css`](../apps/frontend/src/assets/tokens.css)
+and are imported by `main.css`. Use the `--bigin-surface-*`,
+`--bigin-text-*`, `--bigin-icon-*`, `--bigin-border-*`, primary, status,
+shadow and focus variables in authenticated views. Do not repeat `#fff`,
+`#f5f5f5`, `#595959` or equivalent neutral values in a view. The Ant Design
+Vue `ConfigProvider` must receive the matching light/dark algorithm and map
+layout, container, elevated, text, border, inset, hover and selected roles to
+the same semantic contract.
+
+The primary seed remains BigIn orange `#FF6B00`; action hierarchy does not
+change between themes. Success, warning, error and info preserve their
+semantic meaning while their background, text and border adapt to dark
+surfaces. Check contrast and visible focus for controls, icon buttons, menu
+selection, disabled/loading states, alerts/tags, modal and dropdown overlays,
+tables, pagination and notification status treatments.

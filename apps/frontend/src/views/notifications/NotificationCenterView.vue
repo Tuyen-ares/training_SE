@@ -31,14 +31,14 @@ const page = reactive({ items: [], page: 1, pageSize: 10, total: 0, unreadCount:
 const hasUnread = computed(() => page.unreadCount > 0)
 
 const notificationStyles = {
-  ASSET_ISSUE_REPORTED: { icon: ExclamationCircleOutlined, color: '#ff4d4f', background: '#fff1f0' },
-  ASSET_ISSUE_CONFIRMED: { icon: ExclamationCircleOutlined, color: '#ff4d4f', background: '#fff1f0' },
-  ASSET_REPAIR_STARTED: { icon: ToolOutlined, color: '#fa8c16', background: '#fff7e6' },
-  ASSET_REPAIR_COMPLETED: { icon: CheckCircleOutlined, color: '#52c41a', background: '#f6ffed' },
+  ASSET_ISSUE_REPORTED: { icon: ExclamationCircleOutlined, color: 'var(--bigin-color-error)', background: 'var(--bigin-surface-error)' },
+  ASSET_ISSUE_CONFIRMED: { icon: ExclamationCircleOutlined, color: 'var(--bigin-color-error)', background: 'var(--bigin-surface-error)' },
+  ASSET_REPAIR_STARTED: { icon: ToolOutlined, color: 'var(--bigin-color-warning)', background: 'var(--bigin-surface-warning)' },
+  ASSET_REPAIR_COMPLETED: { icon: CheckCircleOutlined, color: 'var(--bigin-color-success)', background: 'var(--bigin-surface-success)' },
 }
 
 function styleFor(type) {
-  return notificationStyles[type] || { icon: BellOutlined, color: '#ff6b00', background: '#fff7e6' }
+  return notificationStyles[type] || { icon: BellOutlined, color: 'var(--bigin-color-primary)', background: 'var(--bigin-surface-primary-soft)' }
 }
 
 function relativeTime(value) {
@@ -217,19 +217,19 @@ onMounted(load)
 .notification-page { margin: 0 auto; max-width: 1180px; padding: 28px 32px 48px; }
 .notification-page__header { align-items: flex-start; display: flex; gap: 24px; justify-content: space-between; margin-bottom: 18px; }
 .notification-page h1 { font-size: 28px; line-height: 1.25; margin: 0; }
-.notification-page p { color: #595959; margin: 6px 0 0; }
-.notification-panel { background: #fff; border: 1px solid #f0f0f0; border-radius: 8px; min-height: 520px; padding: 0 22px; }
-.notification-list { border: 1px solid #f0f0f0; border-radius: 8px; overflow: hidden; }
-.notification-item { align-items: flex-start; background: #fff; border-bottom: 1px solid #f0f0f0; display: flex; gap: 16px; padding: 20px; }
+.notification-page p { color: var(--bigin-text-secondary); margin: 6px 0 0; }
+.notification-panel { background: var(--bigin-surface-panel); border: 1px solid var(--bigin-border-secondary); border-radius: 8px; min-height: 520px; padding: 0 22px; }
+.notification-list { border: 1px solid var(--bigin-border-secondary); border-radius: 8px; overflow: hidden; }
+.notification-item { align-items: flex-start; background: var(--bigin-surface-panel); border-bottom: 1px solid var(--bigin-border-secondary); display: flex; gap: 16px; padding: 20px; }
 .notification-item:last-child { border-bottom: 0; }
-.notification-item--unread { background: #fffaf5; box-shadow: inset 3px 0 #ff6b00; }
+.notification-item--unread { background: var(--bigin-surface-unread); box-shadow: inset 3px 0 var(--bigin-color-primary); }
 .notification-item__icon { align-items: center; border-radius: 50%; display: inline-flex; flex: 0 0 42px; font-size: 19px; height: 42px; justify-content: center; }
 .notification-item__content { min-width: 0; width: 100%; }
 .notification-item__heading { align-items: flex-start; display: flex; gap: 18px; justify-content: space-between; }
-.notification-item__heading strong { color: #1f1f1f; font-size: 15px; }
-.notification-item__heading time { color: #8c8c8c; flex: 0 0 auto; font-size: 12px; }
+.notification-item__heading strong { color: var(--bigin-text-primary); font-size: 15px; }
+.notification-item__heading time { color: var(--bigin-text-tertiary); flex: 0 0 auto; font-size: 12px; }
 .notification-item__content p { line-height: 1.55; margin: 6px 0 10px; }
-.notification-panel__footer { align-items: center; color: #8c8c8c; display: flex; justify-content: space-between; padding: 18px 0; }
+.notification-panel__footer { align-items: center; color: var(--bigin-text-tertiary); display: flex; justify-content: space-between; padding: 18px 0; }
 @media (max-width: 700px) {
   .notification-page { padding: 18px 14px 32px; }
   .notification-page__header { align-items: stretch; flex-direction: column; }

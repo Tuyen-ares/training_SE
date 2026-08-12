@@ -84,11 +84,11 @@ onMounted(load)
 .issue-list-page { margin: 0 auto; max-width: 1320px; padding: 28px 32px 48px; }
 .issue-list-page > header { align-items: flex-start; display: flex; justify-content: space-between; margin-bottom: 18px; }
 .issue-list-page h1 { font-size: 28px; margin: 0; }
-.issue-list-page header p { color: #595959; margin: 6px 0 0; }
-.filter-panel { align-items: center; background: #fff; border: 1px solid #f0f0f0; border-radius: 8px; display: flex; flex-wrap: wrap; gap: 12px; margin-bottom: 16px; padding: 16px; }
-.table-panel { background: #fff; border: 1px solid #f0f0f0; border-radius: 8px; overflow: hidden; padding: 16px; }
+.issue-list-page header p { color: var(--bigin-text-secondary); margin: 6px 0 0; }
+.filter-panel { align-items: center; background: var(--bigin-surface-panel); border: 1px solid var(--bigin-border-secondary); border-radius: 8px; display: flex; flex-wrap: wrap; gap: 12px; margin-bottom: 16px; padding: 16px; }
+.table-panel { background: var(--bigin-surface-panel); border: 1px solid var(--bigin-border-secondary); border-radius: 8px; overflow: hidden; padding: 16px; }
 .entity-cell { display: grid; gap: 3px; }
-.entity-cell span { color: #8c8c8c; font-size: 12px; }
-.table-panel footer { align-items: center; color: #8c8c8c; display: flex; justify-content: space-between; padding-top: 16px; }
+.entity-cell span { color: var(--bigin-text-tertiary); font-size: 12px; }
+.table-panel footer { align-items: center; color: var(--bigin-text-tertiary); display: flex; justify-content: space-between; padding-top: 16px; }
 @media (max-width: 700px) { .issue-list-page { padding: 18px 14px 32px; }.issue-list-page > header { gap: 12px; }.table-panel footer { align-items: flex-start; flex-direction: column; gap: 12px; } }
 </style>
