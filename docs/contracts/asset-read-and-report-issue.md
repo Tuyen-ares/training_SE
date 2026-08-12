@@ -75,7 +75,7 @@ route permission, because current borrowers are also eligible.
 { "description": "Battery will not charge." }
 ```
 
-`description` is required after trimming and has a maximum of 2,000
+`description` is required after trimming and has a maximum of 1,000
 characters. A successful request returns `201` with:
 
 ```json

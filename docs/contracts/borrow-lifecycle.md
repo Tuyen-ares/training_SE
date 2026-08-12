@@ -15,7 +15,7 @@ does not create an authorization scope.
 - `expectedReturnDate` is date-only `YYYY-MM-DD`, interpreted in
   `Asia/Ho_Chi_Minh`, and must be today or later.
 - Request-level `note` (Borrowing Purpose) is required after trimming and allows
-  1–2,000 characters. `rejectionReason` allows at most 2,000 characters.
+  1–300 characters. `rejectionReason` allows at most 300 characters.
 - Expected errors: `400` invalid input, `401` unauthenticated, `403` missing
   permission, `404` missing/hidden own resource, `409` state/concurrency conflict.
 
@@ -87,7 +87,7 @@ a non-pending detail returns `409`.
   `{ "data": { "historyId": number, "returned": true } }`.
 - `POST /api/borrow-histories/:historyId/return-damaged` — `asset.checkin`;
   body `{ "description": "..." }`. The description is required after
-  trimming and is limited to 2,000 characters. Atomically records
+  trimming and is limited to 1,000 characters. Atomically records
   `received_by`, `return_date`, `returnCondition=DAMAGED`, changes the asset
   `BORROWED → DAMAGED`, and creates a `CONFIRMED` asset issue. Returns:
 
@@ -105,6 +105,13 @@ a non-pending detail returns `409`.
   `borrow_history.view_own`; the current user's history.
 - `GET /api/borrow-histories?page=&pageSize=` —
   `borrow_history.view_all`; company-wide history for this MVP.
+- `GET /api/borrow-histories/:historyId` —
+  `borrow_history.view_own` or `borrow_history.view_all`; returns one history
+  detail only when it is within the caller's effective scope. A caller with
+  `view_own` can read only histories reached through their own request; a
+  caller with `view_all` can read any history. The detail includes the request
+  reason, requester, per-detail approval metadata, asset, handover actor/time
+  and return actor/time/condition.
 
 History responses use camelCase and include asset, borrower, expected return
 date, handover actor/time and return actor/time/condition. When all approved
@@ -133,6 +140,35 @@ type BorrowHistory = {
   }
   borrower: { id: number; name: string }
   expectedReturnDate: string
+  handedOverBy: { id: number; name: string } | null
+  borrowedAt: string
+  receivedBy: { id: number; name: string } | null
+  returnedAt: string | null
+  returnCondition: 'NORMAL' | 'DAMAGED' | null
+}
+
+type BorrowHistoryDetail = {
+  id: number
+  request: {
+    id: number
+    status: BorrowRequestStatus
+    note: string
+    createdAt: string
+    requester: {
+      id: number
+      userCode: string
+      name: string
+      email: string
+      avatarUrl: string | null
+      department: { id: number; name: string } | null
+    }
+  }
+  asset: BorrowHistory['asset'] & { imageUrl: string | null }
+  expectedReturnDate: string
+  approvalStatus: BorrowDetailStatus
+  approvedBy: { id: number; name: string } | null
+  approvedAt: string | null
+  rejectionReason: string | null
   handedOverBy: { id: number; name: string } | null
   borrowedAt: string
   receivedBy: { id: number; name: string } | null

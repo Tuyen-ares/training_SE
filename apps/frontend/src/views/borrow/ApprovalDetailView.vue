@@ -268,7 +268,7 @@ onMounted(() => { if (!request.value) load() })
 
       <a-modal v-model:open="rejectOpen" title="Reject Asset Request" ok-text="Reject" ok-type="danger" :confirm-loading="busyDetail === rejectForm.detailId" @ok="reject">
         <p>Please enter the reason so the employee is informed.</p>
-        <a-textarea v-model:value="rejectForm.reason" :rows="4" :maxlength="2000" show-count placeholder="Enter rejection reason..." />
+        <a-textarea v-model:value="rejectForm.reason" :rows="4" :maxlength="300" show-count placeholder="Enter rejection reason (max 300 characters)..." />
       </a-modal>
     </main>
   </WorkspaceLayout>

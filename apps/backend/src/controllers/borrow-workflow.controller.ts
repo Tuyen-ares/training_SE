@@ -6,7 +6,7 @@ import { ApiResponse } from '@/shared/api-response.js';
 import { parseRequestBody } from '@/shared/request-validation.js';
 
 const rejectDetailSchema = z.strictObject({
-  rejectionReason: z.string().trim().min(1).max(2000),
+  rejectionReason: z.string().trim().min(1).max(300),
 });
 
 const pageQuerySchema = z.object({
@@ -24,7 +24,7 @@ const historyQuerySchema = pageQuerySchema.extend({
 
 const normalReturnSchema = z.strictObject({});
 const damagedReturnSchema = z.strictObject({
-  description: z.string().trim().min(1).max(2000),
+  description: z.string().trim().min(1).max(1000),
 });
 
 function readPositiveId(value: string | string[] | undefined): number | null {

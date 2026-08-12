@@ -45,7 +45,9 @@ test('Asset issue and notification APIs enforce lifecycle and ownership', async 
   created.assetIds.push(asset.id);
   const rejectAsset = await prisma.assets.create({ data: { asset_model_id: model.id, department_id: department.id, serial_number: `ISS-REJECT-${suffix}`, qr_code: crypto.randomUUID() } });
   const failAsset = await prisma.assets.create({ data: { asset_model_id: model.id, department_id: department.id, serial_number: `ISS-FAIL-${suffix}`, qr_code: crypto.randomUUID() } });
-  created.assetIds.push(rejectAsset.id, failAsset.id);
+  const limitRejectAsset = await prisma.assets.create({ data: { asset_model_id: model.id, department_id: department.id, serial_number: `ISS-LIMIT-REJECT-${suffix}`, qr_code: crypto.randomUUID() } });
+  const limitRepairAsset = await prisma.assets.create({ data: { asset_model_id: model.id, department_id: department.id, serial_number: `ISS-LIMIT-REPAIR-${suffix}`, qr_code: crypto.randomUUID() } });
+  created.assetIds.push(rejectAsset.id, failAsset.id, limitRejectAsset.id, limitRepairAsset.id);
   const reporter = await prisma.users.create({ data: { user_code: `BI26${suffix}1`, department_id: department.id, name: 'Issue Reporter', email: `issue.reporter.${suffix}@test.local`, phone: `81${suffix}0`.slice(0, 10), password: 'not-used' } });
   const handler = await prisma.users.create({ data: { user_code: `BI26${suffix}2`, department_id: department.id, name: 'Issue Handler', email: `issue.handler.${suffix}@test.local`, phone: `82${suffix}0`.slice(0, 10), password: 'not-used' } });
   created.userIds.push(reporter.id, handler.id);
@@ -54,9 +56,10 @@ test('Asset issue and notification APIs enforce lifecycle and ownership', async 
   const handlerToken = tokenService.createAccessToken(handler.id, ['asset_issue.view', 'asset_issue.create', 'asset_issue.update', 'asset_issue.close']);
 
   const report = await request(`/assets/${asset.id}/report-damaged`, reporterToken, {
-    method: 'POST', body: JSON.stringify({ description: 'Display flickers intermittently' }),
+    method: 'POST', body: JSON.stringify({ description: 'd'.repeat(1000) }),
   });
   assert.equal(report.status, 201, JSON.stringify(report.body));
+  assert.equal(report.body.data.description.length, 1000);
   const issueId = Number(report.body.data.id);
   created.issueIds.push(issueId);
   assert.equal((await prisma.assets.findUniqueOrThrow({ where: { id: asset.id } })).status, 'available');
@@ -74,11 +77,40 @@ test('Asset issue and notification APIs enforce lifecycle and ownership', async 
   assert.equal(rejected.body.data.status, 'REJECTED');
   assert.equal((await prisma.assets.findUniqueOrThrow({ where: { id: rejectAsset.id } })).status, 'available');
 
+  const limitText = 'x'.repeat(300);
+  const tooLongText = 'x'.repeat(301);
+  const limitRejectReport = await request(`/assets/${limitRejectAsset.id}/report-damaged`, reporterToken, {
+    method: 'POST', body: JSON.stringify({ description: 'Reject note length boundary' }),
+  });
+  assert.equal(limitRejectReport.status, 201, JSON.stringify(limitRejectReport.body));
+  const limitRejectIssueId = Number(limitRejectReport.body.data.id);
+  created.issueIds.push(limitRejectIssueId);
+  const acceptedRejectNote = await request(`/asset-issues/${limitRejectIssueId}/reject`, handlerToken, {
+    method: 'POST', body: JSON.stringify({ note: limitText }),
+  });
+  assert.equal(acceptedRejectNote.status, 200, JSON.stringify(acceptedRejectNote.body));
+  assert.equal(acceptedRejectNote.body.data.note.length, 300);
+
+  const tooLongRejectReport = await request(`/assets/${limitRepairAsset.id}/report-damaged`, reporterToken, {
+    method: 'POST', body: JSON.stringify({ description: 'Reject note too long boundary' }),
+  });
+  assert.equal(tooLongRejectReport.status, 201, JSON.stringify(tooLongRejectReport.body));
+  const tooLongRejectIssueId = Number(tooLongRejectReport.body.data.id);
+  created.issueIds.push(tooLongRejectIssueId);
+  const rejectedLongNote = await request(`/asset-issues/${tooLongRejectIssueId}/reject`, handlerToken, {
+    method: 'POST', body: JSON.stringify({ note: tooLongText }),
+  });
+  assert.equal(rejectedLongNote.status, 400, JSON.stringify(rejectedLongNote.body));
+
   const failReport = await request(`/assets/${failAsset.id}/report-damaged`, reporterToken, {
+    method: 'POST', body: JSON.stringify({ description: 'd'.repeat(1001) }),
+  });
+  assert.equal(failReport.status, 400, JSON.stringify(failReport.body));
+  const validFailReport = await request(`/assets/${failAsset.id}/report-damaged`, reporterToken, {
     method: 'POST', body: JSON.stringify({ description: 'Repair failure test' }),
   });
-  assert.equal(failReport.status, 201, JSON.stringify(failReport.body));
-  const failIssueId = Number(failReport.body.data.id);
+  assert.equal(validFailReport.status, 201, JSON.stringify(validFailReport.body));
+  const failIssueId = Number(validFailReport.body.data.id);
   created.issueIds.push(failIssueId);
   assert.equal((await request(`/asset-issues/${failIssueId}/confirm`, handlerToken, { method: 'POST' })).status, 200);
   assert.equal((await request(`/asset-issues/${failIssueId}/start-repair`, handlerToken, { method: 'POST', body: '{}' })).status, 200);
@@ -98,8 +130,26 @@ test('Asset issue and notification APIs enforce lifecycle and ownership', async 
   assert.equal((await prisma.assets.findUniqueOrThrow({ where: { id: asset.id } })).status, 'damaged');
   assert.equal((await request(`/asset-issues/${issueId}/start-repair`, handlerToken, { method: 'POST', body: '{}' })).status, 200);
   assert.equal((await prisma.assets.findUniqueOrThrow({ where: { id: asset.id } })).status, 'in_repair');
+  const acceptedRepairFields = await request(`/asset-issues/${issueId}/repair`, handlerToken, {
+    method: 'PATCH', body: JSON.stringify({ result: limitText, note: limitText }),
+  });
+  assert.equal(acceptedRepairFields.status, 200, JSON.stringify(acceptedRepairFields.body));
+  assert.equal(acceptedRepairFields.body.data.result.length, 300);
+  assert.equal(acceptedRepairFields.body.data.note.length, 300);
+  const rejectedLongResult = await request(`/asset-issues/${issueId}/repair`, handlerToken, {
+    method: 'PATCH', body: JSON.stringify({ result: tooLongText }),
+  });
+  assert.equal(rejectedLongResult.status, 400, JSON.stringify(rejectedLongResult.body));
+  const rejectedLongRepairNote = await request(`/asset-issues/${issueId}/repair`, handlerToken, {
+    method: 'PATCH', body: JSON.stringify({ note: tooLongText }),
+  });
+  assert.equal(rejectedLongRepairNote.status, 400, JSON.stringify(rejectedLongRepairNote.body));
+  const rejectedLongCloseResult = await request(`/asset-issues/${issueId}/complete`, handlerToken, {
+    method: 'POST', body: JSON.stringify({ result: tooLongText }),
+  });
+  assert.equal(rejectedLongCloseResult.status, 400, JSON.stringify(rejectedLongCloseResult.body));
   assert.equal((await request(`/asset-issues/${issueId}/complete`, handlerToken, {
-    method: 'POST', body: JSON.stringify({ result: 'Display cable replaced', cost: 250000 }),
+    method: 'POST', body: JSON.stringify({ result: 'Display cable replaced', note: limitText, cost: 250000 }),
   })).status, 200);
   assert.equal((await prisma.assets.findUniqueOrThrow({ where: { id: asset.id } })).status, 'available');
 

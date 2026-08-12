@@ -50,7 +50,7 @@ const assetListQuerySchema = z.object({
 });
 
 const reportIssueSchema = z.strictObject({
-  description: z.string().trim().min(1).max(2000),
+  description: z.string().trim().min(1).max(1000),
 });
 
 class AssetController extends BaseController<Asset, CreateAssetDto, UpdateAssetDto> {

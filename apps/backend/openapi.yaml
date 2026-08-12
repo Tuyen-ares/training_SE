@@ -2719,7 +2719,7 @@ components:
         description:
           type: string
           minLength: 1
-          maxLength: 2000
+          maxLength: 1000
       required:
         - description
       additionalProperties: false
@@ -2744,7 +2744,7 @@ components:
         note:
           type: string
           minLength: 1
-          maxLength: 2000
+          maxLength: 300
         items:
           type: array
           minItems: 1
@@ -2792,6 +2792,7 @@ components:
           $ref: '#/components/schemas/BorrowRequestStatus'
         note:
           type: string
+          maxLength: 300
         createdAt:
           type: string
           format: date-time
@@ -2846,6 +2847,7 @@ components:
                 nullable: true
               rejectionReason:
                 type: string
+                maxLength: 300
                 nullable: true
             required:
               - id
@@ -2926,7 +2928,7 @@ components:
         rejectionReason:
           type: string
           minLength: 1
-          maxLength: 2000
+          maxLength: 300
       required:
         - rejectionReason
       additionalProperties: false
@@ -3008,7 +3010,7 @@ components:
         description:
           type: string
           minLength: 1
-          maxLength: 2000
+          maxLength: 1000
       required:
         - description
       additionalProperties: false
@@ -3307,6 +3309,7 @@ components:
           nullable: true
         description:
           type: string
+          maxLength: 1000
         status:
           $ref: '#/components/schemas/AssetIssueStatus'
         createdAt:
@@ -3346,9 +3349,11 @@ components:
           description: Chi phí sửa chữa dạng chuỗi thập phân
         result:
           type: string
+          maxLength: 300
           nullable: true
         note:
           type: string
+          maxLength: 300
           nullable: true
         asset:
           type: object
@@ -3407,7 +3412,7 @@ components:
         note:
           type: string
           minLength: 1
-          maxLength: 5000
+          maxLength: 300
       additionalProperties: false
     RepairUpdateInput:
       type: object
@@ -3425,12 +3430,12 @@ components:
         result:
           type: string
           minLength: 1
-          maxLength: 5000
+          maxLength: 300
           nullable: true
         note:
           type: string
           minLength: 1
-          maxLength: 5000
+          maxLength: 300
           nullable: true
         startDate:
           type: string
@@ -3457,11 +3462,11 @@ components:
         result:
           type: string
           minLength: 1
-          maxLength: 5000
+          maxLength: 300
         note:
           type: string
           minLength: 1
-          maxLength: 5000
+          maxLength: 300
           nullable: true
         startDate:
           type: string

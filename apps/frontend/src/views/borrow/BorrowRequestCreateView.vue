@@ -76,7 +76,7 @@ onMounted(loadAssets)
             <label>Borrowing Purpose <span class="required">*</span></label>
             <a-textarea
               v-model:value="form.note"
-              :maxlength="2000"
+              :maxlength="300"
               :rows="4"
               :status="purposeError ? 'error' : undefined"
               placeholder="Describe why these assets are needed..."

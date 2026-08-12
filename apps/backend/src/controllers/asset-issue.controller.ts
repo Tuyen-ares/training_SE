@@ -14,14 +14,14 @@ const listQuerySchema = z.object({
 });
 
 const optionalNoteSchema = z.strictObject({
-  note: z.string().trim().min(1).max(5000).optional(),
+  note: z.string().trim().min(1).max(300).optional(),
 });
 
 const repairFields = {
   repairProvider: z.string().trim().min(1).max(255).nullable().optional(),
   cost: z.number().min(0).max(9999999999.99).nullable().optional(),
-  result: z.string().trim().min(1).max(5000).nullable().optional(),
-  note: z.string().trim().min(1).max(5000).nullable().optional(),
+  result: z.string().trim().min(1).max(300).nullable().optional(),
+  note: z.string().trim().min(1).max(300).nullable().optional(),
   startDate: z.coerce.date().nullable().optional(),
   endDate: z.coerce.date().nullable().optional(),
 };
@@ -31,7 +31,7 @@ const repairUpdateSchema = repairStartSchema.refine((value) => Object.keys(value
   message: 'At least one repair field is required',
 });
 const repairCloseSchema = repairStartSchema.extend({
-  result: z.string().trim().min(1).max(5000),
+  result: z.string().trim().min(1).max(300),
 });
 
 function positiveId(value: string | string[] | undefined): number | null {

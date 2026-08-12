@@ -12,7 +12,7 @@ const authStore = useAuthStore()
 const description = ref('')
 const submitting = ref(false)
 const errorMessage = ref('')
-const remaining = computed(() => 2000 - description.value.length)
+const remaining = computed(() => 1000 - description.value.length)
 
 async function submit() {
   const value = description.value.trim()
@@ -54,7 +54,7 @@ async function submit() {
         <a-textarea
           v-model:value="description"
           :disabled="submitting"
-          :maxlength="2000"
+          :maxlength="1000"
           :auto-size="{ minRows: 5, maxRows: 10 }"
           show-count
           aria-describedby="issue-description-help"

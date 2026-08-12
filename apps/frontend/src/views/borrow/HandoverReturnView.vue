@@ -163,7 +163,7 @@ onMounted(load);
         <a-form-item label="Damage description" required>
           <a-textarea
             v-model:value="damagedDescription"
-            :maxlength="2000"
+            :maxlength="1000"
             :rows="4"
             show-count
             placeholder="Describe the damage found during return inspection."

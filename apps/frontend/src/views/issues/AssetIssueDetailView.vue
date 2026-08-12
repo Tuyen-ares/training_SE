@@ -89,7 +89,7 @@ function rejectIssue() {
   let note = ''
   Modal.confirm({
     title: 'Reject this reported issue?',
-    content: () => h('textarea', { id: 'issue-rejection-note', name: 'issueRejectionNote', class: 'ant-input', rows: 4, placeholder: 'Optional review note', onInput: (event) => { note = event.target.value } }),
+    content: () => h('textarea', { id: 'issue-rejection-note', name: 'issueRejectionNote', class: 'ant-input', rows: 4, maxlength: 300, placeholder: 'Optional review note (max 300 characters)', onInput: (event) => { note = event.target.value } }),
     okText: 'Reject Issue', okType: 'danger',
     onOk: () => runTransition(() => rejectAssetIssue(authStore.api, issue.value.id, note.trim()), 'Issue rejected.'),
   })
@@ -199,8 +199,8 @@ onMounted(load)
             <a-form-item label="Start date"><a-input v-model:value="form.startDate" type="datetime-local" /></a-form-item>
             <a-form-item v-if="workflow !== 'start'" label="End date"><a-input v-model:value="form.endDate" type="datetime-local" /></a-form-item>
           </div>
-          <a-form-item v-if="workflow !== 'start'" :label="requiresResult ? 'Repair result *' : 'Repair result'"><a-textarea v-model:value="form.result" :rows="3" :maxlength="5000" show-count placeholder="Describe the repair result" /></a-form-item>
-          <a-form-item :label="workflow === 'start' ? 'Diagnosis / Initial notes' : 'Notes'"><a-textarea v-model:value="form.note" :rows="3" :maxlength="5000" show-count :placeholder="workflow === 'start' ? 'Describe the initial diagnosis or planned repair.' : 'Add operational notes'" /></a-form-item>
+          <a-form-item v-if="workflow !== 'start'" :label="requiresResult ? 'Repair result *' : 'Repair result'"><a-textarea v-model:value="form.result" :rows="3" :maxlength="300" show-count placeholder="Describe the repair result (max 300 characters)" /></a-form-item>
+          <a-form-item :label="workflow === 'start' ? 'Diagnosis / Initial notes' : 'Notes'"><a-textarea v-model:value="form.note" :rows="3" :maxlength="300" show-count :placeholder="workflow === 'start' ? 'Describe the initial diagnosis or planned repair (max 300 characters).' : 'Add operational notes (max 300 characters)'" /></a-form-item>
         </a-form>
       </a-modal>
     </main>

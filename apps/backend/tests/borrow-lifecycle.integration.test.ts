@@ -79,6 +79,10 @@ test('Borrow lifecycle APIs create, approve, hand over, return and cancel safely
   const reviewerToken = tokenService.createAccessToken(operator.id, ['borrow_request.view_all', 'borrow_request.approve', 'borrow_request.reject', 'asset.checkout', 'asset.checkin', 'borrow_history.view_all']);
   const operatorOwnHistoryToken = tokenService.createAccessToken(operator.id, ['borrow_history.view_own']);
   const noPermissionToken = tokenService.createAccessToken(operator.id, []);
+  const noteAtLimit = 'n'.repeat(300);
+  const noteTooLong = 'n'.repeat(301);
+  const descriptionAtLimit = 'd'.repeat(1000);
+  const descriptionTooLong = 'd'.repeat(1001);
 
   const invalidDate = await request('/borrow-requests', borrowerToken, {
     method: 'POST',
@@ -108,6 +112,22 @@ test('Borrow lifecycle APIs create, approve, hand over, return and cancel safely
     method: 'POST',
     body: JSON.stringify({ note: 'Permission validation', items: [{ assetId: lifecycleAsset.id, expectedReturnDate: '2099-01-01' }] }),
   })).status, 403);
+
+  const acceptedNoteLimit = await request('/borrow-requests', borrowerToken, {
+    method: 'POST',
+    body: JSON.stringify({ note: noteAtLimit, items: [{ assetId: cancelAsset.id, expectedReturnDate: '2099-01-01' }] }),
+  });
+  assert.equal(acceptedNoteLimit.status, 201, JSON.stringify(acceptedNoteLimit.body));
+  const acceptedNoteLimitRequestId = acceptedNoteLimit.body.data.id as number;
+  const acceptedNoteLimitDetailId = acceptedNoteLimit.body.data.details[0].id as number;
+  created.requests.push(acceptedNoteLimitRequestId);
+  created.details.push(acceptedNoteLimitDetailId);
+  assert.equal((await request(`/borrow-requests/${acceptedNoteLimitRequestId}/cancel`, borrowerToken, { method: 'POST' })).status, 200);
+  const rejectedNoteTooLong = await request('/borrow-requests', borrowerToken, {
+    method: 'POST',
+    body: JSON.stringify({ note: noteTooLong, items: [{ assetId: lifecycleAsset.id, expectedReturnDate: '2099-01-01' }] }),
+  });
+  assert.equal(rejectedNoteTooLong.status, 400, JSON.stringify(rejectedNoteTooLong.body));
 
   const createLifecycle = await request('/borrow-requests', borrowerToken, {
     method: 'POST',
@@ -220,9 +240,14 @@ test('Borrow lifecycle APIs create, approve, hand over, return and cancel safely
     body: JSON.stringify({ description: '   ' }),
   });
   assert.equal(missingDescription.status, 400);
+  const rejectedDescriptionTooLong = await request(`/borrow-histories/${damagedHistoryId}/return-damaged`, reviewerToken, {
+    method: 'POST',
+    body: JSON.stringify({ description: descriptionTooLong }),
+  });
+  assert.equal(rejectedDescriptionTooLong.status, 400, JSON.stringify(rejectedDescriptionTooLong.body));
   const damagedReturn = await request(`/borrow-histories/${damagedHistoryId}/return-damaged`, reviewerToken, {
     method: 'POST',
-    body: JSON.stringify({ description: 'Screen has a visible horizontal line.' }),
+    body: JSON.stringify({ description: descriptionAtLimit }),
   });
   assert.equal(damagedReturn.status, 200, JSON.stringify(damagedReturn.body));
   const damagedIssueId = damagedReturn.body.data.issueId as number;
@@ -235,6 +260,7 @@ test('Borrow lifecycle APIs create, approve, hand over, return and cancel safely
   assert.equal((await prisma.borrow_histories.findUniqueOrThrow({ where: { id: damagedHistoryId } })).return_condition, 'DAMAGED');
   assert.equal((await prisma.assets.findUniqueOrThrow({ where: { id: damagedReturnAsset.id } })).status, 'damaged');
   const damagedIssue = await prisma.asset_issues.findUniqueOrThrow({ where: { id: damagedIssueId } });
+  assert.equal(damagedIssue.description.length, 1000);
   assert.equal(damagedIssue.status, 'CONFIRMED');
   assert.equal(damagedIssue.reported_by, operator.id);
   assert.equal(damagedIssue.handled_by, operator.id);
@@ -246,6 +272,7 @@ test('Borrow lifecycle APIs create, approve, hand over, return and cancel safely
   const rejectRequest = await request('/borrow-requests', borrowerToken, {
     method: 'POST',
     body: JSON.stringify({
+      note: 'Reject integration test request',
       items: [{ assetId: rejectAsset.id, expectedReturnDate: '2099-01-01' }],
     }),
   });
@@ -257,9 +284,15 @@ test('Borrow lifecycle APIs create, approve, hand over, return and cancel safely
   const rejected = await request(
     `/borrow-request-details/${rejectDetailId}/reject`,
     reviewerToken,
-    { method: 'POST', body: JSON.stringify({ rejectionReason: 'Not available for this purpose' }) },
+    { method: 'POST', body: JSON.stringify({ rejectionReason: noteTooLong }) },
   );
-  assert.equal(rejected.status, 200, JSON.stringify(rejected.body));
+  assert.equal(rejected.status, 400, JSON.stringify(rejected.body));
+  const rejectedWithLimitReason = await request(
+    `/borrow-request-details/${rejectDetailId}/reject`,
+    reviewerToken,
+    { method: 'POST', body: JSON.stringify({ rejectionReason: noteAtLimit }) },
+  );
+  assert.equal(rejectedWithLimitReason.status, 200, JSON.stringify(rejectedWithLimitReason.body));
   const rejectedQueue = await request('/borrow-request-details/review-queue?approvalStatus=REJECTED', reviewerToken);
   assert.equal(rejectedQueue.status, 200, JSON.stringify(rejectedQueue.body));
   assert.ok(rejectedQueue.body.data.items.some((item: { id: number }) => item.id === rejectRequestId));
@@ -270,7 +303,7 @@ test('Borrow lifecycle APIs create, approve, hand over, return and cancel safely
 
   const bulkRequest = await request('/borrow-requests', borrowerToken, {
     method: 'POST',
-    body: JSON.stringify({ items: [
+    body: JSON.stringify({ note: 'Bulk approval integration test', items: [
       { assetId: bulkAvailableAsset.id, expectedReturnDate: '2099-02-01' },
       { assetId: bulkConflictAsset.id, expectedReturnDate: '2099-02-01' },
     ] }),
@@ -284,7 +317,7 @@ test('Borrow lifecycle APIs create, approve, hand over, return and cancel safely
 
   const competingRequest = await request('/borrow-requests', borrowerToken, {
     method: 'POST',
-    body: JSON.stringify({ items: [
+    body: JSON.stringify({ note: 'Competing reservation integration test', items: [
       { assetId: bulkConflictAsset.id, expectedReturnDate: '2099-02-02' },
     ] }),
   });
@@ -337,7 +370,7 @@ test('Borrow lifecycle APIs create, approve, hand over, return and cancel safely
     'reserved',
   );
 
-  const cancelRequest = await request('/borrow-requests', borrowerToken, { method: 'POST', body: JSON.stringify({ items: [{ assetId: cancelAsset.id, expectedReturnDate: '2099-01-01' }] }) });
+  const cancelRequest = await request('/borrow-requests', borrowerToken, { method: 'POST', body: JSON.stringify({ note: 'Cancellation integration test', items: [{ assetId: cancelAsset.id, expectedReturnDate: '2099-01-01' }] }) });
   assert.equal(cancelRequest.status, 201);
   const cancelRequestId = cancelRequest.body.data.id as number;
   const cancelDetailId = cancelRequest.body.data.details[0].id as number;
