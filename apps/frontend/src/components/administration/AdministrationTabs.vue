@@ -33,5 +33,7 @@ function changeTab(key) {
 <style scoped>
 .administration-tabs { background: var(--bigin-surface-panel); border-bottom: 1px solid var(--bigin-border-secondary); padding: 0 28px; }
 .administration-tabs :deep(.ant-tabs-nav) { margin: 0; }
+.administration-tabs :deep(.ant-tabs-nav-wrap) { min-width: 0; overflow-x: auto; }
+.administration-tabs :deep(.ant-tabs-tab) { flex: 0 0 auto; }
 @media (max-width: 640px) { .administration-tabs { padding: 0 16px; } }
 </style>

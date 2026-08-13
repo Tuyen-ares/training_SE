@@ -67,7 +67,7 @@ onMounted(loadAssets)
 <template>
   <WorkspaceLayout>
     <template #context><strong>Create Borrow Request</strong></template>
-    <main class="borrow-page borrow-page--create">
+    <main class="borrow-page borrow-page--create bigin-page-container">
       <a-alert v-if="errorMessage" type="error" show-icon :message="errorMessage" />
       <div class="create-grid">
         <div class="create-main">
@@ -88,22 +88,22 @@ onMounted(loadAssets)
             <header><h2>Asset List <a-tag>{{ form.items.length }}</a-tag></h2></header>
             <div class="asset-picker">
               <a-select v-model:value="selectedAssetId" show-search option-filter-prop="label" :loading="loadingAssets" :options="assetOptions" placeholder="Select an available asset" />
-              <a-button :icon="h(PlusOutlined)" :disabled="!selectedAssetId" @click="addAsset">Add Asset</a-button>
+              <a-button class="bigin-touch-target" :icon="h(PlusOutlined)" :disabled="!selectedAssetId" @click="addAsset">Add Asset</a-button>
             </div>
             <a-empty v-if="!form.items.length" description="No assets added yet." />
             <article v-for="(item, index) in form.items" :key="item.asset.id" class="asset-row">
               <a-avatar shape="square" :size="52" :src="item.asset.imageUrl || DEFAULT_ASSET_IMAGE">{{ item.asset.model.name.slice(0, 1) }}</a-avatar>
               <div class="asset-copy"><strong>{{ item.asset.model.name }}</strong><span>{{ item.asset.brand.name }} · SN: {{ item.asset.serialNumber || 'Not assigned' }}</span><StatusTag status="AVAILABLE" /></div>
               <label class="date-field"><span>Expected return</span><input v-model="item.expectedReturnDate" type="date" :min="today"></label>
-              <a-button type="text" danger aria-label="Remove asset" :icon="h(DeleteOutlined)" @click="form.items.splice(index, 1)" />
+              <a-button class="bigin-touch-target" type="text" danger aria-label="Remove asset" :icon="h(DeleteOutlined)" @click="form.items.splice(index, 1)" />
             </article>
           </section>
         </div>
         <aside class="panel summary-panel">
           <h2>Request Summary</h2>
           <dl><dt>Requester</dt><dd>{{ authStore.user?.name }}</dd><dt>Department</dt><dd>{{ authStore.user?.department?.name || '—' }}</dd><dt>Asset quantity</dt><dd>{{ String(form.items.length).padStart(2, '0') }}</dd><dt>Request type</dt><dd><a-tag color="orange">Asset Borrow</a-tag></dd></dl>
-          <a-button type="primary" block :loading="submitting" @click="submit">Submit Request</a-button>
-          <a-button block @click="router.push({ name: 'my-requests' })">Cancel</a-button>
+          <a-button class="bigin-touch-target" type="primary" block :loading="submitting" @click="submit">Submit Request</a-button>
+          <a-button class="bigin-touch-target" block @click="router.push({ name: 'my-requests' })">Cancel</a-button>
         </aside>
       </div>
     </main>
@@ -111,5 +111,5 @@ onMounted(loadAssets)
 </template>
 
 <style scoped>
-.borrow-page{padding:24px;min-height:calc(100vh - 68px)}.screen-code{color:var(--bigin-text-tertiary)}.create-grid{display:grid;grid-template-columns:minmax(0,1fr) 320px;gap:24px;max-width:1280px;margin:auto}.create-main{display:grid;gap:20px}.panel{background:var(--bigin-surface-panel);border:1px solid var(--bigin-border-secondary);border-radius:8px;padding:22px}.panel h2{font-size:18px;margin:0 0 18px}.general-panel label{display:block;font-weight:600;margin-bottom:8px}.required{color:var(--bigin-color-error)}.field-error{color:var(--bigin-color-error);font-size:12px;margin-top:6px}.asset-selection{padding:0}.asset-selection header{padding:18px 22px 0}.asset-picker{display:flex;gap:10px;padding:0 22px 18px}.asset-picker :deep(.ant-select){flex:1}.asset-row{display:grid;grid-template-columns:auto minmax(0,1fr) 170px auto;gap:14px;align-items:center;border-top:1px solid var(--bigin-border-secondary);padding:16px 22px}.asset-copy{display:grid;gap:3px}.asset-copy span{color:var(--bigin-text-secondary);font-size:12px}.asset-copy :deep(.ant-tag){justify-self:start}.date-field{display:grid;gap:5px;font-size:12px;color:var(--bigin-text-secondary)}.date-field input{border:1px solid var(--bigin-border-default);border-radius:6px;height:32px;padding:0 9px;background:var(--bigin-surface-panel);color:var(--bigin-text-primary)}.summary-panel{align-self:start}.summary-panel dl{display:grid;grid-template-columns:1fr auto;gap:14px;margin:0 0 22px;padding:18px 0;border-block:1px solid var(--bigin-border-secondary)}.summary-panel dt{color:var(--bigin-text-secondary)}.summary-panel dd{margin:0;text-align:right}.summary-panel :deep(.ant-btn){margin-top:10px}@media(max-width:900px){.create-grid{grid-template-columns:1fr}.summary-panel{order:-1}.asset-row{grid-template-columns:auto 1fr auto}.date-field{grid-column:2/3}}@media(max-width:600px){.borrow-page{padding:12px}.asset-picker{flex-direction:column}.asset-row{grid-template-columns:1fr}.date-field{grid-column:auto}}
+.borrow-page{min-height:calc(100vh - 68px);min-width:0;padding:24px}.screen-code{color:var(--bigin-text-tertiary)}.create-grid{display:grid;grid-template-columns:minmax(0,1fr) 320px;gap:24px;max-width:1280px;margin:auto;min-width:0}.create-main{display:grid;gap:20px;min-width:0}.panel{background:var(--bigin-surface-panel);border:1px solid var(--bigin-border-secondary);border-radius:8px;padding:22px;min-width:0}.panel h2{font-size:18px;margin:0 0 18px}.general-panel label{display:block;font-weight:600;margin-bottom:8px}.required{color:var(--bigin-color-error)}.field-error{color:var(--bigin-color-error);font-size:12px;margin-top:6px}.asset-selection{padding:0}.asset-selection header{padding:18px 22px 0}.asset-picker{display:flex;gap:10px;padding:0 22px 18px}.asset-picker :deep(.ant-select){flex:1;min-width:0}.asset-row{display:grid;grid-template-columns:auto minmax(0,1fr) 170px auto;gap:14px;align-items:center;border-top:1px solid var(--bigin-border-secondary);padding:16px 22px}.asset-copy{display:grid;gap:3px;min-width:0}.asset-copy span{color:var(--bigin-text-secondary);font-size:12px;overflow-wrap:anywhere}.asset-copy :deep(.ant-tag){justify-self:start}.date-field{display:grid;gap:5px;font-size:12px;color:var(--bigin-text-secondary)}.date-field input{border:1px solid var(--bigin-border-default);border-radius:6px;height:32px;padding:0 9px;background:var(--bigin-surface-panel);color:var(--bigin-text-primary);max-width:100%}.summary-panel{align-self:start}.summary-panel dl{display:grid;grid-template-columns:1fr auto;gap:14px;margin:0 0 22px;padding:18px 0;border-block:1px solid var(--bigin-border-secondary)}.summary-panel dt{color:var(--bigin-text-secondary)}.summary-panel dd{margin:0;text-align:right;overflow-wrap:anywhere}.summary-panel :deep(.ant-btn){margin-top:10px}@media(max-width:900px){.create-grid{grid-template-columns:1fr}.summary-panel{order:-1}.asset-row{grid-template-columns:auto 1fr auto}.date-field{grid-column:2/3}}@media(max-width:767px){.borrow-page{padding:16px}.asset-picker{flex-direction:column}.asset-row{grid-template-columns:1fr}.date-field{grid-column:auto}}@media(max-width:575px){.borrow-page{padding:12px}.summary-panel :deep(.ant-btn){width:100%}}
 </style>

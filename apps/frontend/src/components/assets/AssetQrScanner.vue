@@ -95,18 +95,19 @@ onBeforeUnmount(stop)
     <div id="asset-qr-reader" class="asset-qr-scanner__reader" />
     <a-alert v-if="scannerError" type="error" show-icon :message="scannerError" />
     <div class="asset-qr-scanner__actions">
-      <a-button v-if="!running" type="primary" :loading="imageScanning" :disabled="locked" @click="start">Start camera</a-button>
-      <a-button v-else @click="stop">Stop camera</a-button>
-      <a-button :disabled="running || imageScanning || locked" @click="openImagePicker">Upload QR image</a-button>
+      <a-button v-if="!running" class="bigin-touch-target" type="primary" :loading="imageScanning" :disabled="locked" @click="start">Start camera</a-button>
+      <a-button v-else class="bigin-touch-target" @click="stop">Stop camera</a-button>
+      <a-button class="bigin-touch-target" :disabled="running || imageScanning || locked" @click="openImagePicker">Upload QR image</a-button>
       <input ref="imageInput" class="asset-qr-scanner__file" type="file" accept="image/*" @change="handleImageSelected" />
     </div>
-    <a-button v-if="locked || scannerError" @click="reset">Scan again</a-button>
+    <a-button v-if="locked || scannerError" class="bigin-touch-target" @click="reset">Scan again</a-button>
   </div>
 </template>
 
 <style scoped>
-.asset-qr-scanner { display: grid; gap: 16px; }
-.asset-qr-scanner__reader { min-height: 300px; overflow: hidden; border: 1px solid var(--bigin-border-secondary); border-radius: 8px; background: var(--bigin-surface-inset); }
+.asset-qr-scanner { display: grid; gap: 16px; min-width: 0; }
+.asset-qr-scanner__reader { min-height: 300px; max-width: 100%; overflow: hidden; border: 1px solid var(--bigin-border-secondary); border-radius: 8px; background: var(--bigin-surface-inset); }
 .asset-qr-scanner__actions { display: flex; flex-wrap: wrap; gap: 10px; }
 .asset-qr-scanner__file { display: none; }
+@media (max-width: 575px) { .asset-qr-scanner__reader { min-height: min(300px, calc(100vw - 48px)); }.asset-qr-scanner__actions { flex-direction: column; }.asset-qr-scanner__actions :deep(.ant-btn) { width: 100%; } }
 </style>

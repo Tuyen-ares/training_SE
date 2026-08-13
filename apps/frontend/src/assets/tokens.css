@@ -71,6 +71,12 @@
   --bigin-radius-panel: 8px;
   --section-gap: 160px;
 
+  --bigin-z-header: 100;
+  --bigin-z-nav-backdrop: 1000;
+  --bigin-z-nav-drawer: 1010;
+  --bigin-z-popup: 1050;
+  --bigin-z-modal: 1100;
+
   --color-background: var(--bigin-surface-page);
   --color-background-soft: var(--bigin-surface-panel);
   --color-background-mute: var(--bigin-surface-inset);

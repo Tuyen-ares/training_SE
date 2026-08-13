@@ -25,7 +25,7 @@ async function handleDecoded(rawValue) {
   <WorkspaceLayout>
     <template #context><a-typography-text strong>Asset QR Scan</a-typography-text></template>
     <main class="asset-scan-page">
-      <a-button type="link" :icon="h(ArrowLeftOutlined)" @click="router.push({ name: 'assets' })">Back to Asset List</a-button>
+      <a-button class="bigin-touch-target" type="link" :icon="h(ArrowLeftOutlined)" @click="router.push({ name: 'assets' })">Back to Asset List</a-button>
       <a-card title="Scan Asset QR Code" :bordered="false">
         <p>Use your camera or upload a QR image to open the asset details.</p>
         <a-alert v-if="errorMessage" type="error" show-icon :message="errorMessage" />
@@ -36,6 +36,7 @@ async function handleDecoded(rawValue) {
 </template>
 
 <style scoped>
-.asset-scan-page { max-width: 720px; margin: 0 auto; padding: 24px; }
+.asset-scan-page { max-width: 720px; min-width: 0; margin: 0 auto; padding: 24px; }
 .asset-scan-page p { color: var(--bigin-text-secondary); }
+@media (max-width: 575px) { .asset-scan-page { padding: 16px 12px 28px; } }
 </style>

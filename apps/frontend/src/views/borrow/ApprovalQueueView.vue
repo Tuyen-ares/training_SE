@@ -80,13 +80,13 @@ onMounted(load)
         </div>
 
         <a-alert v-if="errorMessage" type="error" show-icon :message="errorMessage" />
-        <a-table
-          v-else
+        <div v-else class="bigin-table-scroll-wrapper"><a-table
           class="queue-table"
           :loading="loading"
           :data-source="result.items"
           row-key="id"
           :pagination="false"
+          :scroll="{ x: 'max-content' }"
         >
           <a-table-column title="Request" key="id" :width="190">
             <template #default="{ record }">
@@ -127,7 +127,7 @@ onMounted(load)
           <a-table-column title="" key="actions" :width="150" align="right">
             <template #default="{ record }">
               <a-button
-                class="review-button"
+                class="review-button bigin-touch-target"
                 :type="activeTab === 'PENDING' ? 'primary' : 'default'"
                 size="small"
                 @click="router.push({ name: 'approval-detail', params: { id: record.id }, state: { request: record } })"
@@ -137,11 +137,11 @@ onMounted(load)
             </template>
           </a-table-column>
           <template #emptyText><a-empty description="No requests in this view" /></template>
-        </a-table>
+        </a-table></div>
 
-        <footer class="queue-footer">
+        <footer class="queue-footer bigin-responsive-footer">
           <span>Showing {{ result.items.length }} of {{ result.total }} requests</span>
-          <a-pagination
+          <a-pagination class="bigin-touch-target"
             :current="result.page"
             :page-size="result.pageSize"
             :total="result.total"
@@ -181,5 +181,5 @@ onMounted(load)
 .review-button { border-radius: 6px; font-size: 12px; }
 .queue-footer { align-items: center; border-top: 1px solid var(--bigin-border-secondary); color: var(--bigin-text-tertiary); display: flex; font-size: 12px; justify-content: space-between; padding: 16px 24px; }
 @media (max-width: 780px) { .queue-page { padding: 24px 16px 36px; } .queue-header { align-items: flex-start; flex-direction: column; } .queue-header-meta { min-width: 110px; } .queue-toolbar { align-items: flex-start; flex-direction: column; padding-bottom: 0; } .status-tabs { width: 100%; } }
-@media (max-width: 560px) { .queue-surface { overflow-x: auto; } .queue-toolbar, .queue-footer { min-width: 720px; } .queue-table { min-width: 720px; } .queue-footer { padding: 14px 16px; } }
+@media (max-width: 575px) { .queue-page { padding: 16px 12px 28px; } .queue-toolbar { padding-inline: 16px; } .queue-footer { padding: 14px 16px; } }
 </style>

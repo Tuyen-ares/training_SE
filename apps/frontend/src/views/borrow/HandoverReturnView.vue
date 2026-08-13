@@ -213,7 +213,8 @@ onMounted(() => {
                 <div><dt>Approved by</dt><dd>{{ item.approvedBy?.name || '—' }}</dd><small>{{ formatDateTime(item.approvedAt) }}</small></div>
               </dl>
               <div class="row-action">
-                <a-button
+                  <a-button
+                    class="bigin-touch-target"
                   type="primary"
                   :loading="busy === busyKey('handover', item.detailId)"
                   :disabled="busy !== null"
@@ -244,6 +245,7 @@ onMounted(() => {
               </dl>
               <div class="row-action return-actions">
                 <a-button
+                  class="bigin-touch-target"
                   type="primary"
                   :loading="busy === busyKey('return', history.id)"
                   :disabled="busy !== null"
@@ -251,6 +253,7 @@ onMounted(() => {
                   @click="confirmNormalReturn(history)"
                 >Confirm Normal Return</a-button>
                 <a-button
+                  class="bigin-touch-target"
                   danger
                   :disabled="busy !== null"
                   :icon="h(WarningOutlined)"
@@ -277,6 +280,7 @@ onMounted(() => {
 
       <a-modal
         v-model:open="damagedOpen"
+        wrap-class-name="bigin-modal-content"
         title="Confirm damaged return"
         ok-text="Confirm Damaged Return"
         cancel-text="Cancel"
@@ -299,7 +303,7 @@ onMounted(() => {
 </template>
 
 <style scoped>
-.fulfillment-page { max-width: 1320px; margin: 0 auto; padding: 32px 36px 48px; }
+.fulfillment-page { max-width: 1320px; min-width: 0; margin: 0 auto; padding: 32px 36px 48px; }
 .fulfillment-header { align-items: flex-end; display: flex; gap: 24px; justify-content: space-between; margin-bottom: 28px; }
 .eyebrow { color: var(--bigin-text-tertiary); font-size: 11px; font-weight: 700; letter-spacing: .12em; margin: 0 0 8px; }
 .fulfillment-header h1 { color: var(--bigin-text-primary); font-size: 30px; letter-spacing: -.02em; line-height: 1.15; margin: 0; }
@@ -342,6 +346,14 @@ onMounted(() => {
   .row-action { justify-content: flex-start; }
   .return-actions { display: flex; flex-wrap: wrap; }
 }
+@media (max-width: 767px) {
+  .fulfillment-page { padding: 20px 16px 32px; }
+  .queue-row { grid-template-columns: 1fr; }
+  .queue-fields, .row-action { grid-column: auto; }
+  .row-action { min-width: 0; }
+  .return-actions { min-width: 0; }
+}
+@media (max-width: 575px) { .queue-fields { grid-template-columns: 1fr; } }
 @media (max-width: 520px) {
   .fulfillment-header h1 { font-size: 25px; }
   .queue-fields { grid-template-columns: 1fr; }

@@ -79,7 +79,7 @@ onMounted(loadPage)
           <a-alert v-if="form.isSystem" type="info" show-icon message="System role names are protected, but their permission set can be updated." />
           <div class="permission-heading"><div><h2>Permissions</h2><p>Use the descriptions to understand the capability before assigning it.</p></div><strong>{{ form.permissionIds.length }} selected</strong></div>
           <PermissionSelector v-model="form.permissionIds" :permissions="permissions" :disabled="!canUpdate" />
-          <footer><a-button @click="router.push({ name: 'roles' })">Cancel</a-button><a-button v-if="canUpdate" type="primary" class="primary-action" :loading="saving" @click="save"><template #icon><SaveOutlined /></template>{{ isCreate ? 'Create Role' : 'Save Changes' }}</a-button></footer>
+          <footer class="bigin-responsive-footer"><a-button class="bigin-touch-target" @click="router.push({ name: 'roles' })">Cancel</a-button><a-button v-if="canUpdate" type="primary" class="primary-action bigin-touch-target" :loading="saving" @click="save"><template #icon><SaveOutlined /></template>{{ isCreate ? 'Create Role' : 'Save Changes' }}</a-button></footer>
         </section>
       </template>
     </main>
@@ -87,8 +87,9 @@ onMounted(loadPage)
 </template>
 
 <style scoped>
-.role-page { margin: 0 auto; max-width: 1180px; padding: 24px 28px 48px; }.page-heading h1 { font-size: 22px; margin: 10px 0 5px; }.page-heading p,.permission-heading p { color: var(--bigin-text-muted); margin: 0; }.alert { margin: 16px 0; }
+.role-page { margin: 0 auto; max-width: 1180px; min-width: 0; padding: 24px 28px 48px; }.page-heading h1 { font-size: 22px; margin: 10px 0 5px; }.page-heading p,.permission-heading p { color: var(--bigin-text-muted); margin: 0; }.alert { margin: 16px 0; }
 .role-card { background: var(--bigin-surface-panel); border: 1px solid var(--bigin-border-secondary); border-radius: 8px; margin-top: 18px; padding: 24px; }.role-fields { align-items: flex-end; display: flex; gap: 24px; margin-bottom: 16px; }.role-fields label { display: grid; flex: 1; gap: 7px; max-width: 480px; }.role-fields label span { font-size: 13px; font-weight: 600; }.role-fields b { color: var(--bigin-color-error); }.role-meta { color: var(--bigin-text-muted); display: flex; gap: 12px; padding-bottom: 5px; }
 .permission-heading { align-items: flex-end; display: flex; justify-content: space-between; margin: 28px 0 14px; }.permission-heading h2 { font-size: 16px; margin: 0 0 4px; }.role-card footer { border-top: 1px solid var(--bigin-border-secondary); display: flex; gap: 10px; justify-content: flex-end; margin: 24px -24px -24px; padding: 14px 24px; }.primary-action { background: var(--bigin-color-primary); }
-@media (max-width: 640px) { .role-page { padding: 16px; }.role-fields,.permission-heading { align-items: flex-start; flex-direction: column; } }
+@media (max-width: 767px) { .role-page { padding: 16px; }.role-fields,.permission-heading { align-items: flex-start; flex-direction: column; }.role-fields label { max-width: none; width: 100%; } }
+@media (max-width: 575px) { .role-page { padding: 12px; }.role-card { padding: 16px; }.role-card footer { align-items: stretch; flex-direction: column; margin-inline: -16px; padding-inline: 16px; }.role-card footer :deep(.ant-btn) { width: 100%; } }
 </style>

@@ -67,13 +67,13 @@ onMounted(() => load());
           type="error"
           show-icon
           :message="errorMessage"
-        /><a-table
-          v-else
+        /><div v-else class="bigin-table-scroll-wrapper"><a-table
           :loading="loading"
           :data-source="result.items"
           row-key="id"
           :pagination="false"
-          ><a-table-column title="Asset" key="asset"
+          :scroll="{ x: 'max-content' }"
+          ><a-table-column title="Asset" key="asset" :width="260"
             ><template #default="{ record }"
               ><div class="asset-cell">
                 <a-avatar shape="square" :size="40" :src="record.asset.imageUrl || DEFAULT_ASSET_IMAGE">{{
@@ -87,7 +87,7 @@ onMounted(() => load());
                 </div>
               </div></template
             ></a-table-column
-          ><a-table-column v-if="canViewAll" title="Borrower" key="borrower"
+          ><a-table-column v-if="canViewAll" title="Borrower" key="borrower" :width="190"
             ><template #default="{ record }"
               ><a-space>
                 <a-avatar size="small" :src="record.borrower.avatarUrl">{{
@@ -96,17 +96,19 @@ onMounted(() => load());
                 {{ record.borrower.name }}
               </a-space></template
             ></a-table-column
-          ><a-table-column title="Borrow Date" key="borrowed"
+          ><a-table-column title="Borrow Date" key="borrowed" :width="150"
             ><template #default="{ record }">{{
               formatDate(record.borrowedAt)
             }}</template></a-table-column
           ><a-table-column
             title="Expected Return"
             data-index="expectedReturnDate"
+            :width="170"
           /><a-table-column
             v-if="activeTab === 'RETURNED'"
             title="Returned Date"
             key="returned"
+            :width="150"
             ><template #default="{ record }">{{
               formatDate(record.returnedAt)
             }}</template></a-table-column
@@ -114,29 +116,30 @@ onMounted(() => load());
             v-if="activeTab === 'RETURNED'"
             title="Return Condition"
             key="condition"
+            :width="180"
             ><template #default="{ record }">{{
               record.returnCondition || "—"
             }}</template></a-table-column
-          ><a-table-column title="Status" key="status"
+          ><a-table-column title="Status" key="status" :width="130"
             ><template #default
               ><StatusTag :status="activeTab === 'RETURNED' ? 'RETURNED' : 'CURRENT'" /></template
             ></a-table-column
-          ><a-table-column title="Action" key="action"
+          ><a-table-column title="Action" key="action" :width="150"
             ><template #default="{ record }"
               ><a-button
+                class="bigin-touch-target"
                 type="link"
                 :icon="h(EyeOutlined)"
                 @click="viewDetails(record.id)"
                 >View Details</a-button
               ></template
             ></a-table-column
-          ></a-table
-        >
-        <footer>
+          ></a-table></div>
+        <footer class="bigin-responsive-footer">
           <span
             >Showing {{ result.items.length }} of
             {{ result.total }} records</span
-          ><a-pagination
+          ><a-pagination class="bigin-touch-target"
             :current="result.page"
             :page-size="result.pageSize"
             :total="result.total"

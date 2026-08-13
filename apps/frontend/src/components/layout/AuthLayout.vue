@@ -56,7 +56,7 @@ defineProps({
 </template>
 
 <style scoped>
-.auth-layout, .auth-layout__frame { min-height: 100vh; min-height: 100svh; }
+.auth-layout, .auth-layout__frame { min-height: 100vh; min-height: 100svh; min-height: 100dvh; }
 .auth-layout { color-scheme: light; }
 .auth-layout__context { display: flex; flex: 0 0 45% !important; flex-direction: column; justify-content: space-between; max-width: 45% !important; min-width: 0 !important; padding: 48px 56px; width: 45% !important; background: var(--bigin-surface-primary-soft) !important; color: var(--bigin-text-primary); }
 .auth-layout__context :deep(.ant-layout-sider-children) { display: flex; flex: 1; flex-direction: column; justify-content: space-between; }
@@ -74,5 +74,5 @@ defineProps({
 .auth-layout__form-region { max-width: 344px; width: 100%; }
 .auth-layout__form-region--wide { max-width: 344px; }
 .auth-layout__mobile-brand { display: none; margin-bottom: 32px; }
-@media (max-width: 992px) { .auth-layout__context { display: none; }.auth-layout__content { min-height: 100svh; padding: 32px 24px; }.auth-layout__mobile-brand { display: flex; justify-content: center; } }
+@media (max-width: 992px) { .auth-layout__context { display: none; }.auth-layout__content { min-height: 100svh; min-height: 100dvh; padding: 32px 24px; }.auth-layout__mobile-brand { display: flex; justify-content: center; } }
 </style>

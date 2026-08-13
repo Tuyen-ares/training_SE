@@ -143,8 +143,8 @@ onMounted(() => { if (!request.value) load() })
   <WorkspaceLayout>
     <template #context><strong>Approval Details</strong></template>
 
-    <main class="approval-page">
-      <a-button class="back-link" type="link" @click="router.push({ name: 'approval-queue' })">
+    <main class="approval-page bigin-page-container">
+      <a-button class="back-link bigin-touch-target" type="link" @click="router.push({ name: 'approval-queue' })">
         <template #icon><ArrowLeftOutlined /></template>
         Back to Approval Queue
       </a-button>
@@ -190,9 +190,10 @@ onMounted(() => { if (!request.value) load() })
                 <div class="assets-title"><span class="asset-title-icon"><AppstoreOutlined /></span><div><div class="section-kicker">REQUESTED ASSETS</div><h2>Equipment included in this request</h2></div></div>
                 <span class="asset-count">{{ requestDetails.length }} Assets</span>
               </div>
-              <div class="asset-table-heading"><span>ASSET</span><span>CATEGORY</span><span>INVENTORY STATUS</span><span>APPROVAL STATUS</span><span>ACTION</span></div>
-              <div v-if="!requestDetails.length" class="assets-empty"><a-empty description="No assets in this request" /></div>
-              <div v-else class="asset-list">
+              <div class="asset-table-scroll">
+                <div class="asset-table-heading"><span>ASSET</span><span>CATEGORY</span><span>INVENTORY STATUS</span><span>APPROVAL STATUS</span><span>ACTION</span></div>
+                <div v-if="!requestDetails.length" class="assets-empty"><a-empty description="No assets in this request" /></div>
+                <div v-else class="asset-list">
                 <article v-for="detail in requestDetails" :key="detail.id" class="asset-row">
               <div class="asset-identity">
                 <a-avatar shape="square" :size="48" :src="detail.asset.imageUrl || DEFAULT_ASSET_IMAGE" class="asset-avatar">{{ detail.asset.model?.name?.slice(0, 1) || 'A' }}</a-avatar>
@@ -214,6 +215,7 @@ onMounted(() => { if (!request.value) load() })
               </div>
               <div class="asset-actions">
                 <a-button
+                  class="bigin-touch-target"
                   v-if="detail.approvalStatus === 'PENDING' && canApprove"
                   :loading="busyDetail === detail.id"
                   :disabled="detail.asset.status !== 'AVAILABLE' || busyAll"
@@ -222,6 +224,7 @@ onMounted(() => { if (!request.value) load() })
                   @click="approve(detail)"
                 ><template #icon><CheckOutlined /></template>Approve</a-button>
                 <a-button
+                  class="bigin-touch-target"
                   v-if="detail.approvalStatus === 'PENDING' && canReject"
                   danger
                   size="small"
@@ -232,6 +235,7 @@ onMounted(() => { if (!request.value) load() })
                   <span class="muted-label">FULFILLMENT</span>
                   <strong>Ready for handover</strong>
                   <a-button
+                    class="bigin-touch-target"
                     v-if="canHandover"
                     type="link"
                     size="small"
@@ -240,6 +244,7 @@ onMounted(() => { if (!request.value) load() })
                 </div>
               </div>
                 </article>
+              </div>
               </div>
             </section>
           </div>
@@ -251,7 +256,7 @@ onMounted(() => { if (!request.value) load() })
             </section>
             <section class="summary-card decision-card">
               <div class="section-heading"><span class="section-kicker">APPROVAL DECISION</span></div>
-              <a-button v-if="canApprove && pendingCount" class="approve-all-button" block type="primary" :loading="busyAll" @click="confirmApproveAll"><template #icon><CheckOutlined /></template>Approve All</a-button>
+              <a-button v-if="canApprove && pendingCount" class="approve-all-button bigin-touch-target" block type="primary" :loading="busyAll" @click="confirmApproveAll"><template #icon><CheckOutlined /></template>Approve All</a-button>
               <div class="decision-status">Status: <StatusTag :status="request.status" /></div>
               <a-alert v-if="bulkResult?.skipped.length" class="bulk-result" type="warning" show-icon :message="`${bulkResult.approved.length} approved; ${bulkResult.skipped.length} remained pending.`" />
             </section>
@@ -259,7 +264,7 @@ onMounted(() => { if (!request.value) load() })
         </div>
       </template>
 
-      <a-modal v-model:open="rejectOpen" title="Reject Asset Request" ok-text="Reject" ok-type="danger" :confirm-loading="busyDetail === rejectForm.detailId" @ok="reject">
+      <a-modal v-model:open="rejectOpen" wrap-class-name="bigin-modal-content" title="Reject Asset Request" ok-text="Reject" ok-type="danger" :confirm-loading="busyDetail === rejectForm.detailId" @ok="reject">
         <p>Please enter the reason so the employee is informed.</p>
         <a-textarea v-model:value="rejectForm.reason" :rows="4" :maxlength="300" show-count placeholder="Enter rejection reason (max 300 characters)..." />
       </a-modal>
@@ -268,7 +273,7 @@ onMounted(() => { if (!request.value) load() })
 </template>
 
 <style scoped>
-.approval-page { max-width: 1320px; margin: 0 auto; padding: 24px 36px 48px; }
+.approval-page { max-width: 1320px; min-width: 0; margin: 0 auto; padding: 24px 36px 48px; }
 .back-link { color: var(--bigin-text-secondary); font-size: 13px; margin: 0 0 20px -8px; padding-inline: 8px; }
 .approval-header { align-items: flex-end; display: flex; justify-content: space-between; gap: 24px; margin-bottom: 26px; }
 .eyebrow, .section-kicker { color: var(--bigin-text-tertiary); font-size: 11px; font-weight: 700; letter-spacing: .12em; }
@@ -305,8 +310,9 @@ onMounted(() => { if (!request.value) load() })
 .asset-title-icon { color: var(--bigin-color-primary); display: inline-flex; font-size: 18px; }
 .assets-header h2 { color: var(--bigin-text-primary); font-size: 17px; margin: 7px 0 0; }
 .asset-count { background: var(--bigin-surface-success); border-radius: 999px; color: var(--bigin-color-success-text); font-size: 12px; font-weight: 700; padding: 5px 10px; }
+.asset-table-scroll { max-width: 100%; overflow-x: auto; }
 .asset-table-heading { background: var(--bigin-surface-subtle); border-bottom: 1px solid var(--bigin-border-secondary); color: var(--bigin-text-tertiary); display: grid; font-size: 10px; font-weight: 700; gap: 18px; grid-template-columns: minmax(260px, 1fr) 150px 125px 145px minmax(180px, auto); letter-spacing: .06em; min-width: 960px; padding: 13px 24px; }
-.asset-list { overflow-x: auto; }
+.asset-list { min-width: 960px; }
 .asset-row { align-items: center; border-bottom: 1px solid var(--bigin-border-secondary); display: grid; gap: 18px; grid-template-columns: minmax(260px, 1fr) 150px 125px 145px minmax(180px, auto); min-width: 960px; padding: 18px 24px; }
 .asset-row:last-child { border-bottom: 0; }
 .asset-identity { align-items: center; display: flex; gap: 12px; min-width: 0; }
@@ -327,5 +333,5 @@ onMounted(() => { if (!request.value) load() })
 .assets-empty { padding: 42px; }
 @media (max-width: 980px) { .approval-layout { grid-template-columns: 1fr; } .approval-sidebar { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
 @media (max-width: 780px) { .approval-page { padding: 20px 16px 36px; } .approval-header { align-items: flex-start; flex-direction: column; } .header-count { min-width: 120px; } .requester-content { align-items: flex-start; flex-direction: column; gap: 18px; } .requester-fields { width: 100%; } }
-@media (max-width: 560px) { .approval-header h1 { font-size: 25px; } .summary-card { padding: 18px; } .requester-fields, .approval-sidebar { grid-template-columns: 1fr; } .assets-header { align-items: flex-start; gap: 12px; padding: 18px; } .asset-row, .asset-table-heading { padding-inline: 18px; } .handover-ready { justify-items: start; } }
+@media (max-width: 575px) { .approval-page { padding: 16px 12px 28px; } .approval-header h1 { font-size: 25px; } .summary-card { padding: 18px; } .requester-fields, .approval-sidebar { grid-template-columns: 1fr; } .assets-header { align-items: flex-start; gap: 12px; padding: 18px; } .asset-row, .asset-table-heading { padding-inline: 18px; } .handover-ready { justify-items: start; } }
 </style>

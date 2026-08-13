@@ -54,5 +54,5 @@ function toggle(permissionId, checked) {
 .permission-option:last-child { border-bottom: 0; }.permission-option > span { display: grid; flex: 1; gap: 3px; }
 .permission-option strong { font-size: 13px; }.permission-option code { color: var(--bigin-color-primary-strong); font-size: 11px; }
 .permission-option small { color: var(--bigin-text-muted); line-height: 1.4; }
-@media (max-width: 760px) { .permission-groups { grid-template-columns: 1fr; } }
+@media (max-width: 767px) { .permission-groups { grid-template-columns: 1fr; } }
 </style>

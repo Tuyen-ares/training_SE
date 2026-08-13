@@ -134,13 +134,14 @@ onMounted(load)
 <template>
   <WorkspaceLayout>
     <template #context><strong>Notifications</strong></template>
-    <main class="notification-page">
+    <main class="notification-page bigin-page-container">
       <header class="notification-page__header">
         <div>
           <h1>Notifications</h1>
           <p>Updates about your requests, handovers, returns, and asset issues.</p>
         </div>
         <a-button
+          class="bigin-touch-target"
           :disabled="!hasUnread"
           :loading="markingAll"
           :icon="h(CheckOutlined)"
@@ -181,6 +182,7 @@ onMounted(load)
               <a-space wrap>
                 <StatusTag v-if="!notification.isRead" status="UNREAD" />
                 <a-button
+                  class="bigin-touch-target"
                   v-if="!notification.isRead"
                   type="link"
                   size="small"
@@ -188,6 +190,7 @@ onMounted(load)
                   @click="markRead(notification)"
                 >Mark as read</a-button>
                 <a-button
+                  class="bigin-touch-target"
                   v-if="notification.relatedEntityId"
                   type="link"
                   size="small"
@@ -198,9 +201,9 @@ onMounted(load)
           </article>
         </div>
 
-        <footer v-if="page.total > page.pageSize" class="notification-panel__footer">
+        <footer v-if="page.total > page.pageSize" class="notification-panel__footer bigin-responsive-footer">
           <span>Showing {{ page.items.length }} of {{ page.total }} notifications</span>
-          <a-pagination
+          <a-pagination class="bigin-touch-target"
             :current="page.page"
             :page-size="page.pageSize"
             :total="page.total"
@@ -214,7 +217,7 @@ onMounted(load)
 </template>
 
 <style scoped>
-.notification-page { margin: 0 auto; max-width: 1180px; padding: 28px 32px 48px; }
+.notification-page { margin: 0 auto; max-width: 1180px; min-width: 0; padding: 28px 32px 48px; }
 .notification-page__header { align-items: flex-start; display: flex; gap: 24px; justify-content: space-between; margin-bottom: 18px; }
 .notification-page h1 { font-size: 28px; line-height: 1.25; margin: 0; }
 .notification-page p { color: var(--bigin-text-secondary); margin: 6px 0 0; }
@@ -226,9 +229,9 @@ onMounted(load)
 .notification-item__icon { align-items: center; border-radius: 50%; display: inline-flex; flex: 0 0 42px; font-size: 19px; height: 42px; justify-content: center; }
 .notification-item__content { min-width: 0; width: 100%; }
 .notification-item__heading { align-items: flex-start; display: flex; gap: 18px; justify-content: space-between; }
-.notification-item__heading strong { color: var(--bigin-text-primary); font-size: 15px; }
+.notification-item__heading strong { color: var(--bigin-text-primary); font-size: 15px; overflow-wrap: anywhere; }
 .notification-item__heading time { color: var(--bigin-text-tertiary); flex: 0 0 auto; font-size: 12px; }
-.notification-item__content p { line-height: 1.55; margin: 6px 0 10px; }
+.notification-item__content p { line-height: 1.55; margin: 6px 0 10px; overflow-wrap: anywhere; }
 .notification-panel__footer { align-items: center; color: var(--bigin-text-tertiary); display: flex; justify-content: space-between; padding: 18px 0; }
 @media (max-width: 700px) {
   .notification-page { padding: 18px 14px 32px; }
@@ -237,5 +240,13 @@ onMounted(load)
   .notification-item { padding: 16px 12px; }
   .notification-item__heading { flex-direction: column; gap: 4px; }
   .notification-panel__footer { align-items: flex-start; flex-direction: column; gap: 12px; }
+}
+@media (max-width: 575px) {
+  .notification-page { padding: 14px 12px 28px; }
+  .notification-page__header { gap: 14px; }
+  .notification-page__header :deep(.ant-btn) { width: 100%; }
+  .notification-panel { padding-inline: 10px; }
+  .notification-item { gap: 10px; padding-inline: 8px; }
+  .notification-item__icon { flex-basis: 36px; height: 36px; font-size: 16px; }
 }
 </style>

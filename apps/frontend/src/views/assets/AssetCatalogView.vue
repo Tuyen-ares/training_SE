@@ -80,8 +80,8 @@ onMounted(load)
 <template>
   <WorkspaceLayout>
     <template #context><a-typography-text strong>Asset Catalog</a-typography-text></template>
-    <main class="catalog-page">
-      <header class="catalog-page__header"><div><a-typography-title :level="1">Asset Catalog</a-typography-title><a-typography-paragraph type="secondary">Manage brands, asset types and models. Catalog deletion is not available in this MVP.</a-typography-paragraph></div><a-button v-if="canCreate" type="primary" @click="openDialog()"><template #icon><PlusOutlined /></template>Add {{ currentTab?.label.slice(0, -1) }}</a-button></header>
+    <main class="catalog-page bigin-page-container">
+      <header class="catalog-page__header"><div><a-typography-title :level="1">Asset Catalog</a-typography-title><a-typography-paragraph type="secondary">Manage brands, asset types and models. Catalog deletion is not available in this MVP.</a-typography-paragraph></div><a-button v-if="canCreate" class="bigin-touch-target" type="primary" @click="openDialog()"><template #icon><PlusOutlined /></template>Add {{ currentTab?.label.slice(0, -1) }}</a-button></header>
       <a-alert v-if="errorMessage" type="error" show-icon :message="errorMessage"><template #action><a-button size="small" @click="load">Retry</a-button></template></a-alert>
       <a-card v-else :bordered="false">
         <a-tabs v-model:active-key="activeTab">
@@ -89,17 +89,17 @@ onMounted(load)
         </a-tabs>
         <a-skeleton v-if="loading" active :paragraph="{ rows: 7 }" />
         <a-empty v-else-if="!currentItems.length" description="No catalog items yet." />
-        <a-table v-else :data-source="currentItems" row-key="id" :pagination="false" :scroll="{ x: 620 }">
+        <div v-else class="bigin-table-scroll-wrapper"><a-table :data-source="currentItems" row-key="id" :pagination="false" :scroll="{ x: 'max-content' }">
           <a-table-column title="ID" data-index="id" width="90" />
-          <a-table-column title="Name" data-index="name" />
-          <a-table-column v-if="currentTab?.key === 'models'" title="Brand"><template #default="{ record }">{{ brandName(record.brandId) }}</template></a-table-column>
-          <a-table-column v-if="currentTab?.key === 'models'" title="Asset Type"><template #default="{ record }">{{ typeName(record.assetTypeId) }}</template></a-table-column>
-          <a-table-column title="Action" width="120"><template #default="{ record }"><a-button v-if="canUpdate(currentTab)" type="link" @click="openDialog(record)"><template #icon><EditOutlined /></template>Edit</a-button></template></a-table-column>
-        </a-table>
+          <a-table-column title="Name" data-index="name" :width="240" />
+          <a-table-column v-if="currentTab?.key === 'models'" title="Brand" :width="180"><template #default="{ record }">{{ brandName(record.brandId) }}</template></a-table-column>
+          <a-table-column v-if="currentTab?.key === 'models'" title="Asset Type" :width="180"><template #default="{ record }">{{ typeName(record.assetTypeId) }}</template></a-table-column>
+          <a-table-column title="Action" width="120"><template #default="{ record }"><a-button v-if="canUpdate(currentTab)" class="bigin-touch-target" type="link" @click="openDialog(record)"><template #icon><EditOutlined /></template>Edit</a-button></template></a-table-column>
+        </a-table></div>
       </a-card>
     </main>
 
-    <a-modal v-model:open="dialog.open" :title="dialog.item ? 'Edit catalog item' : 'Create catalog item'" :confirm-loading="dialog.saving" ok-text="Save" @ok="saveDialog">
+    <a-modal v-model:open="dialog.open" wrap-class-name="bigin-modal-content" :title="dialog.item ? 'Edit catalog item' : 'Create catalog item'" :confirm-loading="dialog.saving" ok-text="Save" @ok="saveDialog">
       <a-form layout="vertical">
         <a-form-item label="Name" required><a-input v-model:value="dialog.name" :maxlength="30" @press-enter="saveDialog" /></a-form-item>
         <template v-if="dialog.resource === 'asset-models'">
@@ -112,5 +112,5 @@ onMounted(load)
 </template>
 
 <style scoped>
-.catalog-page { margin: 0 auto; max-width: 1160px; padding: 24px 16px 40px; }.catalog-page__header { align-items: flex-start; display: flex; justify-content: space-between; gap: 20px; margin-bottom: 20px; }.catalog-page__header :deep(.ant-typography) { margin-bottom: 4px; }@media (max-width: 640px) { .catalog-page { padding: 16px 12px 32px; }.catalog-page__header { flex-direction: column; } }
+.catalog-page { margin: 0 auto; max-width: 1160px; min-width: 0; padding: 24px 16px 40px; }.catalog-page__header { align-items: flex-start; display: flex; justify-content: space-between; gap: 20px; margin-bottom: 20px; }.catalog-page__header > div { min-width: 0; }.catalog-page__header :deep(.ant-typography) { margin-bottom: 4px; overflow-wrap: anywhere; }@media (max-width: 767px) { .catalog-page { padding: 16px 12px 32px; }.catalog-page__header { flex-direction: column; }.catalog-page__header :deep(.ant-btn) { width: 100%; } }
 </style>

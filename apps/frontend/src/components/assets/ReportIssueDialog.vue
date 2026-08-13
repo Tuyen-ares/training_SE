@@ -42,6 +42,7 @@ async function submit() {
 <template>
   <a-modal
     :open="true"
+    wrap-class-name="bigin-modal-content"
     title="Báo sự cố"
     :confirm-loading="submitting"
     ok-text="Gửi báo cáo"

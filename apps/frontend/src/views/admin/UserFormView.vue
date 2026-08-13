@@ -190,7 +190,7 @@ onMounted(loadPage)
           </section>
         </aside>
 
-        <footer><a-button @click="router.back()">Cancel</a-button><a-button type="primary" html-type="submit" class="primary-action" :loading="submitting"><template #icon><SaveOutlined /></template>{{ isEdit ? 'Save Changes' : 'Save User' }}</a-button></footer>
+        <footer class="bigin-responsive-footer"><a-button class="bigin-touch-target" @click="router.back()">Cancel</a-button><a-button type="primary" html-type="submit" class="primary-action bigin-touch-target" :loading="submitting"><template #icon><SaveOutlined /></template>{{ isEdit ? 'Save Changes' : 'Save User' }}</a-button></footer>
       </form>
     </main>
   </WorkspaceLayout>
@@ -203,5 +203,7 @@ onMounted(loadPage)
 .role-picker { display: grid; gap: 7px; }.role-select { width: 100%; }.role-count { color: var(--bigin-text-tertiary); }
 .account-status-section { margin-top: 4px; }.account-status-heading { align-items: flex-start; display: flex; gap: 12px; justify-content: space-between; }.account-status-heading h2 { margin-bottom: 4px; }.account-status-heading .helper { margin: 0; }.account-status-control { align-items: center; background: var(--bigin-surface-subtle); border: 1px solid var(--bigin-border-secondary); border-radius: 6px; display: flex; justify-content: space-between; margin-top: 14px; padding: 12px; }.account-status-control > span { font-size: 13px; font-weight: 600; }.status-permission-help { color: var(--bigin-text-tertiary); display: block; margin-top: 8px; }
 .user-form-card footer { border-top: 1px solid var(--bigin-border-secondary); display: flex; gap: 10px; grid-column: 1 / -1; justify-content: flex-end; padding: 14px 24px; }.primary-action { background: var(--bigin-color-primary); }
-@media (max-width: 800px) { .user-form-card { grid-template-columns: 1fr; }.user-form-card aside { border-left: 0; border-top: 1px solid var(--bigin-border-secondary); }.field-grid { grid-template-columns: 1fr; }.full-width { grid-column: auto; }.form-page { padding: 16px; } }
+@media (max-width: 800px) { .user-form-card { grid-template-columns: 1fr; }.user-form-card aside { border-left: 0; border-top: 1px solid var(--bigin-border-secondary); }.form-page { padding: 16px; } }
+@media (max-width: 767px) { .field-grid { grid-template-columns: 1fr; }.full-width { grid-column: auto; } }
+@media (max-width: 575px) { .form-page { padding: 12px; }.user-form-card section, .user-form-card aside { padding: 16px; }.user-form-card footer { align-items: stretch; flex-direction: column; margin-inline: -16px; padding-inline: 16px; }.user-form-card footer :deep(.ant-btn) { width: 100%; } }
 </style>

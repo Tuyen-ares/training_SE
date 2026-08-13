@@ -28,7 +28,7 @@ const filteredRoles = computed(() => {
 })
 
 const columns = [
-  { title: 'Role', dataIndex: 'name', key: 'name' },
+  { title: 'Role', dataIndex: 'name', key: 'name', width: 260 },
   { title: 'Permissions', dataIndex: 'permissionCount', key: 'permissionCount', width: 130 },
   { title: 'Users', dataIndex: 'userCount', key: 'userCount', width: 100 },
   { title: '', key: 'action', width: 100, align: 'right' },
@@ -48,10 +48,10 @@ onMounted(loadRoles)
   <WorkspaceLayout>
     <template #context><strong>Administration</strong></template>
     <AdministrationTabs />
-    <main class="admin-page">
+    <main class="admin-page bigin-page-container">
       <header class="page-heading">
         <div><h1>Roles</h1><p>Create roles and review their current permission sets. Roles cannot be deleted in this version.</p></div>
-        <a-button v-if="canCreate" type="primary" class="primary-action" @click="router.push({ name: 'role-create' })"><template #icon><PlusOutlined /></template>Create Role</a-button>
+        <a-button v-if="canCreate" type="primary" class="primary-action bigin-touch-target" @click="router.push({ name: 'role-create' })"><template #icon><PlusOutlined /></template>Create Role</a-button>
       </header>
       <section class="role-toolbar" aria-label="Role filters">
         <a-input v-model:value="searchQuery" class="role-search" allow-clear placeholder="Search roles">
@@ -61,7 +61,7 @@ onMounted(loadRoles)
         <span class="result-count">{{ filteredRoles.length }} role{{ filteredRoles.length === 1 ? '' : 's' }}</span>
       </section>
       <a-alert v-if="errorMessage" type="error" show-icon :message="errorMessage" action="Retry" @click="loadRoles" />
-      <a-table v-else class="role-table" :columns="columns" :data-source="filteredRoles" :loading="loading" row-key="id" :pagination="false">
+      <div v-else class="bigin-table-scroll-wrapper"><a-table class="role-table" :columns="columns" :data-source="filteredRoles" :loading="loading" row-key="id" :pagination="false" :scroll="{ x: 'max-content' }">
         <template #bodyCell="{ column, record }">
           <template v-if="column.key === 'name'">
             <div class="role-name">
@@ -70,11 +70,11 @@ onMounted(loadRoles)
             </div>
           </template>
           <template v-else-if="column.key === 'action'">
-            <a-button v-if="canView" type="link" @click="router.push({ name: 'role-detail', params: { id: record.id } })">Open</a-button>
+            <a-button v-if="canView" class="bigin-touch-target" type="link" @click="router.push({ name: 'role-detail', params: { id: record.id } })">Open</a-button>
           </template>
         </template>
         <template #emptyText><a-empty description="No roles found" /></template>
-      </a-table>
+      </a-table></div>
     </main>
   </WorkspaceLayout>
 </template>
@@ -84,5 +84,6 @@ onMounted(loadRoles)
 .page-heading h1 { font-size: 22px; margin: 0 0 5px; }.page-heading p { color: var(--bigin-text-muted); margin: 0; }.primary-action { background: var(--bigin-color-primary); }
 .role-toolbar { align-items: center; background: var(--bigin-surface-panel); border: 1px solid var(--bigin-border-secondary); border-radius: 8px; display: flex; gap: 12px; margin-bottom: 16px; padding: 14px 16px; }.role-search { max-width: 360px; }.result-count { color: var(--bigin-text-muted); font-size: 13px; margin-left: auto; }
 .role-table { background: var(--bigin-surface-panel); border: 1px solid var(--bigin-border-secondary); border-radius: 8px; overflow: hidden; }.role-name { align-items: center; display: flex; gap: 8px; }.system-tag { background: var(--bigin-surface-inset); border-color: var(--bigin-border-default); color: var(--bigin-text-secondary); margin-inline-end: 0; }
-@media (max-width: 640px) { .admin-page { padding: 16px; }.page-heading { align-items: flex-start; flex-direction: column; gap: 14px; }.role-toolbar { align-items: stretch; flex-direction: column; }.role-search { max-width: none; }.result-count { margin-left: 0; } }
+@media (max-width: 767px) { .admin-page { padding: 16px; }.page-heading { align-items: flex-start; flex-direction: column; gap: 14px; }.role-toolbar { align-items: stretch; flex-direction: column; }.role-search { max-width: none; }.result-count { margin-left: 0; } }
+@media (max-width: 575px) { .admin-page { padding: 12px; }.page-heading :deep(.ant-btn) { width: 100%; }.role-toolbar { padding: 12px; } }
 </style>

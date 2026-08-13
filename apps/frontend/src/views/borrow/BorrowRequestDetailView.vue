@@ -75,8 +75,9 @@ onMounted(load);
     ><template #context
       ><strong>Request Details</strong></template
     >
-    <main class="detail-page">
+    <main class="detail-page bigin-page-container">
       <a-button
+        class="bigin-touch-target"
         type="link"
         :icon="h(ArrowLeftOutlined)"
         @click="router.push({ name: 'my-requests' })"
@@ -145,11 +146,12 @@ onMounted(load);
           </aside>
           <section class="panel asset-list">
             <h2>Asset List ({{ request.details.length }})</h2>
-            <a-table
+            <div class="bigin-table-scroll-wrapper"><a-table
               :data-source="request.details"
               row-key="id"
               :pagination="false"
-              ><a-table-column title="Asset" key="asset"
+              :scroll="{ x: 'max-content' }"
+              ><a-table-column title="Asset" key="asset" :width="260"
                 ><template #default="{ record }"
                   ><div class="asset-cell">
                     <a-avatar shape="square" :size="40" :src="record.asset.imageUrl || DEFAULT_ASSET_IMAGE">{{
@@ -166,19 +168,20 @@ onMounted(load);
               ><a-table-column
                 title="Expected Return Date"
                 data-index="expectedReturnDate"
+                :width="190"
               /><a-table-column title="Asset Status" key="assetStatus"
+                :width="150"
                 ><template #default="{ record }"
                   ><StatusTag :status="record.asset.status" /></template
                 ></a-table-column
-              ><a-table-column title="Approval Status" key="approval"
+              ><a-table-column title="Approval Status" key="approval" :width="180"
                 ><template #default="{ record }"
                   ><StatusTag :status="record.approvalStatus" />
                   <p v-if="record.rejectionReason" class="reason">
                     {{ record.rejectionReason }}
                   </p></template
                 ></a-table-column
-              ></a-table
-            >
+              ></a-table></div>
           </section>
         </div></template
       >
@@ -193,6 +196,7 @@ onMounted(load);
   padding: 20px 24px;
   max-width: 1320px;
   margin: auto;
+  min-width: 0;
 }
 .detail-heading {
   display: flex;
@@ -248,6 +252,7 @@ onMounted(load);
 .panel dd {
   margin: 0 0 8px;
 }
+.detail-grid > * { min-width: 0; }
 .reason-box {
   background: var(--bigin-surface-inset);
   border: 1px solid var(--bigin-border-subtle);
@@ -300,6 +305,10 @@ onMounted(load);
 }
 .asset-cell :deep(.ant-avatar) {
   flex: 0 0 auto;
+}
+.asset-list :deep(.ant-table-thead > tr > th),
+.asset-list :deep(.ant-table-tbody > tr > td) {
+  white-space: nowrap;
 }
 @media (max-width: 800px) {
   .detail-grid {

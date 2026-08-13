@@ -1,8 +1,10 @@
 @import "./tokens.css";
 @import "./base.css";
+@import "./responsive.css";
 
 #app {
   min-height: 100vh;
+  min-height: 100dvh;
 }
 
 .color-primary {

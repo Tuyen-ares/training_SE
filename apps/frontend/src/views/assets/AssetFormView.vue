@@ -109,7 +109,7 @@ onMounted(load)
           </a-form-item>
           <div class="initial-status"><span>Initial Status</span><StatusTag status="AVAILABLE" /><small>New assets are available by default.</small></div>
           <a-alert type="info" show-icon message="Auto Generate QR Code" description="A unique QR code is generated automatically after you save this asset." />
-          <a-space class="form-actions"><a-button @click="router.back()">Cancel</a-button><a-button type="primary" html-type="submit" :loading="saving">{{ isEdit ? 'Save changes' : 'Create asset' }}</a-button></a-space>
+          <a-space class="form-actions bigin-responsive-footer"><a-button class="bigin-touch-target" @click="router.back()">Cancel</a-button><a-button class="bigin-touch-target" type="primary" html-type="submit" :loading="saving">{{ isEdit ? 'Save changes' : 'Create asset' }}</a-button></a-space>
         </a-form>
       </section>
       </template>
@@ -118,5 +118,5 @@ onMounted(load)
 </template>
 
 <style scoped>
-.asset-form-page { margin: 0 auto; max-width: 920px; padding: 24px 16px 40px; }.asset-form-heading{margin:20px 0 14px}.asset-form-heading :deep(.ant-typography){margin-bottom:4px}.asset-form-panel { background: var(--bigin-surface-panel); border: 1px solid var(--bigin-border-secondary); border-radius: 8px; padding: 24px; }.asset-form-panel h3{border-bottom:1px solid var(--bigin-border-secondary);padding-bottom:14px}.asset-form-panel :deep(.ant-form) { max-width: 760px; }.initial-status{display:grid;gap:6px;margin-bottom:18px}.initial-status>span{font-weight:600}.initial-status :deep(.ant-tag){justify-self:start}.initial-status small{color:var(--bigin-text-tertiary)}.form-actions{display:flex;justify-content:flex-end;margin-top:22px}@media (max-width: 640px) { .asset-form-page { padding: 16px 12px 32px; }.asset-form-panel { padding: 16px; } }
+.asset-form-page { margin: 0 auto; max-width: 920px; min-width: 0; padding: 24px 16px 40px; }.asset-form-heading{margin:20px 0 14px}.asset-form-heading :deep(.ant-typography){margin-bottom:4px}.asset-form-panel { background: var(--bigin-surface-panel); border: 1px solid var(--bigin-border-secondary); border-radius: 8px; padding: 24px; }.asset-form-panel h3{border-bottom:1px solid var(--bigin-border-secondary);padding-bottom:14px}.asset-form-panel :deep(.ant-form) { max-width: 760px; }.initial-status{display:grid;gap:6px;margin-bottom:18px}.initial-status>span{font-weight:600}.initial-status :deep(.ant-tag){justify-self:start}.initial-status small{color:var(--bigin-text-tertiary)}.form-actions{display:flex;justify-content:flex-end;margin-top:22px}.form-actions :deep(.ant-btn) { min-width: 116px; }@media (max-width: 575px) { .asset-form-page { padding: 16px 12px 32px; }.asset-form-panel { padding: 16px; }.form-actions { align-items: stretch; flex-direction: column; width: 100%; }.form-actions :deep(.ant-btn) { width: 100%; } }
 </style>

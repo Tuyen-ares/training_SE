@@ -78,7 +78,7 @@ onMounted(loadUser)
   <WorkspaceLayout>
     <template #context><strong>Administration</strong></template>
     <AdministrationTabs />
-    <main class="detail-page">
+    <main class="detail-page bigin-page-container">
       <a-skeleton v-if="loading" active :paragraph="{ rows: 10 }" />
       <a-result v-else-if="errorMessage" status="error" title="Unable to open user" :sub-title="errorMessage">
         <template #extra><a-button @click="loadUser">Try Again</a-button><a-button type="primary" @click="router.push({ name: 'users' })">Back to User List</a-button></template>
@@ -86,11 +86,11 @@ onMounted(loadUser)
       <template v-else-if="user">
         <div class="detail-heading">
           <div><a-breadcrumb><a-breadcrumb-item>Admin</a-breadcrumb-item><a-breadcrumb-item>Users</a-breadcrumb-item><a-breadcrumb-item>User Details</a-breadcrumb-item></a-breadcrumb><h1>User Details</h1></div>
-          <a-space>
-            <a-button v-if="(user.isActive && canDeactivate) || (!user.isActive && canUpdate)" :danger="user.isActive" :loading="mutating" @click="changeStatus">
+          <a-space class="bigin-mobile-action-stack">
+            <a-button class="bigin-touch-target" v-if="(user.isActive && canDeactivate) || (!user.isActive && canUpdate)" :danger="user.isActive" :loading="mutating" @click="changeStatus">
               <template #icon><DeleteOutlined v-if="user.isActive" /></template>{{ user.isActive ? 'Deactivate' : 'Reactivate' }}
             </a-button>
-            <a-button v-if="canUpdate" type="primary" class="primary-action" @click="router.push({ name: 'user-edit', params: { id: user.id } })"><template #icon><EditOutlined /></template>Edit</a-button>
+            <a-button v-if="canUpdate" class="primary-action bigin-touch-target" type="primary" @click="router.push({ name: 'user-edit', params: { id: user.id } })"><template #icon><EditOutlined /></template>Edit</a-button>
           </a-space>
         </div>
 
@@ -117,7 +117,7 @@ onMounted(loadUser)
             </div>
             <div class="content-card">
               <div class="section-title"><h2>Account Information</h2></div>
-              <a-descriptions bordered :column="2">
+              <a-descriptions bordered :column="{ xs: 1, sm: 2 }">
                 <a-descriptions-item label="Full name">{{ user.name }}</a-descriptions-item>
                 <a-descriptions-item label="Department">{{ user.department?.name || 'Unassigned' }}</a-descriptions-item>
                 <a-descriptions-item label="Email">{{ user.email }}</a-descriptions-item>
@@ -129,7 +129,7 @@ onMounted(loadUser)
         </div>
       </template>
     </main>
-    <a-modal v-model:open="roleModalOpen" title="Assign roles" ok-text="Save role set" :confirm-loading="mutating" @ok="saveRoles">
+    <a-modal v-model:open="roleModalOpen" wrap-class-name="bigin-modal-content" title="Assign roles" ok-text="Save role set" :confirm-loading="mutating" @ok="saveRoles">
       <p class="section-copy">Select one or more existing roles. Authorization uses the union of their permissions.</p>
       <a-checkbox-group v-model:value="selectedRoleIds" class="role-checkboxes">
         <a-checkbox v-for="role in roleOptions" :key="role.id" :value="role.id">{{ role.name }}</a-checkbox>
@@ -139,11 +139,13 @@ onMounted(loadUser)
 </template>
 
 <style scoped>
-.detail-page { padding: 22px 28px 40px; }.muted { color: var(--bigin-text-tertiary); }.divider { color: var(--bigin-text-disabled); }
+.detail-page { min-width: 0; padding: 22px 28px 40px; }.muted { color: var(--bigin-text-tertiary); }.divider { color: var(--bigin-text-disabled); }
 .detail-heading { align-items: flex-end; display: flex; justify-content: space-between; margin-bottom: 18px; }.detail-heading h1 { font-size: 20px; margin: 10px 0 0; }.primary-action { background: var(--bigin-color-primary); }
 .detail-grid { display: grid; gap: 20px; grid-template-columns: 300px minmax(0, 1fr); }.profile-card,.content-card { background: var(--bigin-surface-panel); border: 1px solid var(--bigin-border-secondary); border-radius: 8px; padding: 24px; }
 .profile-card { align-items: center; display: flex; flex-direction: column; }.profile-card h2 { font-size: 20px; margin: 16px 0 4px; }.profile-card p { color: var(--bigin-text-tertiary); margin: 0 0 10px; }.profile-card dl { align-self: stretch; margin: 0; }.profile-card dt { color: var(--bigin-text-tertiary); font-size: 12px; margin-top: 16px; text-transform: uppercase; }.profile-card dd { margin: 7px 0 0; }
 .detail-content { display: grid; gap: 20px; }.section-title { align-items: center; display: flex; gap: 8px; }.section-title h2 { font-size: 16px; margin: 0; }.section-icon { color: var(--bigin-color-primary); }.section-copy { color: var(--bigin-text-tertiary); margin: 8px 0 18px; }.role-tag { font-size: 13px; padding: 5px 10px; text-transform: capitalize; }
 .manage-roles { margin-left: auto; }.role-checkboxes { display: grid; gap: 10px; }
 @media (max-width: 820px) { .detail-grid { grid-template-columns: 1fr; }.detail-heading { align-items: flex-start; gap: 16px; }.detail-page { padding: 16px; } }
+@media (max-width: 767px) { .detail-heading { flex-direction: column; }.detail-heading .bigin-mobile-action-stack { width: 100%; }.detail-heading .bigin-mobile-action-stack :deep(.ant-btn) { flex: 1 1 auto; } }
+@media (max-width: 575px) { .detail-page { padding: 12px; }.detail-heading .bigin-mobile-action-stack { align-items: stretch; flex-direction: column; }.detail-heading .bigin-mobile-action-stack :deep(.ant-btn) { width: 100%; } }
 </style>

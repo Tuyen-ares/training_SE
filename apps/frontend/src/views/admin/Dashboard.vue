@@ -238,7 +238,7 @@ onMounted(() => {
 
 <template>
   <WorkspaceLayout>
-    <main class="dashboard-page">
+    <main class="dashboard-page bigin-page-container">
       <header class="dashboard-page__heading">
         <div>
           <a-typography-title :level="2">{{ isPersonalDashboard ? `Welcome, ${userFirstName}` : 'Overview' }}</a-typography-title>
@@ -327,15 +327,15 @@ onMounted(() => {
           <a-button type="link" @click="openRoute()">View all</a-button>
         </div>
         <a-card :bordered="false" class="dashboard-page__activity-card">
-          <a-table :columns="activityColumns" :data-source="personalSummary.activity" :pagination="false" row-key="id" size="middle">
+          <div class="bigin-table-scroll-wrapper"><a-table :columns="activityColumns" :data-source="personalSummary.activity" :pagination="false" row-key="id" size="middle" :scroll="{ x: 'max-content' }">
             <template #bodyCell="{ column, record }">
               <a-typography-text v-if="column.key === 'assetId'" strong>{{ activityAsset(record).serialNumber }}</a-typography-text>
               <a-typography-text v-else-if="column.key === 'assetName'">{{ activityAsset(record).name }}</a-typography-text>
               <a-typography-text v-else-if="column.key === 'borrowedOn'">{{ toDate(record.borrowedAt) }}</a-typography-text>
               <StatusTag v-else-if="column.key === 'status'" :status="record.returnedAt ? 'RETURNED' : 'CURRENT'" />
-              <a-button v-else-if="column.key === 'action'" size="small" @click="openActivityAsset(record)">Details</a-button>
+              <a-button v-else-if="column.key === 'action'" class="bigin-touch-target" size="small" @click="openActivityAsset(record)">Details</a-button>
             </template>
-          </a-table>
+          </a-table></div>
         </a-card>
       </section>
 

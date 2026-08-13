@@ -84,7 +84,7 @@ onMounted(loadAsset)
 <template>
   <WorkspaceLayout>
     <template #context><a-typography-text strong>Asset Details</a-typography-text></template>
-    <main class="asset-page-content">
+    <main class="asset-page-content bigin-page-container">
       <a-breadcrumb>
         <a-breadcrumb-item><a @click="router.push({ name: 'assets' })">Assets</a></a-breadcrumb-item>
         <a-breadcrumb-item>Details</a-breadcrumb-item>
@@ -103,14 +103,14 @@ onMounted(loadAsset)
             <a-typography-title :level="1">{{ asset.serialNumber || asset.model.name }}</a-typography-title>
             <a-typography-text type="secondary">{{ asset.model.name }} · {{ asset.brand.name }}</a-typography-text>
           </div>
-          <a-space>
+          <a-space class="bigin-mobile-action-stack">
             <StatusTag :status="asset.status" />
-            <a-button :icon="h(QrcodeOutlined)" @click="openQr">Asset QR</a-button>
-            <a-button v-if="canEdit" :icon="h(EditOutlined)" @click="router.push({ name: 'asset-edit', params: { id: asset.id } })">Edit</a-button>
+            <a-button class="bigin-touch-target" :icon="h(QrcodeOutlined)" @click="openQr">Asset QR</a-button>
+            <a-button v-if="canEdit" class="bigin-touch-target" :icon="h(EditOutlined)" @click="router.push({ name: 'asset-edit', params: { id: asset.id } })">Edit</a-button>
             <a-tooltip v-if="canRequestRetire" :title="canRetireStatus ? 'Retire this asset' : `Assets in ${statusLabel(asset.status)} cannot be retired`">
-              <span><a-button danger :disabled="!canRetireStatus" :loading="retiring" :icon="h(DeleteOutlined)" @click="confirmRetire">Retire</a-button></span>
+              <span><a-button class="bigin-touch-target" danger :disabled="!canRetireStatus" :loading="retiring" :icon="h(DeleteOutlined)" @click="confirmRetire">Retire</a-button></span>
             </a-tooltip>
-            <a-button v-if="asset.actions.canReportIssue" type="primary" :icon="h(ExclamationCircleOutlined)" @click="showReportDialog = true">Report Issue</a-button>
+            <a-button v-if="asset.actions.canReportIssue" class="bigin-touch-target" type="primary" :icon="h(ExclamationCircleOutlined)" @click="showReportDialog = true">Report Issue</a-button>
           </a-space>
         </div>
 
@@ -141,7 +141,7 @@ onMounted(loadAsset)
       </template>
 
       <ReportIssueDialog v-if="showReportDialog && asset" :asset-id="asset.id" @close="showReportDialog = false" @reported="issueReported" />
-      <a-drawer v-if="asset" v-model:open="qrOpen" title="Asset QR Label" width="360">
+      <a-drawer v-if="asset" v-model:open="qrOpen" root-class-name="bigin-drawer-content" title="Asset QR Label" width="min(360px, 100vw)">
         <div class="qr-drawer">
           <a-spin v-if="qrLoading" />
           <a-alert v-else-if="qrError" type="error" show-icon :message="qrError" />
@@ -150,8 +150,8 @@ onMounted(loadAsset)
             <strong>{{ asset.serialNumber || asset.model.name }}</strong>
             <span>{{ asset.model.name }}</span>
             <a-space direction="vertical" block>
-              <a-button type="primary" block @click="downloadQr">Download QR Label</a-button>
-              <a-button block @click="printQr">Print QR Label</a-button>
+              <a-button class="bigin-touch-target" type="primary" block @click="downloadQr">Download QR Label</a-button>
+              <a-button class="bigin-touch-target" block @click="printQr">Print QR Label</a-button>
             </a-space>
           </template>
         </div>
@@ -161,5 +161,5 @@ onMounted(loadAsset)
 </template>
 
 <style scoped>
-.asset-page-content { max-width: 1320px; width: 100%; margin: 0 auto; padding: 20px 24px 32px; }.back-button { padding-inline: 0; margin: 4px 0 12px; }.page-heading { display: flex; align-items: flex-start; justify-content: space-between; gap: 16px; margin-bottom: 8px; }.page-heading :deep(.ant-typography) { margin-bottom: 4px; }.detail-layout{display:grid;grid-template-columns:minmax(0,1fr) 300px;gap:18px}.asset-overview{display:grid;grid-template-columns:220px minmax(0,1fr);gap:24px}.asset-image-frame{width:220px;height:190px;display:flex;align-items:center;justify-content:center;overflow:hidden;border-radius:8px;background:var(--bigin-surface-inset)}.asset-image-frame :deep(.ant-image){width:100%;height:100%;display:flex;align-items:center;justify-content:center}.asset-image-frame :deep(.ant-image-img){width:100%;height:100%;object-fit:contain}.status-card{align-self:start}.status-card p{color:var(--bigin-text-tertiary);margin-top:12px}.qr-drawer{display:grid;gap:18px;text-align:center}.qr-drawer__image{width:256px;height:256px;max-width:100%;object-fit:contain;margin-inline:auto}.qr-drawer strong{word-break:break-all}.qr-drawer span{color:var(--bigin-text-tertiary)}@media(max-width:800px){.detail-layout{grid-template-columns:1fr}.asset-overview{grid-template-columns:1fr}.asset-image-frame{width:100%;max-width:220px}}@media (max-width: 640px) { .asset-page-content { padding: 16px; }.page-heading { align-items: flex-start; flex-direction: column; } }
+.asset-page-content { max-width: 1320px; width: 100%; margin: 0 auto; padding: 20px 24px 32px; }.back-button { padding-inline: 0; margin: 4px 0 12px; }.page-heading { display: flex; align-items: flex-start; justify-content: space-between; gap: 16px; margin-bottom: 8px; }.page-heading > div { min-width: 0; }.page-heading :deep(.ant-typography) { margin-bottom: 4px; overflow-wrap: anywhere; }.detail-layout{display:grid;grid-template-columns:minmax(0,1fr) 300px;gap:18px}.detail-layout > * { min-width: 0; }.asset-overview{display:grid;grid-template-columns:220px minmax(0,1fr);gap:24px}.asset-image-frame{width:220px;height:190px;display:flex;align-items:center;justify-content:center;overflow:hidden;border-radius:8px;background:var(--bigin-surface-inset)}.asset-image-frame :deep(.ant-image){width:100%;height:100%;display:flex;align-items:center;justify-content:center}.asset-image-frame :deep(.ant-image-img){width:100%;height:100%;object-fit:contain}.status-card{align-self:start}.status-card p{color:var(--bigin-text-tertiary);margin-top:12px}.qr-drawer{display:grid;gap:18px;text-align:center}.qr-drawer__image{width:256px;height:256px;max-width:100%;object-fit:contain;margin-inline:auto}.qr-drawer strong{overflow-wrap:anywhere}.qr-drawer span{color:var(--bigin-text-tertiary);overflow-wrap:anywhere}@media(max-width:800px){.detail-layout{grid-template-columns:1fr}.asset-overview{grid-template-columns:1fr}.asset-image-frame{width:100%;max-width:220px}}@media (max-width: 767px) { .asset-page-content { padding: 16px; }.page-heading { align-items: flex-start; flex-direction: column; }.page-heading .bigin-mobile-action-stack { width: 100%; }.page-heading .bigin-mobile-action-stack :deep(.ant-btn) { flex: 1 1 auto; } }@media (max-width: 575px) { .asset-page-content { padding: 12px; }.page-heading .bigin-mobile-action-stack { align-items: stretch; flex-direction: column; }.page-heading .bigin-mobile-action-stack :deep(.ant-btn) { width: 100%; } }
 </style>

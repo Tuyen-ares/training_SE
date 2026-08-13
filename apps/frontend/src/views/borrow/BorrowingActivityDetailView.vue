@@ -43,8 +43,9 @@ onMounted(load);
 <template>
   <WorkspaceLayout>
     <template #context><strong>Borrowing Activity</strong></template>
-    <main class="history-detail-page">
+    <main class="history-detail-page bigin-page-container">
       <a-button
+        class="bigin-touch-target"
         type="link"
         :icon="h(ArrowLeftOutlined)"
         @click="router.push({ name: 'borrowing-activity' })"
@@ -192,6 +193,7 @@ onMounted(load);
   max-width: 1320px;
   margin: 0 auto;
   padding: 20px 24px 40px;
+  min-width: 0;
 }
 .page-heading {
   display: flex;
@@ -223,13 +225,14 @@ onMounted(load);
 .panel dd { margin: 0; color: var(--bigin-text-primary); }
 .reason-section { margin-top: 18px; }
 .reason-box { background: var(--bigin-surface-inset); border: 1px solid var(--bigin-border-subtle); border-radius: 4px; padding: 12px; line-height: 1.55; margin: 8px 0 0; white-space: pre-wrap; }
-.requester-profile, .asset-summary { display: flex; align-items: center; gap: 14px; }
+.requester-profile, .asset-summary { display: flex; align-items: center; gap: 14px; min-width: 0; }
 .requester-copy { display: grid; gap: 6px; }
 .requester-copy span { color: var(--bigin-text-secondary); font-size: 13px; }
 .requester-copy :deep(svg) { color: var(--bigin-icon-muted); margin-right: 5px; }
 .asset-summary { margin-bottom: 18px; }
 .asset-summary h3 { margin: 0 0 6px; font-size: 18px; }
 .asset-summary p { margin: 3px 0; color: var(--bigin-text-secondary); }
+.asset-summary > div, .requester-copy { min-width: 0; overflow-wrap: anywhere; }
 .timeline-row { display: flex; align-items: flex-start; gap: 12px; padding-bottom: 16px; border-bottom: 1px solid var(--bigin-border-secondary); }
 .timeline-row > div { display: grid; gap: 5px; }
 .timeline-icon { font-size: 20px; }
@@ -246,5 +249,10 @@ onMounted(load);
   .history-detail-page { padding: 12px; }
   .page-heading { flex-direction: column; }
   .request-summary { grid-template-columns: 1fr; }
+}
+@media (max-width: 575px) {
+  .history-detail-page { padding: 12px; }
+  .asset-summary, .requester-profile { align-items: flex-start; }
+  .asset-summary { flex-direction: column; }
 }
 </style>

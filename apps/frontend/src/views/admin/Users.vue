@@ -124,19 +124,20 @@ onMounted(loadPage)
       </a-alert>
 
       <section class="user-table-panel">
-        <a-table
+        <div class="bigin-table-scroll-wrapper"><a-table
           :data-source="filteredUsers"
           :loading="loading"
           row-key="id"
           :pagination="{ pageSize: 8, showSizeChanger: false, position: ['bottomRight'] }"
           :locale="{ emptyText: 'No users match the current filters.' }"
+          :scroll="{ x: 'max-content' }"
         >
           <a-table-column title="No." key="number" :width="64">
             <template #default="{ index }">{{ index + 1 }}</template>
           </a-table-column>
           <a-table-column title="Full Name" key="identity" :width="250">
             <template #default="{ record }">
-              <button class="identity-link" type="button" @click="router.push({ name: 'user-detail', params: { id: record.id } })">
+              <button class="identity-link bigin-touch-target" type="button" @click="router.push({ name: 'user-detail', params: { id: record.id } })">
                 <a-avatar :size="36" :src="record.avatarUrl">{{ initials(record.name) }}</a-avatar>
                 <span><strong>{{ record.name }}</strong><small>{{ record.userCode || 'User code unavailable' }}</small></span>
               </button>
@@ -162,9 +163,9 @@ onMounted(loadPage)
           <a-table-column title="Actions" key="actions" align="right" :width="160">
             <template #default="{ record }">
               <a-space>
-                <a-button type="link" size="small" @click="router.push({ name: 'user-detail', params: { id: record.id } })">View</a-button>
+                  <a-button class="bigin-touch-target" type="link" size="small" @click="router.push({ name: 'user-detail', params: { id: record.id } })">View</a-button>
                 <a-dropdown v-if="canUpdate || canDeactivate">
-                  <a-button type="text" size="small" aria-label="More user actions">•••</a-button>
+                  <a-button class="bigin-touch-target" type="text" size="small" aria-label="More user actions">•••</a-button>
                   <template #overlay>
                     <a-menu>
                       <a-menu-item v-if="canUpdate" @click="router.push({ name: 'user-edit', params: { id: record.id } })">Edit user</a-menu-item>
@@ -177,7 +178,7 @@ onMounted(loadPage)
               </a-space>
             </template>
           </a-table-column>
-        </a-table>
+        </a-table></div>
       </section>
     </main>
   </WorkspaceLayout>
@@ -187,11 +188,12 @@ onMounted(loadPage)
 .user-list-page { padding: 24px 28px; }
 .screen-code { color: var(--bigin-text-tertiary); }.context-divider { color: var(--bigin-text-disabled); }
 .user-toolbar { align-items: center; background: var(--bigin-surface-panel); border: 1px solid var(--bigin-border-secondary); border-radius: 8px; display: flex; gap: 12px; margin-bottom: 16px; padding: 16px; }
-.user-search { width: min(360px, 100%); }.toolbar-select { min-width: 150px; }.primary-action { background: var(--bigin-color-primary); margin-left: auto; }
+.user-search { width: min(360px, 100%); }.toolbar-select { max-width: 100%; width: 150px; }.primary-action { background: var(--bigin-color-primary); margin-left: auto; }
 .page-alert { margin-bottom: 16px; }.user-table-panel { background: var(--bigin-surface-panel); border: 1px solid var(--bigin-border-secondary); border-radius: 8px; overflow: hidden; }
 .identity-link { align-items: center; background: transparent; border: 0; color: inherit; cursor: pointer; display: flex; gap: 10px; padding: 0; text-align: left; }
 .identity-link span { display: grid; }.identity-link small { color: var(--bigin-text-tertiary); font-size: 11px; margin-top: 2px; }
 :deep(.ant-table-thead > tr > th) { background: var(--bigin-surface-subtle); font-size: 12px; text-transform: uppercase; }
 :deep(.ant-pagination-item-active) { border-color: var(--bigin-color-primary); }:deep(.ant-pagination-item-active a) { color: var(--bigin-color-primary); }
 @media (max-width: 900px) { .user-toolbar { align-items: stretch; flex-wrap: wrap; }.primary-action { margin-left: 0; }.user-list-page { padding: 16px; } }
+@media (max-width: 575px) { .user-list-page { padding: 12px; }.user-toolbar { flex-direction: column; }.user-search, .toolbar-select, .primary-action { width: 100%; } }
 </style>

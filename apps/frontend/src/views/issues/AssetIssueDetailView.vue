@@ -145,13 +145,13 @@ onMounted(load)
       <template v-else-if="issue">
         <header class="detail-header">
           <div><div class="detail-header__title"><h1>Issue #ISS-{{ String(issue.id).padStart(4, '0') }}</h1><StatusTag :status="issue.status" /></div><p>{{ issue.asset?.modelName || `Asset ${issue.assetId}` }} · {{ issue.asset?.serialNumber || `Asset ID ${issue.assetId}` }}</p></div>
-          <a-space wrap>
-            <a-button v-if="issue.status === 'REPORTED' && canReview" danger :disabled="busy" :icon="h(CloseCircleOutlined)" @click="rejectIssue">Reject</a-button>
-            <a-button v-if="issue.status === 'REPORTED' && canReview" type="primary" :loading="busy" :icon="h(CheckCircleOutlined)" @click="confirmIssue">Confirm Issue</a-button>
-            <a-button v-if="issue.status === 'CONFIRMED' && canStart" type="primary" :icon="h(PlayCircleOutlined)" @click="openWorkflow('start')">Start Repair</a-button>
-            <a-button v-if="issue.status === 'IN_REPAIR' && canUpdate" :icon="h(EditOutlined)" @click="openWorkflow('update')">Update Repair</a-button>
-            <a-button v-if="issue.status === 'IN_REPAIR' && canClose" danger @click="openWorkflow('fail')">Mark Failed</a-button>
-            <a-button v-if="issue.status === 'IN_REPAIR' && canClose" type="primary" :icon="h(CheckCircleOutlined)" @click="openWorkflow('complete')">Complete Repair</a-button>
+          <a-space class="bigin-mobile-action-stack" wrap>
+            <a-button class="bigin-touch-target" v-if="issue.status === 'REPORTED' && canReview" danger :disabled="busy" :icon="h(CloseCircleOutlined)" @click="rejectIssue">Reject</a-button>
+            <a-button class="bigin-touch-target" v-if="issue.status === 'REPORTED' && canReview" type="primary" :loading="busy" :icon="h(CheckCircleOutlined)" @click="confirmIssue">Confirm Issue</a-button>
+            <a-button class="bigin-touch-target" v-if="issue.status === 'CONFIRMED' && canStart" type="primary" :icon="h(PlayCircleOutlined)" @click="openWorkflow('start')">Start Repair</a-button>
+            <a-button class="bigin-touch-target" v-if="issue.status === 'IN_REPAIR' && canUpdate" :icon="h(EditOutlined)" @click="openWorkflow('update')">Update Repair</a-button>
+            <a-button class="bigin-touch-target" v-if="issue.status === 'IN_REPAIR' && canClose" danger @click="openWorkflow('fail')">Mark Failed</a-button>
+            <a-button class="bigin-touch-target" v-if="issue.status === 'IN_REPAIR' && canClose" type="primary" :icon="h(CheckCircleOutlined)" @click="openWorkflow('complete')">Complete Repair</a-button>
           </a-space>
         </header>
         <a-alert v-if="conflictMessage" class="conflict-alert" type="error" show-icon :message="conflictMessage" closable @close="conflictMessage = ''" />
@@ -159,7 +159,7 @@ onMounted(load)
         <div class="detail-grid">
           <section class="panel overview-panel">
             <h2>Issue Information</h2>
-            <a-descriptions bordered :column="2" size="small">
+            <a-descriptions bordered :column="{ xs: 1, sm: 2 }" size="small">
               <a-descriptions-item label="Asset"><RouterLink :to="{ name: 'asset-detail', params: { id: issue.assetId } }">{{ issue.asset?.modelName || `Asset ${issue.assetId}` }}</RouterLink></a-descriptions-item>
               <a-descriptions-item label="Asset status"><StatusTag :status="issue.asset?.status" /></a-descriptions-item>
               <a-descriptions-item label="Reported by">{{ issue.reporter?.name || 'Unknown user' }}</a-descriptions-item>
@@ -179,7 +179,7 @@ onMounted(load)
           </aside>
           <section class="panel repair-panel">
             <h2>Repair Information</h2>
-            <a-descriptions :column="3" size="small">
+            <a-descriptions :column="{ xs: 1, sm: 3 }" size="small">
               <a-descriptions-item label="Repair provider">{{ issue.repairProvider || '—' }}</a-descriptions-item>
               <a-descriptions-item label="Start date">{{ formatDate(issue.startDate) }}</a-descriptions-item>
               <a-descriptions-item label="End date">{{ formatDate(issue.endDate) }}</a-descriptions-item>
@@ -191,7 +191,7 @@ onMounted(load)
         </div>
       </template>
 
-      <a-modal v-model:open="modalOpen" :title="modalTitle" :confirm-loading="busy" :ok-text="modalTitle" :ok-type="workflow === 'fail' ? 'danger' : 'primary'" width="620px" @ok="submitWorkflow">
+      <a-modal v-model:open="modalOpen" wrap-class-name="bigin-modal-content" :title="modalTitle" :confirm-loading="busy" :ok-text="modalTitle" :ok-type="workflow === 'fail' ? 'danger' : 'primary'" width="620px" @ok="submitWorkflow">
         <a-form layout="vertical">
           <div class="form-grid">
             <a-form-item label="Repair provider"><a-input v-model:value="form.repairProvider" :maxlength="255" placeholder="Internal team or service provider" /></a-form-item>
@@ -223,5 +223,6 @@ onMounted(load)
 .repair-panel { grid-column: 1; }
 .form-grid { display: grid; gap: 0 16px; grid-template-columns: 1fr 1fr; }
 @media (max-width: 900px) { .detail-header { flex-direction: column; }.detail-grid { grid-template-columns: 1fr; }.timeline-panel, .repair-panel { grid-column: auto; grid-row: auto; } }
-@media (max-width: 650px) { .issue-detail-page { padding: 14px; }.form-grid { grid-template-columns: 1fr; }.panel { overflow-x: auto; padding: 16px; } }
+@media (max-width: 767px) { .issue-detail-page { padding: 16px 14px 32px; }.form-grid { grid-template-columns: 1fr; }.panel { padding: 16px; } }
+@media (max-width: 575px) { .issue-detail-page { padding-inline: 12px; }.detail-header .bigin-mobile-action-stack { width: 100%; }.detail-header .bigin-mobile-action-stack :deep(.ant-btn) { flex: 1 1 auto; } }
 </style>

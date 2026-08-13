@@ -36,5 +36,6 @@ onMounted(async () => {
 </template>
 
 <style scoped>
-.qr-entry-page { display: grid; min-height: 100vh; place-items: center; padding: 24px; }
+.qr-entry-page { display: grid; min-height: 100vh; min-height: 100dvh; min-width: 0; place-items: center; padding: 24px; }
+@media (max-width: 575px) { .qr-entry-page { padding: 16px 12px; } }
 </style>

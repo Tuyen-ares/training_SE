@@ -161,7 +161,7 @@ onMounted(() => {
         </a-alert>
         <a-empty v-else-if="!result?.items?.length" description="No assets match the current filters." />
         <template v-else>
-          <a-table :columns="columns" :data-source="result.items" :pagination="false" row-key="id" :scroll="{ x: 1080 }">
+          <div class="bigin-table-scroll-wrapper"><a-table :columns="columns" :data-source="result.items" :pagination="false" row-key="id" :scroll="{ x: 'max-content' }">
             <template #bodyCell="{ column, record }">
               <template v-if="column.key === 'asset'">
                 <div class="asset-page__asset-cell">
@@ -179,14 +179,14 @@ onMounted(() => {
               <a-tooltip v-else-if="column.key === 'qr'" :title="record.qrCode"><QrcodeOutlined class="asset-page__qr-icon" /></a-tooltip>
               <StatusTag v-else-if="column.key === 'status'" :status="record.status" />
               <a-space v-else-if="column.key === 'actions'" :size="2">
-                <a-tooltip title="View details"><a-button type="text" :icon="h(EyeOutlined)" @click="openAsset(record)" /></a-tooltip>
-                <a-tooltip v-if="canUpdateAsset" title="Edit asset"><a-button type="text" :icon="h(EditOutlined)" @click="router.push({ name: 'asset-edit', params: { id: record.id } })" /></a-tooltip>
+                <a-tooltip title="View details"><a-button class="bigin-touch-target" type="text" :icon="h(EyeOutlined)" aria-label="View asset details" @click="openAsset(record)" /></a-tooltip>
+                <a-tooltip v-if="canUpdateAsset" title="Edit asset"><a-button class="bigin-touch-target" type="text" :icon="h(EditOutlined)" aria-label="Edit asset" @click="router.push({ name: 'asset-edit', params: { id: record.id } })" /></a-tooltip>
               </a-space>
             </template>
-          </a-table>
+          </a-table></div>
           <footer class="asset-page__footer">
             <a-typography-text type="secondary">Showing {{ (result.page - 1) * result.pageSize + 1 }}-{{ Math.min(result.page * result.pageSize, result.total) }} of {{ result.total }} assets</a-typography-text>
-            <a-pagination :current="result.page" :page-size="result.pageSize" :total="result.total" :show-size-changer="false" @change="changePage" />
+            <a-pagination class="bigin-touch-target" :current="result.page" :page-size="result.pageSize" :total="result.total" :show-size-changer="false" @change="changePage" />
           </footer>
         </template>
       </section>

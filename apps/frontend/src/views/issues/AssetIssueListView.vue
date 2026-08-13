@@ -48,7 +48,7 @@ onMounted(load)
 <template>
   <WorkspaceLayout>
     <template #context><strong>Asset Issues &amp; Repairs</strong></template>
-    <main class="issue-list-page">
+    <main class="issue-list-page bigin-page-container">
       <header>
         <div><h1>Asset Issues &amp; Repairs</h1><p>Review reported issues and track repair progress.</p></div>
         <a-button :icon="h(ReloadOutlined)" :loading="loading" @click="load">Refresh</a-button>
@@ -65,16 +65,16 @@ onMounted(load)
         <a-alert v-if="errorMessage" type="error" show-icon :message="errorMessage">
           <template #action><a-button size="small" @click="load">Retry</a-button></template>
         </a-alert>
-        <a-table v-else :loading="loading" :data-source="result.items" row-key="id" :pagination="false" :scroll="{ x: 980 }">
+        <div v-else class="bigin-table-scroll-wrapper"><a-table :loading="loading" :data-source="result.items" row-key="id" :pagination="false" :scroll="{ x: 'max-content' }">
           <a-table-column title="Issue" key="issue" :width="110"><template #default="{ record }"><strong>#ISS-{{ String(record.id).padStart(4, '0') }}</strong></template></a-table-column>
           <a-table-column title="Asset" key="asset" :width="220"><template #default="{ record }"><div class="entity-cell"><strong>{{ record.asset?.modelName || `Asset ${record.assetId}` }}</strong><span>{{ record.asset?.serialNumber || `ID ${record.assetId}` }}</span></div></template></a-table-column>
           <a-table-column title="Reported by" key="reporter" :width="170"><template #default="{ record }">{{ record.reporter?.name || 'Unknown user' }}</template></a-table-column>
           <a-table-column title="Status" key="status" :width="150"><template #default="{ record }"><StatusTag :status="record.status" /></template></a-table-column>
           <a-table-column title="Reported" key="createdAt" :width="180"><template #default="{ record }">{{ formatDate(record.createdAt) }}</template></a-table-column>
           <a-table-column title="Handler" key="handler" :width="170"><template #default="{ record }">{{ record.handledBy?.name || 'Unassigned' }}</template></a-table-column>
-          <a-table-column title="Action" key="action" fixed="right" :width="130"><template #default="{ record }"><a-button type="link" :icon="h(EyeOutlined)" @click="router.push({ name: 'asset-issue-detail', params: { id: record.id } })">View details</a-button></template></a-table-column>
-        </a-table>
-        <footer><span>Showing {{ result.items.length }} of {{ result.total }} issues</span><a-pagination :current="result.page" :page-size="result.pageSize" :total="result.total" :show-size-changer="false" @change="changePage" /></footer>
+          <a-table-column title="Action" key="action" fixed="right" :width="130"><template #default="{ record }"><a-button class="bigin-touch-target" type="link" :icon="h(EyeOutlined)" @click="router.push({ name: 'asset-issue-detail', params: { id: record.id } })">View details</a-button></template></a-table-column>
+        </a-table></div>
+        <footer class="bigin-responsive-footer"><span>Showing {{ result.items.length }} of {{ result.total }} issues</span><a-pagination class="bigin-touch-target" :current="result.page" :page-size="result.pageSize" :total="result.total" :show-size-changer="false" @change="changePage" /></footer>
       </section>
     </main>
   </WorkspaceLayout>
@@ -87,8 +87,10 @@ onMounted(load)
 .issue-list-page header p { color: var(--bigin-text-secondary); margin: 6px 0 0; }
 .filter-panel { align-items: center; background: var(--bigin-surface-panel); border: 1px solid var(--bigin-border-secondary); border-radius: 8px; display: flex; flex-wrap: wrap; gap: 12px; margin-bottom: 16px; padding: 16px; }
 .table-panel { background: var(--bigin-surface-panel); border: 1px solid var(--bigin-border-secondary); border-radius: 8px; overflow: hidden; padding: 16px; }
+.filter-panel :deep(.ant-select), .filter-panel :deep(.ant-input-number) { max-width: 100%; }
 .entity-cell { display: grid; gap: 3px; }
 .entity-cell span { color: var(--bigin-text-tertiary); font-size: 12px; }
 .table-panel footer { align-items: center; color: var(--bigin-text-tertiary); display: flex; justify-content: space-between; padding-top: 16px; }
-@media (max-width: 700px) { .issue-list-page { padding: 18px 14px 32px; }.issue-list-page > header { gap: 12px; }.table-panel footer { align-items: flex-start; flex-direction: column; gap: 12px; } }
+@media (max-width: 700px) { .issue-list-page { padding: 18px 14px 32px; }.issue-list-page > header { gap: 12px; flex-direction: column; }.table-panel footer { align-items: flex-start; flex-direction: column; gap: 12px; } }
+@media (max-width: 575px) { .issue-list-page { padding: 14px 12px 28px; }.filter-panel { align-items: stretch; flex-direction: column; }.filter-panel :deep(.ant-select), .filter-panel :deep(.ant-input-number), .filter-panel :deep(.ant-btn) { width: 100% !important; } }
 </style>

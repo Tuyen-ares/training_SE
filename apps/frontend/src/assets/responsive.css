@@ -1,0 +1,125 @@
+/* Shared responsive contract for authenticated workspace screens. */
+.bigin-page-container {
+  min-width: 0;
+  width: 100%;
+}
+
+.bigin-table-scroll-wrapper {
+  min-width: 0;
+  width: 100%;
+}
+
+.bigin-table-scroll-wrapper > .ant-table-wrapper,
+.bigin-table-scroll-wrapper > .ant-table-wrapper > .ant-spin-nested-loading,
+.bigin-table-scroll-wrapper .ant-table {
+  min-width: 0;
+}
+
+/* Ant Design owns horizontal table scrolling. This wrapper must not become a
+   second scroll owner because that breaks header, fixed-column, and row sync. */
+.bigin-table-scroll-wrapper .ant-table-content,
+.bigin-table-scroll-wrapper .ant-table-body {
+  overscroll-behavior-inline: contain;
+}
+
+.bigin-mobile-action-stack {
+  align-items: center;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  min-width: 0;
+}
+
+.bigin-responsive-footer {
+  align-items: center;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 12px 16px;
+  justify-content: space-between;
+  min-width: 0;
+}
+
+.bigin-modal-content .ant-modal {
+  max-width: calc(100vw - 32px);
+  width: min(620px, calc(100vw - 32px)) !important;
+}
+
+.bigin-modal-content .ant-modal-content {
+  max-height: calc(100dvh - 32px);
+  overflow-y: auto;
+}
+
+.bigin-modal-content .ant-modal-wrap {
+  z-index: var(--bigin-z-modal);
+}
+
+.bigin-drawer-content {
+  max-width: 100vw;
+}
+
+.bigin-mobile-nav-open {
+  overflow: hidden;
+}
+
+.ant-dropdown,
+.ant-select-dropdown,
+.ant-picker-dropdown,
+.ant-tooltip,
+.ant-popover {
+  z-index: var(--bigin-z-popup) !important;
+}
+
+.ant-modal-wrap {
+  z-index: var(--bigin-z-modal) !important;
+}
+
+@media (pointer: coarse) and (max-width: 991px) {
+  .bigin-touch-target,
+  .bigin-mobile-action-stack > .ant-btn {
+    min-height: 44px;
+    min-width: 44px;
+  }
+
+  .bigin-table-scroll-wrapper .ant-btn-link,
+  .bigin-table-scroll-wrapper .ant-btn-text,
+  .bigin-table-scroll-wrapper .ant-pagination-item,
+  .bigin-table-scroll-wrapper .ant-pagination-prev,
+  .bigin-table-scroll-wrapper .ant-pagination-next {
+    min-height: 44px;
+  }
+
+  .bigin-table-scroll-wrapper .ant-pagination-item,
+  .bigin-table-scroll-wrapper .ant-pagination-prev,
+  .bigin-table-scroll-wrapper .ant-pagination-next {
+    min-width: 44px;
+  }
+
+  .bigin-touch-target.ant-btn,
+  .bigin-touch-target.ant-dropdown-trigger,
+  .bigin-touch-target.ant-pagination-item,
+  .bigin-touch-target.ant-pagination-prev,
+  .bigin-touch-target.ant-pagination-next {
+    align-items: center;
+    display: inline-flex;
+    justify-content: center;
+  }
+
+  .ant-modal-close,
+  .ant-drawer-close {
+    min-height: 44px;
+    min-width: 44px;
+  }
+}
+
+@media (max-width: 575px) {
+  .bigin-responsive-footer {
+    align-items: flex-start;
+    flex-direction: column;
+  }
+}
+
+@media (min-width: 576px) and (max-width: 767px) {
+  .bigin-responsive-footer {
+    align-items: flex-start;
+  }
+}
