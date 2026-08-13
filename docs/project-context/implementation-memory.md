@@ -96,6 +96,32 @@ Các ghi chú deployment trên chỉ là context; khi sửa phải kiểm tra lo
 
 ## Important Recent Decisions
 
+### 2026-08-13 — Shared responsive workspace contract
+
+**Feature:** Active frontend responsive behavior.
+
+**Decision:** The authenticated workspace uses `<576px`, `576–991px`, and
+`>=992px` breakpoints. Below 992px the permission-aware sidebar is a
+closed-by-default overlay drawer sized `min(296px, 82vw)`, with a backdrop,
+Escape/route-close behavior, dynamic viewport sizing, and body scroll lock.
+Data-dense Ant tables own their horizontal scrolling through
+`x: 'max-content'`; the shared wrapper never owns a second horizontal scroll.
+Approval Detail keeps its custom 960px header and rows inside one scroll
+container with identical grid columns.
+
+**Reason:** This preserves desktop density while preventing page-level overflow
+and table/header desynchronization on phones and tablets. The drawer width
+leaves a visible backdrop rather than covering an entire phone screen.
+
+**Affected areas:** Shared frontend CSS/tokens, workspace shell, active
+workspace views, Registration Requests toolbar, and the responsive static audit.
+
+**Verification:** `pnpm build:frontend`,
+`node apps/frontend/scripts/responsive-static-audit.mjs` (41 checks),
+`git diff --check -- apps/frontend`, and responsive runtime overflow smoke
+checks. Realtime/polling was not added; the registration queue refresh remains
+an explicit API re-fetch.
+
 ### 2026-08-13 — Tách Approval Queue khỏi Fulfillment Queue
 
 **Feature:** F04/F05.

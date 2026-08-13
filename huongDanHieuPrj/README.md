@@ -36,6 +36,10 @@ Feature
 9. Học cách [debug và test](10-debug-network-va-test.md)
 10. Dùng [bảng theo dõi feature](11-bang-theo-doi-feature.md)
 
+### Bài học code cụ thể
+
+- [Giải thích `setStatus` và hai `if (!isActive)`](13-giai-thich-set-status-user.md)
+
 ## Nguồn sự thật của project
 
 - [MVP context](../docs/mvp-requirements/00-context.md)

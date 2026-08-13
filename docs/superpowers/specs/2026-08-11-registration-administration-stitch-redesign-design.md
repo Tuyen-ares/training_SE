@@ -106,6 +106,17 @@ time, status, reviewer when present, and terminal outcome context.
 
 Ordering follows the API: Pending oldest-first; Approved/Rejected newest-first.
 
+### Responsive and refresh behavior
+
+- At narrow widths the search input remains compact (up to 280px) and shares a
+  row with the refresh control; the pending count may wrap to its own line.
+  The table remains the dominant surface and scrolls horizontally inside its
+  own Ant Design table container when needed.
+- Refresh is an explicit re-fetch of the queue and pending count. The screen
+  does not use polling, WebSocket, or server-sent events; a newly submitted
+  request becomes visible on the next load, search, status change, pagination
+  action, or refresh.
+
 ## Screen 3 — Registration Approval Detail
 
 ### Purpose and data
@@ -164,7 +175,8 @@ backend assigns its default Employee role. Rejection reason is optional.
   table density visibly match `7880...` and the Ant-Industrial Precision system.
 - Role List has only supported fields and direct non-destructive actions.
 - Registration Requests gives Pending work a clear primary Review action and
-  history a read-only View action.
+  history a read-only View action, while preserving the compact narrow-screen
+  toolbar and deliberate table scrolling behavior.
 - Approval Detail has exactly two meaningful work panels, no card forest, and
   makes the department/default-Employee behavior explicit.
 - No target screen introduces role delete, permission authoring, bulk approval,
