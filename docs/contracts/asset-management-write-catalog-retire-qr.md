@@ -156,9 +156,8 @@ transition, not a database delete.
 
 ## QR Lookup — US-F02-08
 
-The QR identifier is immutable after asset creation. The MVP does not expose a
-QR regeneration endpoint or `asset.qr_generate` permission. The printed QR
-payload is a frontend entry URL in the form
+The QR identifier is immutable after asset creation. The MVP does not expose
+QR regeneration. The printed QR payload is a frontend entry URL in the form
 `{VITE_PUBLIC_APP_URL}/qr/{qr_code}`. The `/qr/:qrCode` path is a frontend-only
 authenticated entry point and never exposes asset data to guests.
 

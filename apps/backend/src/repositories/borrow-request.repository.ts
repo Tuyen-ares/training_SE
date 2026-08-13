@@ -5,6 +5,7 @@ import type {
   CreateBorrowRequestDto,
   BorrowHistoryDto,
   BorrowHistoryDetailDto,
+  HandoverQueueItemDto,
   PageDto,
   PageQuery,
   ReviewQueueQuery,
@@ -32,6 +33,8 @@ export interface IBorrowRequestRepository {
   refreshRequestStatus(requestId: number, transaction: BorrowTransaction): Promise<void>;
   withdraw(requestId: number, requesterId: number, transaction: BorrowTransaction): Promise<number[]>;
   listReviewQueue(query: ReviewQueueQuery): Promise<PageDto<BorrowRequestDto>>;
+  listHandoverQueue(query: PageQuery): Promise<PageDto<HandoverQueueItemDto>>;
+  listReturnQueue(query: PageQuery): Promise<PageDto<BorrowHistoryDto>>;
   listCurrent(requesterId: number, query: PageQuery): Promise<PageDto<BorrowHistoryDto>>;
   listHistory(query: BorrowHistoryQuery, requesterId?: number): Promise<PageDto<BorrowHistoryDto>>;
   findHistoryDetail(historyId: number, requesterId?: number): Promise<BorrowHistoryDetailDto | null>;

@@ -17,6 +17,7 @@ const controller = new BorrowWorkflowController(
   new BorrowWorkflowService(borrowRepository, assetService, notificationRepository),
 );
 
+router.get('/handover-queue', requireAuth, requirePermission('asset.checkout'), controller.handoverQueue);
 router.get('/review-queue', requireAuth, requirePermission('borrow_request.view_all'), controller.reviewQueue);
 router.get('/review-queue/:requestId', requireAuth, requirePermission('borrow_request.view_all'), controller.reviewDetail);
 router.post('/:detailId/approve', requireAuth, requirePermission('borrow_request.approve'), controller.approve);

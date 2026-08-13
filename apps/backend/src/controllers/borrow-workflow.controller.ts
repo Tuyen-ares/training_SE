@@ -119,6 +119,26 @@ export class BorrowWorkflowController {
     }
   };
 
+  handoverQueue = async (req: Request, res: Response): Promise<void> => {
+    const parsed = pageQuerySchema.safeParse(req.query);
+    if (!parsed.success) return ApiResponse.badRequest(res, { query: ['Invalid pagination query'] });
+    try {
+      return ApiResponse.ok(res, await this.service.listHandoverQueue(parsed.data));
+    } catch {
+      return ApiResponse.internalError(res);
+    }
+  };
+
+  returnQueue = async (req: Request, res: Response): Promise<void> => {
+    const parsed = pageQuerySchema.safeParse(req.query);
+    if (!parsed.success) return ApiResponse.badRequest(res, { query: ['Invalid pagination query'] });
+    try {
+      return ApiResponse.ok(res, await this.service.listReturnQueue(parsed.data));
+    } catch {
+      return ApiResponse.internalError(res);
+    }
+  };
+
   reviewDetail = async (req: Request, res: Response): Promise<void> => {
     const requestId = readPositiveId(req.params.requestId);
     if (!requestId) {

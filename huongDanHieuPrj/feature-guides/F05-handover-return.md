@@ -8,7 +8,7 @@ Sau khi approve, người có quyền xác nhận bàn giao. Hệ thống tạo 
 
 - [F05 feature](../../docs/mvp-requirements/06-features/F05-handover-return.md)
 - [US-F05 stories](../../docs/mvp-requirements/07-user-stories/handover-return/)
-- [Handover/return contract](../../docs/contracts/borrow-lifecycle-contract-plan.md)
+- [Handover/return contract](../../docs/contracts/borrow-lifecycle.md)
 - [Borrow use cases](../../docs/use-cases/borrow-lifecycle/)
 
 ### Tóm tắt rule để đọc code
@@ -53,10 +53,10 @@ Borrowing Activity là nơi xem current/history. Handover/return là action củ
 
 ## CURRENT CODE
 
-API normal handover/return/current/history và FE screens đã tồn tại. Borrowing Activity Detail đã bổ sung API `GET /borrow-histories/:historyId`, permission scope và view dùng chung. Evidence: `borrow-history.routes.ts`, `BorrowWorkflowService`, `PrismaBorrowRequestRepository`, `BorrowingActivityView`, `BorrowingActivityDetailView`, integration test.
+API normal/damaged handover-return, current/history và FE screens đã tồn tại. Borrowing Activity Detail dùng API `GET /borrow-histories/:historyId`, có permission scope và view dùng chung. Damaged Return trả về `issueId` của issue `CONFIRMED` được tạo trong cùng transaction. Evidence: `borrow-history.routes.ts`, `BorrowWorkflowService`, `PrismaBorrowRequestRepository`, `BorrowingActivityView`, `BorrowingActivityDetailView`, integration tests.
 
 ## GAPS
 
-- Nhánh trả hỏng combined (`return-damaged`) chưa có API/service transaction trong branch hiện tại. Hiện FE HandoverReturn chỉ gọi `receiveNormalReturn`.
+- Frontend có thể cần kiểm tra lại wiring của action trả hỏng nếu màn hình chỉ đang gọi `receiveNormalReturn`; backend contract hiện đã có `POST /api/borrow-histories/:historyId/return-damaged` và response `issueId`.
 - Handover UI nằm trong Approval Detail; không có nghĩa phải tạo thêm page nếu action context hiện tại đủ.
 - Related Project, Pickup Instruction và Approval Note không được hiển thị vì chưa có trong baseline schema/requirement.

@@ -1,6 +1,6 @@
 <script setup>
 import { computed, onMounted, reactive, ref } from 'vue'
-import { AppstoreOutlined, ArrowLeftOutlined, CheckOutlined, CloseOutlined, SwapOutlined } from '@ant-design/icons-vue'
+import { AppstoreOutlined, ArrowLeftOutlined, CheckOutlined, CloseOutlined } from '@ant-design/icons-vue'
 import { message, Modal } from 'ant-design-vue'
 import { useRoute, useRouter } from 'vue-router'
 import StatusTag from '../../components/common/StatusTag.vue'
@@ -9,7 +9,6 @@ import {
   approveAllBorrowDetails,
   approveBorrowDetail,
   getReviewRequest,
-  handoverBorrowDetail,
   rejectBorrowDetail,
 } from '../../services/borrow.service'
 import { useAuthStore } from '../../stores/auth'
@@ -133,17 +132,8 @@ async function reject() {
   }
 }
 
-async function handover(detail) {
-  busyDetail.value = detail.id
-  try {
-    await handoverBorrowDetail(authStore.api, detail.id)
-    detail.asset.status = 'BORROWED'
-    message.success('Handover confirmed.')
-  } catch (error) {
-    message.error(error.message || 'Handover could not be confirmed.')
-  } finally {
-    busyDetail.value = null
-  }
+function openHandoverQueue() {
+  router.push({ name: 'handover-return', query: { tab: 'handover' } })
 }
 
 onMounted(() => { if (!request.value) load() })
@@ -238,13 +228,16 @@ onMounted(() => { if (!request.value) load() })
                   :disabled="busyAll"
                   @click="openReject(detail)"
                 ><template #icon><CloseOutlined /></template>Reject</a-button>
-                <a-button
-                  v-if="detail.approvalStatus === 'APPROVED' && detail.asset.status === 'RESERVED' && canHandover"
-                  type="primary"
-                  size="small"
-                  :loading="busyDetail === detail.id"
-                  @click="handover(detail)"
-                ><template #icon><SwapOutlined /></template>Confirm handover</a-button>
+                <div v-if="detail.approvalStatus === 'APPROVED' && detail.asset.status === 'RESERVED'" class="handover-ready">
+                  <span class="muted-label">FULFILLMENT</span>
+                  <strong>Ready for handover</strong>
+                  <a-button
+                    v-if="canHandover"
+                    type="link"
+                    size="small"
+                    @click="openHandoverQueue"
+                  >Open in Handover &amp; Return</a-button>
+                </div>
               </div>
                 </article>
               </div>
@@ -329,8 +322,10 @@ onMounted(() => { if (!request.value) load() })
 .rejection-reason { color: var(--bigin-color-error-text); font-size: 11px; line-height: 1.35; }
 .asset-actions { align-items: center; display: flex; flex-wrap: wrap; gap: 7px; justify-content: flex-end; }
 .asset-actions :deep(.ant-btn) { border-radius: 6px; font-size: 12px; }
+.handover-ready { display: grid; gap: 5px; justify-items: end; }
+.handover-ready strong { color: var(--bigin-color-warning-text); font-size: 12px; font-weight: 600; }
 .assets-empty { padding: 42px; }
 @media (max-width: 980px) { .approval-layout { grid-template-columns: 1fr; } .approval-sidebar { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
 @media (max-width: 780px) { .approval-page { padding: 20px 16px 36px; } .approval-header { align-items: flex-start; flex-direction: column; } .header-count { min-width: 120px; } .requester-content { align-items: flex-start; flex-direction: column; gap: 18px; } .requester-fields { width: 100%; } }
-@media (max-width: 560px) { .approval-header h1 { font-size: 25px; } .summary-card { padding: 18px; } .requester-fields, .approval-sidebar { grid-template-columns: 1fr; } .assets-header { align-items: flex-start; gap: 12px; padding: 18px; } .asset-row, .asset-table-heading { padding-inline: 18px; } }
+@media (max-width: 560px) { .approval-header h1 { font-size: 25px; } .summary-card { padding: 18px; } .requester-fields, .approval-sidebar { grid-template-columns: 1fr; } .assets-header { align-items: flex-start; gap: 12px; padding: 18px; } .asset-row, .asset-table-heading { padding-inline: 18px; } .handover-ready { justify-items: start; } }
 </style>

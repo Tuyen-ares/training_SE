@@ -25,3 +25,5 @@ _workspace/
 apps/backend/package-lock.json
 apps/frontend/package-lock.json
 .aider*
+.review-stitch/*.png
+.review-stitch/*.html

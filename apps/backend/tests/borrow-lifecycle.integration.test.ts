@@ -67,6 +67,7 @@ test('Borrow lifecycle APIs create, approve, hand over, return and cancel safely
   const bulkAvailableAsset = await createAsset(`BOR-BULK-OK-${suffix}`);
   const bulkConflictAsset = await createAsset(`BOR-BULK-CONFLICT-${suffix}`);
   const damagedReturnAsset = await createAsset(`BOR-DAMAGED-RETURN-${suffix}`);
+  const queueSecondAsset = await createAsset(`BOR-QUEUE-SECOND-${suffix}`);
 
   const createUser = async (name: string, sequence: number) => {
     const user = await prisma.users.create({ data: { user_code: `BI26${suffix}${sequence}`, department_id: department.id, name, email: `borrow.${sequence}.${suffix}@test.local`, phone: `${String(700 + sequence).padStart(3, '0')}${suffix}`, password: 'not-used-by-token-test' } });
@@ -77,6 +78,8 @@ test('Borrow lifecycle APIs create, approve, hand over, return and cancel safely
   const operator = await createUser('Operator', 2);
   const borrowerToken = tokenService.createAccessToken(borrower.id, ['borrow_request.create', 'borrow_request.view_own', 'borrow_request.cancel_own', 'borrow_history.view_own']);
   const reviewerToken = tokenService.createAccessToken(operator.id, ['borrow_request.view_all', 'borrow_request.approve', 'borrow_request.reject', 'asset.checkout', 'asset.checkin', 'borrow_history.view_all']);
+  const checkoutOnlyToken = tokenService.createAccessToken(operator.id, ['asset.checkout']);
+  const checkinOnlyToken = tokenService.createAccessToken(operator.id, ['asset.checkin']);
   const operatorOwnHistoryToken = tokenService.createAccessToken(operator.id, ['borrow_history.view_own']);
   const noPermissionToken = tokenService.createAccessToken(operator.id, []);
   const noteAtLimit = 'n'.repeat(300);
@@ -149,6 +152,14 @@ test('Borrow lifecycle APIs create, approve, hand over, return and cancel safely
   assert.equal(reviewQueue.body.data.pageSize, 20);
   assert.ok(Array.isArray(reviewQueue.body.data.items));
   assert.equal((await request('/borrow-request-details/review-queue', noPermissionToken)).status, 403);
+  const emptyHandoverQueue = await request('/borrow-request-details/handover-queue', checkoutOnlyToken);
+  assert.equal(emptyHandoverQueue.status, 200, JSON.stringify(emptyHandoverQueue.body));
+  assert.ok(!emptyHandoverQueue.body.data.items.some((item: { asset: { id: number } }) => item.asset.id === lifecycleAsset.id));
+  assert.equal((await request('/borrow-request-details/handover-queue', checkinOnlyToken)).status, 403);
+  const emptyReturnQueue = await request('/borrow-histories/return-queue', checkinOnlyToken);
+  assert.equal(emptyReturnQueue.status, 200, JSON.stringify(emptyReturnQueue.body));
+  assert.ok(!emptyReturnQueue.body.data.items.some((item: { asset: { id: number } }) => item.asset.id === lifecycleAsset.id));
+  assert.equal((await request('/borrow-histories/return-queue', checkoutOnlyToken)).status, 403);
   const approved = await request(
     `/borrow-request-details/${lifecycleDetailId}/approve`,
     reviewerToken,
@@ -163,6 +174,36 @@ test('Borrow lifecycle APIs create, approve, hand over, return and cancel safely
   assert.equal(approvedDetail.status, 200, JSON.stringify(approvedDetail.body));
   assert.equal(approvedDetail.body.data.details[0].approvalStatus, 'APPROVED');
   assert.equal((await request(`/borrow-request-details/review-queue/${lifecycleRequestId}`, noPermissionToken)).status, 403);
+
+  const queueSecondRequest = await request('/borrow-requests', borrowerToken, {
+    method: 'POST',
+    body: JSON.stringify({ note: 'Second handover queue item', items: [{ assetId: queueSecondAsset.id, expectedReturnDate: '2099-01-02' }] }),
+  });
+  assert.equal(queueSecondRequest.status, 201, JSON.stringify(queueSecondRequest.body));
+  const queueSecondRequestId = queueSecondRequest.body.data.id as number;
+  const queueSecondDetailId = queueSecondRequest.body.data.details[0].id as number;
+  created.requests.push(queueSecondRequestId);
+  created.details.push(queueSecondDetailId);
+  assert.equal((await request(`/borrow-request-details/${queueSecondDetailId}/approve`, reviewerToken, { method: 'POST' })).status, 200);
+
+  const handoverQueuePage = await request('/borrow-request-details/handover-queue?page=1&pageSize=1', checkoutOnlyToken);
+  assert.equal(handoverQueuePage.status, 200, JSON.stringify(handoverQueuePage.body));
+  assert.equal(handoverQueuePage.body.data.page, 1);
+  assert.equal(handoverQueuePage.body.data.pageSize, 1);
+  assert.ok(handoverQueuePage.body.data.items.length <= 1);
+  const handoverQueueAll = await request('/borrow-request-details/handover-queue?page=1&pageSize=100', checkoutOnlyToken);
+  assert.equal(handoverQueueAll.status, 200, JSON.stringify(handoverQueueAll.body));
+  assert.equal(handoverQueueAll.body.data.page, 1);
+  assert.equal(handoverQueueAll.body.data.pageSize, 100);
+  const lifecycleQueueItem = handoverQueueAll.body.data.items.find((item: { detailId: number }) => item.detailId === lifecycleDetailId);
+  const secondQueueItem = handoverQueueAll.body.data.items.find((item: { detailId: number }) => item.detailId === queueSecondDetailId);
+  assert.ok(lifecycleQueueItem);
+  assert.ok(secondQueueItem);
+  assert.equal(lifecycleQueueItem.requestId, lifecycleRequestId);
+  assert.equal(lifecycleQueueItem.requester.id, borrower.id);
+  assert.equal(lifecycleQueueItem.asset.status, 'RESERVED');
+  assert.equal(lifecycleQueueItem.approvedBy.id, operator.id);
+  assert.ok(handoverQueueAll.body.data.items.indexOf(lifecycleQueueItem) < handoverQueueAll.body.data.items.indexOf(secondQueueItem));
   assert.equal((await request(`/borrow-request-details/${lifecycleDetailId}/approve`, reviewerToken, { method: 'POST' })).status, 409);
 
   const handover = await request(`/borrow-request-details/${lifecycleDetailId}/handover`, reviewerToken, { method: 'POST' });
@@ -170,11 +211,19 @@ test('Borrow lifecycle APIs create, approve, hand over, return and cancel safely
   const historyId = handover.body.data.historyId as number;
   created.histories.push(historyId);
   assert.equal((await prisma.assets.findUniqueOrThrow({ where: { id: lifecycleAsset.id } })).status, 'borrowed');
+  const handoverQueueAfterHandover = await request('/borrow-request-details/handover-queue', checkoutOnlyToken);
+  assert.equal(handoverQueueAfterHandover.status, 200, JSON.stringify(handoverQueueAfterHandover.body));
+  assert.ok(!handoverQueueAfterHandover.body.data.items.some((item: { detailId: number }) => item.detailId === lifecycleDetailId));
+  assert.ok(handoverQueueAfterHandover.body.data.items.some((item: { detailId: number }) => item.detailId === queueSecondDetailId));
   assert.equal((await request(`/borrow-request-details/${lifecycleDetailId}/handover`, reviewerToken, { method: 'POST' })).status, 409);
+  const secondHandover = await request(`/borrow-request-details/${queueSecondDetailId}/handover`, checkoutOnlyToken, { method: 'POST' });
+  assert.equal(secondHandover.status, 200, JSON.stringify(secondHandover.body));
+  const secondHistoryId = secondHandover.body.data.historyId as number;
+  created.histories.push(secondHistoryId);
   const current = await request('/borrow-histories/current', borrowerToken);
   assert.equal(current.status, 200);
-  assert.equal(current.body.data.items[0].expectedReturnDate, '2099-01-01');
-  assert.equal(current.body.data.items[0].borrower.id, borrower.id);
+  assert.ok(current.body.data.items.some((item: { id: number; expectedReturnDate: string; borrower: { id: number } }) =>
+    item.id === historyId && item.expectedReturnDate === '2099-01-01' && item.borrower.id === borrower.id));
   const ownHistoryDetail = await request(`/borrow-histories/${historyId}`, borrowerToken);
   assert.equal(ownHistoryDetail.status, 200, JSON.stringify(ownHistoryDetail.body));
   assert.equal(ownHistoryDetail.body.data.request.id, lifecycleRequestId);
@@ -183,6 +232,22 @@ test('Borrow lifecycle APIs create, approve, hand over, return and cancel safely
   assert.equal(ownHistoryDetail.body.data.approvedBy.id, operator.id);
   assert.equal(ownHistoryDetail.body.data.handedOverBy.id, operator.id);
   assert.equal(ownHistoryDetail.body.data.returnedAt, null);
+  const returnQueuePage = await request('/borrow-histories/return-queue?page=1&pageSize=1', checkinOnlyToken);
+  assert.equal(returnQueuePage.status, 200, JSON.stringify(returnQueuePage.body));
+  assert.equal(returnQueuePage.body.data.page, 1);
+  assert.equal(returnQueuePage.body.data.pageSize, 1);
+  assert.ok(returnQueuePage.body.data.items.length <= 1);
+  const returnQueueAll = await request('/borrow-histories/return-queue?page=1&pageSize=100', checkinOnlyToken);
+  assert.equal(returnQueueAll.status, 200, JSON.stringify(returnQueueAll.body));
+  assert.equal(returnQueueAll.body.data.page, 1);
+  assert.equal(returnQueueAll.body.data.pageSize, 100);
+  const lifecycleReturnItem = returnQueueAll.body.data.items.find((item: { id: number }) => item.id === historyId);
+  const secondReturnItem = returnQueueAll.body.data.items.find((item: { id: number }) => item.id === secondHistoryId);
+  assert.ok(lifecycleReturnItem);
+  assert.ok(secondReturnItem);
+  assert.equal(lifecycleReturnItem.expectedReturnDate, '2099-01-01');
+  assert.equal(lifecycleReturnItem.borrower.id, borrower.id);
+  assert.ok(returnQueueAll.body.data.items.indexOf(lifecycleReturnItem) < returnQueueAll.body.data.items.indexOf(secondReturnItem));
   const reviewerHistoryDetail = await request(`/borrow-histories/${historyId}`, reviewerToken);
   assert.equal(reviewerHistoryDetail.status, 200, JSON.stringify(reviewerHistoryDetail.body));
   assert.equal(reviewerHistoryDetail.body.data.request.requester.id, borrower.id);
@@ -215,6 +280,11 @@ test('Borrow lifecycle APIs create, approve, hand over, return and cancel safely
   assert.equal(returnedHistoryDetail.body.data.returnCondition, 'NORMAL');
   const currentTabAfterReturn = await request('/borrow-histories/me?state=CURRENT', borrowerToken);
   assert.ok(!currentTabAfterReturn.body.data.items.some((item: { id: number }) => item.id === historyId));
+  const returnQueueAfterReturn = await request('/borrow-histories/return-queue', checkinOnlyToken);
+  assert.equal(returnQueueAfterReturn.status, 200, JSON.stringify(returnQueueAfterReturn.body));
+  assert.ok(!returnQueueAfterReturn.body.data.items.some((item: { id: number }) => item.id === historyId));
+  assert.ok(returnQueueAfterReturn.body.data.items.some((item: { id: number }) => item.id === secondHistoryId));
+  assert.equal((await request(`/borrow-histories/${secondHistoryId}/return`, checkinOnlyToken, { method: 'POST' })).status, 200);
   const allHistory = await request('/borrow-histories?page=1&pageSize=20', reviewerToken);
   assert.equal(allHistory.status, 200);
   assert.ok(Array.isArray(allHistory.body.data.items));

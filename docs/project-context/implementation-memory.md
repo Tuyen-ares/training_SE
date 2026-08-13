@@ -24,7 +24,7 @@ giá trị lâu dài cho việc đọc, triển khai và debug project.
 - Confirm Issue mới chuyển issue sang `CONFIRMED` và asset sang `DAMAGED`.
 - Repair thất bại không tự chuyển asset sang `RETIRED`.
 - QR dùng để identify/lookup asset, không phải nghiệp vụ inventory/stocktake.
-- `qr_code` immutable sau khi tạo asset; QR image chứa frontend URL `/qr/{qr_code}`. Camera lifecycle thuộc Asset QR Scan screen, không thuộc Asset List.
+- `qr_code` immutable sau khi tạo asset; QR image chứa frontend URL `/qr/{qr_code}`. Camera lifecycle thuộc Asset QR Scan screen, không thuộc Asset List. Không có permission riêng cho việc regenerate QR; màn hình chỉ render/in mã immutable hiện có.
 - `department_id` là organizational ownership, không phải location.
 - Inventory/stocktake không thuộc MVP.
 - Future design nằm trong [`../future/`](../future/) và không được tự implement.

@@ -4,6 +4,13 @@
 
 Giao asset đã RESERVED cho người mượn và tạo lịch sử thực tế.
 
+`SCR-F05-01` dùng một route `/handover-return` với hai tab logic:
+`Pending Handover` và `Pending Return`. Tab bàn giao yêu cầu `asset.checkout`,
+tab nhận trả yêu cầu `asset.checkin`; tab không có quyền không render và không
+gọi API tương ứng. Khi có cả hai quyền, màn hình mặc định mở `Pending Handover`.
+Mỗi asset là một dòng riêng, queue có loading/empty/error/retry/pagination và
+mutation loading theo dòng.
+
 ## Actor
 
 User có permission bàn giao.
@@ -18,15 +25,15 @@ Detail APPROVED, asset RESERVED cho đúng detail và chưa có borrow history.
 
 ## Main Flow
 
-1. User mở Handover & Return Queue.
-2. User chọn detail cần bàn giao và mở workflow xác nhận có context request/borrower.
-3. User xác nhận bàn giao.
+1. User mở entry `Handover & Return` và chọn tab `Pending Handover`.
+2. Hệ thống gọi `GET /api/borrow-request-details/handover-queue` và hiển thị mỗi asset một dòng với request, requester/department, asset, expected return date và approved by.
+3. User chọn `Confirm handover`, xem confirmation modal nêu rõ asset sẽ chuyển sang `BORROWED`, rồi xác nhận.
 4. Hệ thống tạo borrow history, ghi handed_over_by/borrow_date và chuyển asset RESERVED sang BORROWED.
-5. Queue và Request Detail cập nhật.
+5. UI hiển thị success message và reload queue để dòng đã bàn giao biến mất.
 
 ## Alternative Flows
 
-- Request Detail có thể mở đúng handover context cho user có permission.
+- Approval Detail không thực hiện handover trực tiếp; với detail `APPROVED` + asset `RESERVED`, user có `asset.checkout` chỉ thấy link `Open in Handover & Return` để điều hướng sang tab bàn giao.
 
 ## Error / Invalid States
 
@@ -60,8 +67,8 @@ Borrow history chưa có return date; asset đang BORROWED.
 
 ## Main Flow
 
-1. User mở Return Queue và chọn history chưa trả.
-2. User chọn return condition bình thường, bổ sung thông tin cần thiết.
+1. User mở entry `Handover & Return` và chọn tab `Pending Return`.
+2. Hệ thống gọi `GET /api/borrow-histories/return-queue` và hiển thị các history chưa có `return_date`.
 3. User xác nhận return.
 4. Hệ thống ghi received_by, return_date, return_condition và chuyển asset BORROWED sang AVAILABLE.
 5. Nếu mọi detail được duyệt/bàn giao đã trả và không còn PENDING, header chuyển COMPLETED.
@@ -103,7 +110,7 @@ Borrow history chưa trả; asset BORROWED; người nhận xác nhận conditio
 
 ## Main Flow
 
-1. User mở return workflow trong Fulfillment Queue.
+1. User mở tab `Pending Return` trong `Handover & Return`.
 2. User chọn action `Confirm Damaged Return`, nhập mô tả hư hỏng bắt buộc và xác nhận.
 3. Hệ thống gọi `POST /api/borrow-histories/:historyId/return-damaged`, ghi return,
    tạo asset issue `CONFIRMED` và chuyển asset BORROWED sang DAMAGED trong cùng

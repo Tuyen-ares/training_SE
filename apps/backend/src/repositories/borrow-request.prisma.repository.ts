@@ -8,6 +8,7 @@ import type {
   BorrowHistoryDto,
   BorrowHistoryDetailDto,
   CreateBorrowRequestDto,
+  HandoverQueueItemDto,
   PageDto,
   PageQuery,
   ReviewQueueQuery,
@@ -84,6 +85,25 @@ const historyDetailInclude = {
   received_by_users: { select: { id: true, name: true } },
 } as const;
 
+const handoverQueueInclude = {
+  borrow_requests: {
+    include: {
+      users: {
+        select: {
+          id: true,
+          user_code: true,
+          name: true,
+          email: true,
+          avatar_url: true,
+          department: { select: { id: true, name: true } },
+        },
+      },
+    },
+  },
+  assets: { include: { asset_models: { select: { id: true, name: true } } } },
+  approved_by_users: { select: { id: true, name: true } },
+} as const;
+
 function mapHistory(history: any): BorrowHistoryDto {
   const detail = history.borrow_request_details;
   return {
@@ -154,6 +174,38 @@ function mapHistoryDetail(history: any): BorrowHistoryDetailDto {
     receivedBy: history.received_by_users,
     returnedAt: history.return_date,
     returnCondition: history.return_condition,
+  };
+}
+
+function mapHandoverQueueItem(detail: any): HandoverQueueItemDto {
+  const request = detail.borrow_requests;
+  return {
+    detailId: detail.id,
+    requestId: request.id,
+    requestCreatedAt: request.created_at,
+    requester: {
+      id: request.users.id,
+      userCode: request.users.user_code,
+      name: request.users.name,
+      email: request.users.email,
+      avatarUrl: request.users.avatar_url,
+      department: request.users.department
+        ? { id: request.users.department.id, name: request.users.department.name }
+        : null,
+    },
+    asset: {
+      id: detail.assets.id,
+      serialNumber: detail.assets.serial_number,
+      qrCode: detail.assets.qr_code,
+      imageUrl: detail.assets.image_url,
+      status: detail.assets.status.toUpperCase(),
+      model: { id: detail.assets.asset_models.id, name: detail.assets.asset_models.name },
+    },
+    expectedReturnDate: dateOnlyFormatter.format(detail.expected_return_date),
+    approvedBy: detail.approved_by_users
+      ? { id: detail.approved_by_users.id, name: detail.approved_by_users.name }
+      : null,
+    approvedAt: detail.approved_at,
   };
 }
 
@@ -388,6 +440,44 @@ export class PrismaBorrowRequestRepository implements IBorrowRequestRepository {
       this.prisma.borrow_requests.count({ where }),
     ]);
     return { items: requests.map(mapRequest), ...query, total };
+  }
+
+  async listHandoverQueue(query: PageQuery): Promise<PageDto<HandoverQueueItemDto>> {
+    const where = {
+      approval_status: 'APPROVED',
+      assets: { status: 'reserved' as const },
+      borrow_histories: null,
+    };
+    const [details, total] = await this.prisma.$transaction([
+      this.prisma.borrow_request_details.findMany({
+        where,
+        include: handoverQueueInclude,
+        orderBy: [{ borrow_requests: { created_at: 'asc' } }, { id: 'asc' }],
+        skip: (query.page - 1) * query.pageSize,
+        take: query.pageSize,
+      }),
+      this.prisma.borrow_request_details.count({ where }),
+    ]);
+    return { items: details.map(mapHandoverQueueItem), ...query, total };
+  }
+
+  async listReturnQueue(query: PageQuery): Promise<PageDto<BorrowHistoryDto>> {
+    const where = { return_date: null };
+    const [histories, total] = await this.prisma.$transaction([
+      this.prisma.borrow_histories.findMany({
+        where,
+        include: historyInclude,
+        orderBy: [
+          { borrow_request_details: { expected_return_date: 'asc' } },
+          { borrow_date: 'asc' },
+          { id: 'asc' },
+        ],
+        skip: (query.page - 1) * query.pageSize,
+        take: query.pageSize,
+      }),
+      this.prisma.borrow_histories.count({ where }),
+    ]);
+    return { items: histories.map(mapHistory), ...query, total };
   }
 
   async listCurrent(requesterId: number, query: PageQuery): Promise<PageDto<BorrowHistoryDto>> {

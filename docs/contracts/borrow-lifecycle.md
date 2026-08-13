@@ -11,7 +11,9 @@ does not create an authorization scope.
 - Error envelope: `{ "error": string, "details"?: object }`.
 - List query defaults: `page=1`, `pageSize=20`; maximum `pageSize=100`.
 - Page DTO: `{ "items": [], "page": number, "pageSize": number, "total": number }`.
-- List/history order: newest first. Review Queue: oldest first.
+- List/history order: newest first. Review Queue: oldest first. Handover Queue:
+  request cũ trước rồi `detailId` tăng dần. Return Queue: expected return date
+  gần nhất/quá hạn trước, rồi `borrowedAt` cũ trước và `historyId` tăng dần.
 - `expectedReturnDate` is date-only `YYYY-MM-DD`, interpreted in
   `Asia/Ho_Chi_Minh`, and must be today or later.
 - Request-level `note` (Borrowing Purpose) is required after trimming and allows
@@ -74,6 +76,16 @@ a non-pending detail returns `409`.
 
 ## F05 — Handover, normal return and history
 
+- `GET /api/borrow-request-details/handover-queue?page=&pageSize=` —
+  `asset.checkout`; vận hành queue chỉ gồm detail `APPROVED`, asset `RESERVED`
+  và chưa có borrow history. Queue này không yêu cầu
+  `borrow_request.view_all` hoặc `borrow_history.view_all`. Kết quả sắp xếp theo
+  request cũ trước, sau đó `detailId` tăng dần.
+- `GET /api/borrow-histories/return-queue?page=&pageSize=` — `asset.checkin`;
+  vận hành queue chỉ gồm history có `return_date IS NULL`. Queue này không yêu
+  cầu `borrow_request.view_all` hoặc `borrow_history.view_all`. Kết quả sắp xếp
+  theo expected return date tăng dần, `borrowedAt` tăng dần và `historyId`
+  tăng dần. Response dùng lại `BorrowHistoryPage`.
 - `POST /api/borrow-request-details/:detailId/handover` — `asset.checkout`;
   empty body. Atomically changes `RESERVED → BORROWED` and creates exactly one
   borrow history using the request owner as borrower. Returns
@@ -127,6 +139,31 @@ type BorrowRequestStatus =
   | 'PARTIALLY_APPROVED' | 'COMPLETED' | 'CANCELLED'
 
 type BorrowDetailStatus = 'PENDING' | 'APPROVED' | 'REJECTED'
+
+type HandoverQueueItem = {
+  detailId: number
+  requestId: number
+  requestCreatedAt: string
+  requester: {
+    id: number
+    userCode: string
+    name: string
+    email: string
+    avatarUrl: string | null
+    department: { id: number; name: string } | null
+  }
+  asset: {
+    id: number
+    serialNumber: string | null
+    qrCode: string
+    imageUrl: string | null
+    status: string
+    model: { id: number; name: string }
+  }
+  expectedReturnDate: string
+  approvedBy: { id: number; name: string } | null
+  approvedAt: string | null
+}
 
 type BorrowHistory = {
   id: number

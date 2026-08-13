@@ -92,6 +92,31 @@ export interface PageDto<T> extends PageQuery {
   total: number;
 }
 
+export interface HandoverQueueItemDto {
+  detailId: number;
+  requestId: number;
+  requestCreatedAt: Date;
+  requester: {
+    id: number;
+    userCode: string;
+    name: string;
+    email: string;
+    avatarUrl: string | null;
+    department: { id: number; name: string } | null;
+  };
+  asset: {
+    id: number;
+    serialNumber: string | null;
+    qrCode: string;
+    imageUrl: string | null;
+    status: string;
+    model: { id: number; name: string };
+  };
+  expectedReturnDate: string;
+  approvedBy: { id: number; name: string } | null;
+  approvedAt: Date | null;
+}
+
 export type ApproveAllFailureReason = 'ASSET_NOT_AVAILABLE' | 'DETAIL_NOT_PENDING';
 
 export interface ApproveAllResultDto {

@@ -110,7 +110,7 @@ ngắn hơn; database vẫn lưu từng permission code riêng, không có wildc
 - `brand.[view,create,update,delete]`
 - `asset_type.[view,create,update,delete]`
 - `asset_model.[view,create,update,delete]`
-- `asset.[view,create,update,delete,qr_generate,checkout,checkin]`
+- `asset.[view,create,update,delete,checkout,checkin]`
 - `borrow_request.[create,view_own,view_all,update_own,cancel_own,approve,reject]`
 - `borrow_history.[view_own,view_all]`
 - `repair_log.[view,create,update,close]`
@@ -140,7 +140,7 @@ department, role, permission, duyệt đơn, sửa chữa hoặc CRUD thiết b�
 - `brand.[view,create,update,delete]`
 - `asset_type.[view,create,update,delete]`
 - `asset_model.[view,create,update,delete]`
-- `asset.[view,create,update,delete,qr_generate,checkout,checkin]`
+- `asset.[view,create,update,delete,checkout,checkin]`
 - `borrow_request.[view_all,approve,reject]`
 - `borrow_history.view_all`
 - `repair_log.[view,create,update,close]`
@@ -279,13 +279,13 @@ for identity and display; permission codes control navigation and actions. Hidin
 is only UX—the server remains the security authority.
 
 CURRENT ROLES FROM THE REAL DATABASE:
-1. admin: 1 user, all 50 current permissions. It can access dashboard, departments,
+1. admin: 1 user, all current permissions. It can access dashboard, departments,
    brands, asset types, asset models, assets, all borrowing flows, all borrow history,
    repairs, users, roles, role assignment, and permission CRUD.
 2. staff: 4 users. It can view dashboard, brands, asset types, asset models and assets;
    create/view/update/cancel its own borrow requests; and view its own borrow history.
-3. asset_manager: 1 user. It can manage brands, types, models and assets; generate QR,
-   check assets in/out; view/approve/reject all borrow requests; view all history; and
+3. asset_manager: 1 user. It can manage brands, types, models and assets; view and print
+   the immutable QR label; check assets in/out; view/approve/reject all borrow requests; view all history; and
    manage repair logs. It cannot access users, departments, roles or permissions.
 
 CURRENT REALISTIC DATA:

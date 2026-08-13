@@ -70,7 +70,7 @@ onMounted(load)
         <div class="queue-toolbar">
           <div>
             <h2>Requests to review</h2>
-            <p>Open a request to approve, reject, or confirm handover for each asset.</p>
+            <p>Open a request to approve or reject each asset.</p>
           </div>
           <a-tabs class="status-tabs" :active-key="activeTab" @change="tabChange">
             <a-tab-pane key="PENDING" tab="Pending approval" />

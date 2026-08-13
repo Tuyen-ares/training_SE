@@ -20,6 +20,7 @@ const controller = new BorrowWorkflowController(
 router.get('/current', requireAuth, requirePermission('borrow_history.view_own'), controller.current);
 router.get('/me', requireAuth, requirePermission('borrow_history.view_own'), controller.ownHistory);
 router.get('/', requireAuth, requirePermission('borrow_history.view_all'), controller.allHistory);
+router.get('/return-queue', requireAuth, requirePermission('asset.checkin'), controller.returnQueue);
 router.get('/:historyId', requireAuth, requireAnyPermission('borrow_history.view_own', 'borrow_history.view_all'), controller.detail);
 router.post('/:historyId/return-damaged', requireAuth, requirePermission('asset.checkin'), controller.returnDamaged);
 router.post('/:historyId/return', requireAuth, requirePermission('asset.checkin'), controller.returnNormal);

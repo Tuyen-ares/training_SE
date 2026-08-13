@@ -182,6 +182,14 @@ export class BorrowWorkflowService {
     return this.repository.listReviewQueue(query);
   }
 
+  listHandoverQueue(query: PageQuery) {
+    return this.repository.listHandoverQueue(query);
+  }
+
+  listReturnQueue(query: PageQuery) {
+    return this.repository.listReturnQueue(query);
+  }
+
   getReviewDetail(requestId: number) {
     return this.repository.findDetailForReview(requestId);
   }
