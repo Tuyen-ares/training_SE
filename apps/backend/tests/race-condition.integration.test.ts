@@ -229,7 +229,7 @@ test('database constraints and conditional updates resolve races in User, Auth, 
         });
         createdBrandIds.push(brand.id);
         const assetType = await prisma.asset_types.create({
-          data: { name: `RaceType-${suffix}` },
+          data: { name: `RaceType-${suffix}`, normalized_prefix: `RACE${suffix}` },
           select: { id: true },
         });
         createdAssetTypeIds.push(assetType.id);
@@ -244,6 +244,7 @@ test('database constraints and conditional updates resolve races in User, Auth, 
         createdAssetModelIds.push(assetModel.id);
         const asset = await prisma.assets.create({
           data: {
+            asset_code: `${assetType.normalized_prefix}0001`,
             asset_model_id: assetModel.id,
             serial_number: `RACE-${suffix}`,
             qr_code: randomUUID(),
@@ -259,12 +260,14 @@ test('database constraints and conditional updates resolve races in User, Auth, 
         const duplicateRepository = new PrismaAssetRepository(prisma);
         const duplicateResults = await Promise.allSettled([
           duplicateRepository.create({
+            asset_code: `${assetType.normalized_prefix}0002`,
             asset_model_id: assetModel.id,
             serial_number: duplicateSerial,
             qr_code: randomUUID(),
             status: 'available',
           }),
           duplicateRepository.create({
+            asset_code: `${assetType.normalized_prefix}0003`,
             asset_model_id: assetModel.id,
             serial_number: duplicateSerial,
             qr_code: randomUUID(),

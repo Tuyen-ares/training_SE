@@ -6,17 +6,20 @@ trong User Story không được dùng để authorize runtime.
 
 ## Schema và migration
 
-Schema hiện tại đã đáp ứng scope:
+Schema bổ sung mã asset theo asset type:
 
 - `assets.department_id` nullable, tham chiếu `departments.id` và `ON DELETE SET NULL`.
 - `assets.image_url` nullable, tối đa 500 ký tự.
 - `assets.qr_code` bắt buộc, unique, tối đa 36 ký tự.
+- `assets.asset_code` bắt buộc, unique, tối đa 64 ký tự; server cấp và không nhận từ client.
+- `asset_types.normalized_prefix` bắt buộc, unique, tối đa 30 ký tự; là cột nội bộ do server sinh.
+- `asset_code_sequences(prefix, last_sequence)` chỉ lưu prefix đã từng cấp mã.
 - `assets.status` mặc định `AVAILABLE` qua enum mapping của Prisma.
 
-Không cần schema migration cho `US-F02-04..08`. Cần data migration idempotent
-`20260804150000_grant_asset_manager_department_view` để role `asset_manager` có
-thể tải department reference data khi thực hiện Create/Update Asset. Runtime vẫn
-kiểm tra permission code; migration này không tạo role inheritance.
+Migration `20260813150000_add_asset_codes_by_type` preflight prefix rỗng/trùng,
+backfill asset cũ theo `assets.id ASC` trong mỗi type prefix, lưu sequence cao
+nhất rồi mới áp dụng `NOT NULL`/unique. Collision dữ liệu type phải được sửa
+trước khi migrate; migration không tự gắn suffix.
 
 ## Create Asset — US-F02-04
 
@@ -39,8 +42,10 @@ Request:
 - `serialNumber`: trimmed string 1..100 or `null`; non-null value must be unique.
 - `imageUrl`: valid URL up to 500 characters or `null`.
 - `departmentId`: positive integer or `null`; non-null value must exist.
-- `qrCode` and `status` are not accepted. Unknown fields return `400`.
-- Server generates a UUID `qr_code`; initial status is always `AVAILABLE`.
+- `assetCode`, `qrCode` and `status` are not accepted. Unknown fields return `400`.
+- Server reads prefix của asset type, atomically tăng sequence cùng transaction
+  với insert asset, rồi tạo `PREFIX0001` (tối thiểu bốn số). QR UUID độc lập;
+  initial status is always `AVAILABLE`.
 
 Success: `201`.
 
@@ -48,6 +53,7 @@ Success: `201`.
 {
   "data": {
     "id": 42,
+    "assetCode": "LAPTOP0001",
     "assetModelId": 12,
     "serialNumber": "SN-2026-001",
     "qrCode": "2dd6ed30-8d5c-4a87-b625-428b5609647f",
@@ -79,8 +85,9 @@ Request accepts at least one editable field:
 }
 ```
 
-Validation is the same as Create. `status`, `qrCode`, `id` and unknown fields are
+Validation is the same as Create. `assetCode`, `status`, `qrCode`, `id` and unknown fields are
 rejected with `400`. The response is the same Asset mutation DTO as Create.
+Changing a model/type never changes an issued asset code.
 
 Errors: `400` invalid DTO/path; `403` missing permission; `404` asset missing;
 `409` duplicate serial or missing model/department reference.
@@ -104,6 +111,13 @@ DTO: `{ "id": 1, "name": "Dell" }`.
 - `PATCH /api/asset-types/:assetTypeId` — `asset_type.update`
 
 DTO: `{ "id": 2, "name": "Laptop" }`.
+
+`normalized_prefix` is not exposed in request or response. Server derives it by
+trim -> Unicode NFD -> remove diacritics -> `Đ/đ` to `D/d` -> uppercase -> keep
+only `A-Z0-9`. It must be non-empty and at most 30 characters (`400` otherwise)
+and unique (`409` on collision). Renaming a type atomically changes its future
+prefix only: existing asset codes are immutable, a new prefix starts at `0001`,
+and a restored old prefix continues its existing sequence.
 
 ### Asset Model
 
@@ -189,10 +203,11 @@ List only links to the scanner and does not own the camera or image lifecycle.
 
 ## Evidence plan
 
-- `US-F02-04`: API/DB test for generated QR, forced `AVAILABLE`, nullable fields,
+- `US-F02-04`: API/DB test for generated immutable type-prefixed asset code, atomic
+  sequence behavior/rollback, generated QR, forced `AVAILABLE`, nullable fields,
   duplicate serial, invalid model/department and forbidden access.
-- `US-F02-05`: API/DB test for editable fields, null clearing, rejected
-  `status`/`qrCode`, duplicate serial, invalid reference, missing asset and forbidden.
+- `US-F02-05`: API/DB test for editable fields, immutable asset code, null clearing, rejected
+  `assetCode`/`status`/`qrCode`, duplicate serial, invalid reference, missing asset and forbidden.
 - `US-F02-06`: API/DB tests for list/create/update, duplicate and invalid model
   references; assert DELETE routes are unavailable.
 - `US-F02-07`: unit and API/DB tests for every allowed and rejected source state,

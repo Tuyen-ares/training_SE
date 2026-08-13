@@ -20,6 +20,8 @@ File này không sao chép lại toàn bộ model/column để tránh tài liệ
 
 - Enum `assets_status` có `reserved` để giữ Asset cho một đơn mượn `pending`.
 - Enum `assets_status` có `retired` để ngừng sử dụng Asset mà không xóa lịch sử.
+- `assets.asset_code` là mã duy nhất, bất biến; `asset_types.normalized_prefix` và
+  `asset_code_sequences` cấp sequence an toàn theo prefix trong transaction.
 
 Khi migration hoàn thành, cập nhật mục này để phản ánh trạng thái đã triển khai,
 không tạo một bản schema Markdown thứ hai.

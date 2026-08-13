@@ -97,6 +97,7 @@ class AssetController extends BaseController<Asset, CreateAssetDto, UpdateAssetD
   protected override serialize(asset: Asset): AssetMutationDto {
     return {
       id: asset.id,
+      assetCode: asset.asset_code,
       assetModelId: asset.asset_model_id,
       serialNumber: asset.serial_number,
       qrCode: asset.qr_code,

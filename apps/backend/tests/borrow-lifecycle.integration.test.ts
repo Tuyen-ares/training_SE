@@ -51,13 +51,15 @@ test('Borrow lifecycle APIs create, approve, hand over, return and cancel safely
     await new Promise<void>((resolve, reject) => server.close((error) => error ? reject(error) : resolve()));
   });
 
-  const type = await prisma.asset_types.create({ data: { name: `Borrow Type ${suffix}` } });
+  const type = await prisma.asset_types.create({
+    data: { name: `Borrow Type ${suffix}`, normalized_prefix: `BOR${suffix}` },
+  });
   const brand = await prisma.brands.create({ data: { name: `Borrow Brand ${suffix}` } });
   const model = await prisma.asset_models.create({ data: { asset_type_id: type.id, brand_id: brand.id, name: `Borrow Model ${suffix}` } });
   created.types.push(type.id); created.brands.push(brand.id); created.models.push(model.id);
 
   const createAsset = async (serial: string) => {
-    const asset = await prisma.assets.create({ data: { asset_model_id: model.id, department_id: department.id, serial_number: serial, qr_code: crypto.randomUUID() } });
+    const asset = await prisma.assets.create({ data: { asset_code: `${type.normalized_prefix}${String(created.assets.length + 1).padStart(4, '0')}`, asset_model_id: model.id, department_id: department.id, serial_number: serial, qr_code: crypto.randomUUID() } });
     created.assets.push(asset.id);
     return asset;
   };

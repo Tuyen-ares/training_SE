@@ -18,7 +18,7 @@ const forbidden = ref(false)
 const notFound = ref(false)
 const errorMessage = ref('')
 const lookups = ref({ models: [], departments: [] })
-const form = reactive({ assetModelId: undefined, serialNumber: '', imageUrl: '', departmentId: undefined })
+const form = reactive({ assetCode: '', assetModelId: undefined, serialNumber: '', imageUrl: '', departmentId: undefined })
 const isEdit = computed(() => route.name === 'asset-edit')
 const pageTitle = computed(() => isEdit.value ? 'Edit Asset' : 'Add New Asset')
 
@@ -44,6 +44,7 @@ async function load() {
     lookups.value = lookupData
     if (asset) {
       Object.assign(form, {
+        assetCode: asset.assetCode,
         assetModelId: asset.model.id,
         serialNumber: asset.serialNumber || '',
         imageUrl: asset.imageUrl || '',
@@ -95,6 +96,9 @@ onMounted(load)
       <section class="asset-form-panel">
         <h3>General Information</h3>
         <a-form ref="formRef" :model="form" :rules="rules" layout="vertical" @finish="submit">
+          <a-form-item v-if="isEdit" label="Asset code">
+            <a-input :value="form.assetCode" readonly />
+          </a-form-item>
           <a-form-item name="assetModelId" label="Asset model">
             <a-select v-model:value="form.assetModelId" show-search option-filter-prop="label" placeholder="Select a model" :options="lookups.models.map(item => ({ value: item.id, label: item.name }))" />
           </a-form-item>

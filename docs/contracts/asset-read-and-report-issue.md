@@ -12,7 +12,7 @@ Query parameters:
 
 | Name | Type | Default | Rules |
 | --- | --- | --- | --- |
-| `q` | string | omitted | Case-insensitive search across QR code, serial number, and model name. Empty text is ignored. |
+| `q` | string | omitted | Case-insensitive search across immutable asset code, QR code, serial number, and model name. Empty text is ignored. |
 | `status` | asset status | omitted | One of `AVAILABLE`, `RESERVED`, `BORROWED`, `DAMAGED`, `IN_REPAIR`, `RETIRED`. |
 | `page` | integer | `1` | Must be at least 1. |
 | `pageSize` | integer | `20` | Must be between 1 and 100. |
@@ -24,6 +24,7 @@ Assets are ordered newest first. The response data is:
   "items": [
     {
       "id": 42,
+      "assetCode": "LAPTOP0001",
       "serialNumber": "SN-123",
       "qrCode": "a QR UUID",
       "status": "AVAILABLE",
@@ -48,6 +49,7 @@ borrow request.
 {
   "data": {
     "id": 42,
+    "assetCode": "LAPTOP0001",
     "serialNumber": "SN-123",
     "qrCode": "a QR UUID",
     "imageUrl": null,
@@ -61,7 +63,8 @@ borrow request.
 }
 ```
 
-`department` may be `null`. `actions.canReportIssue` is true only when the
+`assetCode` is immutable and derives from the asset type prefix/sequence; it is
+not accepted by Create or Update. `department` may be `null`. `actions.canReportIssue` is true only when the
 authenticated user is currently borrowing this asset or has the effective
 `asset_issue.report` permission.
 

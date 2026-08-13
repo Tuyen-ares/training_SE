@@ -18,12 +18,17 @@ import {
   ConflictError,
   InvalidStateTransitionError,
 } from '../src/shared/app-error.js';
+import {
+  formatAssetCode,
+  normalizeAssetTypePrefix,
+} from '../src/shared/asset-code.js';
 
 const transaction = {} as AssetTransaction;
 
 function makeAsset(id: number, status: AssetStatus = 'available'): Asset {
   return {
     id,
+    asset_code: `TEST${String(id).padStart(4, '0')}`,
     asset_model_id: 1,
     serial_number: `SERIAL-${id}`,
     status,
@@ -59,10 +64,14 @@ class MemoryAssetRepository implements IAssetRepository {
     return {
       items: matching.map((asset) => ({
         id: asset.id,
+        assetCode: asset.asset_code,
         serialNumber: asset.serial_number,
         qrCode: asset.qr_code,
         status: asset.status.toUpperCase(),
         model: { id: asset.asset_model_id, name: 'Test model' },
+        brand: { id: 1, name: 'Test brand' },
+        type: { id: 1, name: 'Test type' },
+        department: null,
       })),
       page: query.page,
       pageSize: query.pageSize,
@@ -76,6 +85,7 @@ class MemoryAssetRepository implements IAssetRepository {
     const model = { id: asset.asset_model_id, name: 'Test model' };
     return {
       id: asset.id,
+      assetCode: asset.asset_code,
       serialNumber: asset.serial_number,
       qrCode: asset.qr_code,
       imageUrl: null,
@@ -95,6 +105,15 @@ class MemoryAssetRepository implements IAssetRepository {
     };
     this.assets.set(asset.id, structuredClone(asset));
     return structuredClone(asset);
+  }
+
+  async createWithAllocatedCode(
+    data: Omit<CreateAssetData, 'asset_code'>,
+  ): Promise<Asset> {
+    return this.create({
+      ...data,
+      asset_code: formatAssetCode('TEST', this.nextId),
+    });
   }
 
   async update(id: number, data: UpdateAssetDto): Promise<Asset> {
@@ -161,6 +180,14 @@ test('create validates model and serial before creating an available asset', asy
   assert.equal(result.data?.status, 'available');
   assert.equal(result.data?.serial_number, 'SERIAL-NEW');
   assert.match(result.data?.qr_code ?? '', /^[0-9a-f-]{36}$/i);
+  assert.equal(result.data?.asset_code, 'TEST0100');
+});
+
+test('asset type prefixes normalize Unicode names and preserve digits', () => {
+  assert.equal(normalizeAssetTypePrefix('Màn hình'), 'MANHINH');
+  assert.equal(normalizeAssetTypePrefix('USB 3.0'), 'USB30');
+  assert.equal(normalizeAssetTypePrefix('Đ'), 'D');
+  assert.throws(() => normalizeAssetTypePrefix('🚀 _ - .'));
 });
 
 test('update rejects an invalid model and another asset serial number', async () => {

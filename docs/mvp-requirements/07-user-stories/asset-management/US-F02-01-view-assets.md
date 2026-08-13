@@ -9,7 +9,7 @@ tôi muốn **xem và lọc danh sách tài sản**,
 ## Acceptance Criteria
 
 - AC-US-F02-01-01: Given user có quyền, when mở danh sách, then hệ thống hiển thị các asset thuộc phạm vi được phép.
-- AC-US-F02-01-02: Then mỗi dòng thể hiện tối thiểu thông tin nhận diện, model và trạng thái hiện tại.
+- AC-US-F02-01-02: Then mỗi dòng thể hiện tối thiểu asset code bất biến, model và trạng thái hiện tại; search hỗ trợ asset code.
 - AC-US-F02-01-03: When áp dụng bộ lọc được hỗ trợ, then kết quả chỉ chứa asset phù hợp.
 - AC-US-F02-01-04: Given user thiếu quyền xem, when truy cập, then hệ thống từ chối.
 

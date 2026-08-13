@@ -13,10 +13,11 @@ tôi muốn **cập nhật thông tin và department quản lý tài sản**,
 - AC-US-F02-05-03: Given department/model không tồn tại, when cập nhật, then hệ thống từ chối.
 - AC-US-F02-05-04: Thay đổi status nghiệp vụ không được thực hiện như một cập nhật thông tin thông thường.
 - AC-US-F02-05-05: Given user thiếu quyền, then dữ liệu không thay đổi.
+- AC-US-F02-05-06: Asset code chỉ hiển thị read-only và không thể được thay đổi qua API hay form cập nhật.
 
 ## Business Rules áp dụng
 
-`BR-AST-01`, `BR-AST-06`, `BR-RBAC-01`.
+`BR-AST-01`, `BR-AST-06`, `BR-AST-11`, `BR-RBAC-01`.
 
 ## Functional Requirements liên quan
 

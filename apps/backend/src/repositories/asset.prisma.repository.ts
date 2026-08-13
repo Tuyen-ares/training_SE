@@ -12,8 +12,9 @@ import type {
   AssetStatus,
   UpdateAssetDto,
 } from '@/models/asset.model.js';
+import { formatAssetCode } from '@/shared/asset-code.js';
 import { ConflictError } from '@/shared/app-error.js';
-import type { Prisma, PrismaClient } from '../../generated/prisma/index.js';
+import { Prisma, type PrismaClient } from '../../generated/prisma/index.js';
 
 function getPrismaErrorCode(error: unknown): string | undefined {
   if (typeof error !== 'object' || error === null || !('code' in error)) {
@@ -63,6 +64,9 @@ function toAssetPersistenceError(error: unknown): Error {
     if (target.includes('qr_code')) {
       return new ConflictError('QR code already exists');
     }
+    if (target.includes('asset_code')) {
+      return new ConflictError('Asset code already exists');
+    }
     return new ConflictError('Asset unique value already exists');
   }
 
@@ -107,6 +111,7 @@ export class PrismaAssetRepository implements IAssetRepository {
         ? {
             OR: [
               { qr_code: { contains: query.q } },
+              { asset_code: { contains: query.q } },
               { serial_number: { contains: query.q } },
               { asset_models: { name: { contains: query.q } } },
             ],
@@ -136,6 +141,7 @@ export class PrismaAssetRepository implements IAssetRepository {
     return {
       items: assets.map((asset): AssetListItemDto => ({
         id: asset.id,
+        assetCode: asset.asset_code,
         serialNumber: asset.serial_number,
         qrCode: asset.qr_code,
         imageUrl: asset.image_url,
@@ -179,6 +185,7 @@ export class PrismaAssetRepository implements IAssetRepository {
 
     return {
       id: asset.id,
+      assetCode: asset.asset_code,
       serialNumber: asset.serial_number,
       qrCode: asset.qr_code,
       imageUrl: asset.image_url,
@@ -201,6 +208,47 @@ export class PrismaAssetRepository implements IAssetRepository {
   async create(data: CreateAssetData): Promise<Asset> {
     try {
       return await this.prisma.assets.create({ data });
+    } catch (error) {
+      throw toAssetPersistenceError(error);
+    }
+  }
+
+  async createWithAllocatedCode(
+    data: Omit<CreateAssetData, 'asset_code'>,
+  ): Promise<Asset> {
+    try {
+      return await this.prisma.$transaction(async (transaction) => {
+        const assetModel = await transaction.asset_models.findUnique({
+          where: { id: data.asset_model_id },
+          select: {
+            asset_types: { select: { normalized_prefix: true } },
+          },
+        });
+        if (!assetModel) throw new ConflictError('Asset model does not exist');
+
+        const prefix = assetModel.asset_types.normalized_prefix;
+        await transaction.$executeRaw(Prisma.sql`
+          INSERT INTO asset_code_sequences (prefix, last_sequence)
+          VALUES (${prefix}, 1)
+          ON DUPLICATE KEY UPDATE last_sequence = last_sequence + 1
+        `);
+        const rows = await transaction.$queryRaw<Array<{ last_sequence: number }>>(
+          Prisma.sql`
+            SELECT last_sequence
+            FROM asset_code_sequences
+            WHERE prefix = ${prefix}
+            FOR UPDATE
+          `,
+        );
+        const sequence = rows[0]?.last_sequence;
+        if (!Number.isInteger(sequence) || sequence < 1) {
+          throw new Error('Asset code sequence allocation failed');
+        }
+
+        return transaction.assets.create({
+          data: { ...data, asset_code: formatAssetCode(prefix, sequence) },
+        });
+      });
     } catch (error) {
       throw toAssetPersistenceError(error);
     }

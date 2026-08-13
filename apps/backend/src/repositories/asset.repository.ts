@@ -9,6 +9,7 @@ import type {
 } from '@/models/asset.model.js';
 
 export interface CreateAssetData {
+  asset_code: string;
   asset_model_id: number;
   serial_number: string | null;
   image_url: string | null;
@@ -25,6 +26,7 @@ export interface IAssetRepository {
   findReadPage(query: AssetListQuery): Promise<AssetListDto>;
   findReadDetail(id: number): Promise<AssetDetailRecordDto | null>;
   create(data: CreateAssetData): Promise<Asset>;
+  createWithAllocatedCode(data: Omit<CreateAssetData, 'asset_code'>): Promise<Asset>;
   update(id: number, data: UpdateAssetDto): Promise<Asset>;
   findBySerialNumber(serialNumber: string): Promise<Asset | null>;
   findByQrCode(qrCode: string): Promise<Asset | null>;

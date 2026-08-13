@@ -37,16 +37,18 @@ test('Asset issue and notification APIs enforce lifecycle and ownership', async 
     await new Promise<void>((resolve, reject) => server.close((error) => error ? reject(error) : resolve()));
   });
 
-  const type = await prisma.asset_types.create({ data: { name: `Issue Type ${suffix}` } });
+  const type = await prisma.asset_types.create({
+    data: { name: `Issue Type ${suffix}`, normalized_prefix: `ISS${suffix}` },
+  });
   const brand = await prisma.brands.create({ data: { name: `Issue Brand ${suffix}` } });
   const model = await prisma.asset_models.create({ data: { asset_type_id: type.id, brand_id: brand.id, name: `Issue Model ${suffix}` } });
   created.typeIds.push(type.id); created.brandIds.push(brand.id); created.modelIds.push(model.id);
-  const asset = await prisma.assets.create({ data: { asset_model_id: model.id, department_id: department.id, serial_number: `ISS-${suffix}`, qr_code: crypto.randomUUID() } });
+  const asset = await prisma.assets.create({ data: { asset_code: `${type.normalized_prefix}0001`, asset_model_id: model.id, department_id: department.id, serial_number: `ISS-${suffix}`, qr_code: crypto.randomUUID() } });
   created.assetIds.push(asset.id);
-  const rejectAsset = await prisma.assets.create({ data: { asset_model_id: model.id, department_id: department.id, serial_number: `ISS-REJECT-${suffix}`, qr_code: crypto.randomUUID() } });
-  const failAsset = await prisma.assets.create({ data: { asset_model_id: model.id, department_id: department.id, serial_number: `ISS-FAIL-${suffix}`, qr_code: crypto.randomUUID() } });
-  const limitRejectAsset = await prisma.assets.create({ data: { asset_model_id: model.id, department_id: department.id, serial_number: `ISS-LIMIT-REJECT-${suffix}`, qr_code: crypto.randomUUID() } });
-  const limitRepairAsset = await prisma.assets.create({ data: { asset_model_id: model.id, department_id: department.id, serial_number: `ISS-LIMIT-REPAIR-${suffix}`, qr_code: crypto.randomUUID() } });
+  const rejectAsset = await prisma.assets.create({ data: { asset_code: `${type.normalized_prefix}0002`, asset_model_id: model.id, department_id: department.id, serial_number: `ISS-REJECT-${suffix}`, qr_code: crypto.randomUUID() } });
+  const failAsset = await prisma.assets.create({ data: { asset_code: `${type.normalized_prefix}0003`, asset_model_id: model.id, department_id: department.id, serial_number: `ISS-FAIL-${suffix}`, qr_code: crypto.randomUUID() } });
+  const limitRejectAsset = await prisma.assets.create({ data: { asset_code: `${type.normalized_prefix}0004`, asset_model_id: model.id, department_id: department.id, serial_number: `ISS-LIMIT-REJECT-${suffix}`, qr_code: crypto.randomUUID() } });
+  const limitRepairAsset = await prisma.assets.create({ data: { asset_code: `${type.normalized_prefix}0005`, asset_model_id: model.id, department_id: department.id, serial_number: `ISS-LIMIT-REPAIR-${suffix}`, qr_code: crypto.randomUUID() } });
   created.assetIds.push(rejectAsset.id, failAsset.id, limitRejectAsset.id, limitRepairAsset.id);
   const reporter = await prisma.users.create({ data: { user_code: `BI26${suffix}1`, department_id: department.id, name: 'Issue Reporter', email: `issue.reporter.${suffix}@test.local`, phone: `81${suffix}0`.slice(0, 10), password: 'not-used' } });
   const handler = await prisma.users.create({ data: { user_code: `BI26${suffix}2`, department_id: department.id, name: 'Issue Handler', email: `issue.handler.${suffix}@test.local`, phone: `82${suffix}0`.slice(0, 10), password: 'not-used' } });

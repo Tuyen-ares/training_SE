@@ -28,18 +28,18 @@
 
 | API | English name | Tên tiếng Việt | Purpose / Mục đích | Status |
 | --- | --- | --- | --- | --- |
-| `GET /api/assets` | List assets | Xem danh sách thiết bị | Search, filter and paginate assets. / Tìm kiếm, lọc và phân trang thiết bị. | Existing |
-| `GET /api/assets/:assetId` | Get asset detail | Xem chi tiết thiết bị | Read the full asset detail and allowed actions. / Xem chi tiết asset và action được phép. | Existing |
-| `POST /api/assets` | Create asset | Tạo thiết bị | Add a new asset with valid identity and model data. / Tạo asset với dữ liệu nhận diện và model hợp lệ. | Existing; scope needs completion |
-| `PATCH /api/assets/:assetId` | Update asset | Cập nhật thiết bị | Update editable asset information. / Cập nhật thông tin asset được phép sửa. | Existing; scope needs completion |
+| `GET /api/assets` | List assets | Xem danh sách thiết bị | Search (including immutable asset code), filter and paginate assets. / Tìm kiếm (gồm mã asset bất biến), lọc và phân trang thiết bị. | Existing |
+| `GET /api/assets/:assetId` | Get asset detail | Xem chi tiết thiết bị | Read the full asset detail, immutable asset code and allowed actions. / Xem chi tiết asset, mã asset bất biến và action được phép. | Existing |
+| `POST /api/assets` | Create asset | Tạo thiết bị | Add an asset; server atomically allocates the immutable type-prefixed asset code. / Tạo asset; server cấp mã bất biến theo type một cách nguyên tử. | Existing |
+| `PATCH /api/assets/:assetId` | Update asset | Cập nhật thiết bị | Update editable asset information; asset code cannot be changed. / Cập nhật thông tin asset được phép sửa; không sửa mã asset. | Existing |
 | `POST /api/assets/:assetId/retire` | Retire asset | Ngừng sử dụng thiết bị | Retire an eligible asset through a dedicated lifecycle action. / Ngừng sử dụng asset đủ điều kiện bằng action riêng. | Existing |
 | `GET /api/assets/by-qr/:qrCode` | Look up asset by QR | Tra cứu thiết bị bằng QR | Resolve the immutable `qr_code` extracted from the frontend QR URL to the asset detail. / Tra `qr_code` bất biến được trích xuất từ frontend QR URL để mở chi tiết asset. | Existing |
 | `GET /api/brands` | List brands | Xem danh sách hãng | Read asset brands. / Xem hãng thiết bị. | Existing |
 | `POST /api/brands` | Create brand | Tạo hãng | Add a brand to the catalogue. / Thêm hãng vào danh mục. | Existing |
 | `PATCH /api/brands/:brandId` | Update brand | Cập nhật hãng | Rename/update a brand. / Cập nhật hãng. | Existing |
 | `GET /api/asset-types` | List asset types | Xem loại thiết bị | Read asset types. / Xem loại thiết bị. | Existing |
-| `POST /api/asset-types` | Create asset type | Tạo loại thiết bị | Add an asset type. / Thêm loại thiết bị. | Existing |
-| `PATCH /api/asset-types/:typeId` | Update asset type | Cập nhật loại thiết bị | Rename/update an asset type. / Cập nhật loại thiết bị. | Existing |
+| `POST /api/asset-types` | Create asset type | Tạo loại thiết bị | Add a type and server-derived unique normalized code prefix. / Thêm type và prefix mã chuẩn hóa duy nhất do server sinh. | Existing |
+| `PATCH /api/asset-types/:typeId` | Update asset type | Cập nhật loại thiết bị | Rename/update type and its future code prefix; issued codes remain immutable. / Đổi type/prefix cho mã tương lai; mã đã cấp giữ nguyên. | Existing |
 | `GET /api/asset-models` | List asset models | Xem model thiết bị | Read models with their brand/type context. / Xem model cùng hãng/loại. | Existing |
 | `POST /api/asset-models` | Create asset model | Tạo model thiết bị | Add an asset model. / Thêm model thiết bị. | Existing |
 | `PATCH /api/asset-models/:modelId` | Update asset model | Cập nhật model thiết bị | Update an asset model. / Cập nhật model thiết bị. | Existing |

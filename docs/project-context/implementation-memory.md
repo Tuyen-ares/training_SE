@@ -64,6 +64,10 @@ disabled and loading states.
 
 ## Important Business/Technical Gotchas
 
+- Asset code là định danh bất biến độc lập với QR: create atomically cấp
+  `normalized_prefix + sequence` bằng row lock `asset_code_sequences`; đổi tên
+  type chỉ đổi prefix cho asset tạo sau, còn prefix cũ giữ sequence để không tái sử dụng mã.
+
 - Approve All có thể partial success; detail không giữ được asset không tự chuyển `REJECTED`.
 - Cancel/withdraw request bị chặn nếu request đã có actual handover history; không chỉ dựa trên current asset status.
 - `received_by` là người có quyền tiếp nhận asset khi trả, không phải employee mượn.

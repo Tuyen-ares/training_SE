@@ -8,7 +8,7 @@ tôi muốn **tạo một tài sản với thông tin nhận diện hợp lệ**
 
 ## Acceptance Criteria
 
-- AC-US-F02-04-01: Given model hợp lệ và dữ liệu bắt buộc đầy đủ, when tạo, then asset được ghi nhận với status `AVAILABLE`.
+- AC-US-F02-04-01: Given model hợp lệ và dữ liệu bắt buộc đầy đủ, when tạo, then asset được ghi nhận với asset code bất biến do server cấp và status `AVAILABLE`.
 - AC-US-F02-04-02: image_url là tùy chọn; nếu cung cấp thì được lưu dưới dạng URL ảnh của asset.
 - AC-US-F02-04-03: Given QR đã tồn tại, when tạo, then hệ thống từ chối.
 - AC-US-F02-04-04: Given serial có giá trị đã tồn tại, when tạo, then hệ thống từ chối.
@@ -17,7 +17,7 @@ tôi muốn **tạo một tài sản với thông tin nhận diện hợp lệ**
 
 ## Business Rules áp dụng
 
-`BR-AST-01`, `BR-AST-05`, `BR-AST-06`, `BR-RBAC-01`.
+`BR-AST-01`, `BR-AST-05`, `BR-AST-06`, `BR-AST-11`, `BR-RBAC-01`.
 
 ## Functional Requirements liên quan
 

@@ -61,7 +61,7 @@ export class AssetService
     }
 
     try {
-      const data = await this.repo.create({
+      const data = await this.repo.createWithAllocatedCode({
         asset_model_id: dto.asset_model_id,
         serial_number: dto.serial_number ?? null,
         image_url: dto.image_url ?? null,

@@ -30,6 +30,8 @@
 - **BR-AST-08:** Nhân viên được xem asset đủ điều kiện mượn trên toàn công ty; `department_id` không giới hạn visibility trong MVP.
 - **BR-AST-09:** Quét QR thuộc F02 ở mức tra cứu và có thể mở chi tiết asset; không tạo workflow kiểm kê.
 - **BR-AST-10:** MVP không hỗ trợ xóa brand, asset type hoặc asset model..
+- **BR-AST-11:** Mỗi asset có `asset_code` bất biến, duy nhất, gồm prefix chuẩn hóa từ asset type và sequence tăng theo prefix (`PREFIX0001`). QR vẫn là định danh tra cứu độc lập.
+- **BR-AST-12:** Prefix asset type được server chuẩn hóa Unicode NFD, bỏ dấu, đổi `Đ/đ` thành `D/d`, viết hoa và chỉ giữ `A-Z0-9`; rỗng hoặc trùng bị từ chối. Đổi tên type chỉ ảnh hưởng mã asset tạo sau đó.
 
 ## Borrow Request và Approval
 

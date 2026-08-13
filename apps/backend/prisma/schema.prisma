@@ -9,6 +9,7 @@ datasource db {
 
 model assets {
   id                     Int                      @id @default(autoincrement())
+  asset_code             String                   @unique(map: "asset_code") @db.VarChar(64)
   asset_model_id         Int
   serial_number          String?                  @unique(map: "serial_number") @db.VarChar(100)
   status                 assets_status            @default(available)
@@ -72,9 +73,15 @@ model refresh_tokens {
 }
 
 model asset_types {
-  id           Int            @id @default(autoincrement())
-  name         String         @unique(map: "name") @db.VarChar(30)
-  asset_models asset_models[]
+  id                Int            @id @default(autoincrement())
+  name              String         @unique(map: "name") @db.VarChar(30)
+  normalized_prefix String         @unique(map: "normalized_prefix") @db.VarChar(30)
+  asset_models      asset_models[]
+}
+
+model asset_code_sequences {
+  prefix        String @id @db.VarChar(30)
+  last_sequence Int
 }
 
 model borrow_histories {

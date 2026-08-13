@@ -11,6 +11,7 @@ export type RepairResult = 'repaired' | 'failed';
 
 export interface Asset {
   id: number;
+  asset_code: string;
   asset_model_id: number;
   serial_number: string | null;
   status: AssetStatus;
@@ -36,6 +37,7 @@ export interface UpdateAssetDto {
 
 export interface AssetMutationDto {
   id: number;
+  assetCode: string;
   assetModelId: number;
   serialNumber: string | null;
   status: string;
@@ -63,6 +65,7 @@ export interface AssetModelSummaryDto {
 
 export interface AssetListItemDto {
   id: number;
+  assetCode: string;
   serialNumber: string | null;
   qrCode: string;
   imageUrl: string | null;

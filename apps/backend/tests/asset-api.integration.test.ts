@@ -68,7 +68,9 @@ test('Asset management APIs enforce the Release 1 read/write/catalog/retire/QR c
     });
   });
 
-  const type = await prisma.asset_types.create({ data: { name: `Asset API Type ${suffix}` } });
+  const type = await prisma.asset_types.create({
+    data: { name: `Asset API Type ${suffix}`, normalized_prefix: `API${suffix}` },
+  });
   created.typeIds.push(type.id);
   const brand = await prisma.brands.create({ data: { name: `Asset API Brand ${suffix}` } });
   created.brandIds.push(brand.id);
@@ -77,12 +79,14 @@ test('Asset management APIs enforce the Release 1 read/write/catalog/retire/QR c
   });
   created.modelIds.push(model.id);
 
+  let fixtureAssetSequence = 0;
   const createAsset = async (
     serial: string,
     status: 'available' | 'reserved' | 'borrowed' | 'damaged' | 'in_repair' | 'retired' = 'available',
   ) => {
     const asset = await prisma.assets.create({
       data: {
+        asset_code: `${type.normalized_prefix}${String(++fixtureAssetSequence).padStart(4, '0')}`,
         asset_model_id: model.id,
         department_id: department.id,
         serial_number: serial,
@@ -246,6 +250,21 @@ test('Asset management APIs enforce the Release 1 read/write/catalog/retire/QR c
   });
   assert.equal(apiType.status, 201);
   created.typeIds.push(apiType.body.data.id);
+  assert.deepEqual(Object.keys(apiType.body.data).sort(), ['id', 'name']);
+  assert.equal((await request('/asset-types', assetManagerToken, {
+    method: 'POST',
+    body: JSON.stringify({ name: '🚀 _ - .' }),
+  })).status, 400);
+  const collisionType = await request('/asset-types', assetManagerToken, {
+    method: 'POST',
+    body: JSON.stringify({ name: `Prefix Alpha ${suffix}` }),
+  });
+  assert.equal(collisionType.status, 201);
+  created.typeIds.push(collisionType.body.data.id);
+  assert.equal((await request('/asset-types', assetManagerToken, {
+    method: 'POST',
+    body: JSON.stringify({ name: `Prefix-Alpha${suffix}` }),
+  })).status, 409);
 
   const apiModel = await request('/asset-models', assetManagerToken, {
     method: 'POST',
@@ -289,9 +308,26 @@ test('Asset management APIs enforce the Release 1 read/write/catalog/retire/QR c
   assert.equal(createdByApi.status, 201);
   created.assetIds.push(createdByApi.body.data.id);
   assert.equal(createdByApi.body.data.status, 'AVAILABLE');
+  assert.match(createdByApi.body.data.assetCode, /^APIMANAGEDTYPE\d+0001$/);
   assert.match(createdByApi.body.data.qrCode, /^[0-9a-f-]{36}$/i);
   assert.equal(createdByApi.body.data.departmentId, department.id);
   assert.equal((await prisma.assets.findUniqueOrThrow({ where: { id: createdByApi.body.data.id } })).status, 'available');
+  const assetCodeSearch = await request(`/assets?q=${createdByApi.body.data.assetCode}`, assetManagerToken);
+  assert.equal(assetCodeSearch.status, 200);
+  assert.ok(assetCodeSearch.body.data.items.some((item: { id: number; assetCode: string }) =>
+    item.id === createdByApi.body.data.id && item.assetCode === createdByApi.body.data.assetCode));
+  const concurrentAssets = await Promise.all(
+    [1, 2, 3].map((index) => request('/assets', assetManagerToken, {
+      method: 'POST',
+      body: JSON.stringify({
+        assetModelId: apiModel.body.data.id,
+        serialNumber: `API-CONCURRENT-${suffix}-${index}`,
+      }),
+    })),
+  );
+  assert.ok(concurrentAssets.every((response) => response.status === 201), JSON.stringify(concurrentAssets));
+  concurrentAssets.forEach((response) => created.assetIds.push(response.body.data.id));
+  assert.equal(new Set(concurrentAssets.map((response) => response.body.data.assetCode)).size, 3);
   assert.equal((await request('/assets', forbiddenToken, {
     method: 'POST',
     body: JSON.stringify({ assetModelId: apiModel.body.data.id }),
@@ -299,6 +335,10 @@ test('Asset management APIs enforce the Release 1 read/write/catalog/retire/QR c
   assert.equal((await request('/assets', assetManagerToken, {
     method: 'POST',
     body: JSON.stringify({ assetModelId: apiModel.body.data.id, status: 'DAMAGED' }),
+  })).status, 400);
+  assert.equal((await request('/assets', assetManagerToken, {
+    method: 'POST',
+    body: JSON.stringify({ assetModelId: apiModel.body.data.id, assetCode: 'OVERRIDE0001' }),
   })).status, 400);
   assert.equal((await request('/assets', assetManagerToken, {
     method: 'POST',
@@ -323,6 +363,28 @@ test('Asset management APIs enforce the Release 1 read/write/catalog/retire/QR c
   assert.equal(nullableAsset.body.data.imageUrl, null);
   assert.equal(nullableAsset.body.data.departmentId, null);
 
+  const renamedType = await request(`/asset-types/${apiType.body.data.id}`, assetManagerToken, {
+    method: 'PATCH',
+    body: JSON.stringify({ name: `Renamed Type ${suffix}` }),
+  });
+  assert.equal(renamedType.status, 200);
+  const renamedPrefixAsset = await request('/assets', assetManagerToken, {
+    method: 'POST', body: JSON.stringify({ assetModelId: apiModel.body.data.id }),
+  });
+  assert.equal(renamedPrefixAsset.status, 201);
+  created.assetIds.push(renamedPrefixAsset.body.data.id);
+  assert.match(renamedPrefixAsset.body.data.assetCode, /^RENAMEDTYPE\d+0001$/);
+  assert.equal(createdByApi.body.data.assetCode.endsWith('0001'), true);
+  assert.equal((await request(`/asset-types/${apiType.body.data.id}`, assetManagerToken, {
+    method: 'PATCH', body: JSON.stringify({ name: `API Managed Type ${suffix}` }),
+  })).status, 200);
+  const restoredPrefixAsset = await request('/assets', assetManagerToken, {
+    method: 'POST', body: JSON.stringify({ assetModelId: apiModel.body.data.id }),
+  });
+  assert.equal(restoredPrefixAsset.status, 201);
+  created.assetIds.push(restoredPrefixAsset.body.data.id);
+  assert.match(restoredPrefixAsset.body.data.assetCode, /^APIMANAGEDTYPE\d+0006$/);
+
   // US-F02-05: editable fields only and null clearing.
   const updatedByApi = await request(`/assets/${createdByApi.body.data.id}`, assetManagerToken, {
     method: 'PATCH',
@@ -339,6 +401,10 @@ test('Asset management APIs enforce the Release 1 read/write/catalog/retire/QR c
   assert.equal((await request(`/assets/${createdByApi.body.data.id}`, assetManagerToken, {
     method: 'PATCH',
     body: JSON.stringify({ qrCode: crypto.randomUUID() }),
+  })).status, 400);
+  assert.equal((await request(`/assets/${createdByApi.body.data.id}`, assetManagerToken, {
+    method: 'PATCH',
+    body: JSON.stringify({ assetCode: 'OVERRIDE0001' }),
   })).status, 400);
   assert.equal((await request(`/assets/${createdByApi.body.data.id}`, assetManagerToken, {
     method: 'PATCH',

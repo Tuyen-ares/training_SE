@@ -4,6 +4,7 @@ import type {
   UpdateAssetTypeDto,
 } from '@/models/asset-type.model.js';
 import type { IAssetTypeRepository } from '@/repositories/asset-type.repository.js';
+import { normalizeAssetTypePrefix } from '@/shared/asset-code.js';
 import { ConflictError } from '@/shared/app-error.js';
 import { BaseService } from '@/shared/base.service.js';
 
@@ -20,10 +21,20 @@ export class AssetTypeService extends BaseService<
   override async create(
     dto: CreateAssetTypeDto,
   ): Promise<{ data?: AssetType; error?: string }> {
-    const existingAssetType = await this.repo.findByName(dto.name);
+    const normalizedPrefix = normalizeAssetTypePrefix(dto.name);
+    const [existingAssetType, existingPrefix] = await Promise.all([
+      this.repo.findByName(dto.name),
+      this.repo.findByNormalizedPrefix(normalizedPrefix),
+    ]);
     if (existingAssetType) return { error: 'Asset type name already exists' };
+    if (existingPrefix) return { error: 'Asset type code prefix already exists' };
 
-    return super.create(dto);
+    try {
+      return await super.create({ ...dto, normalized_prefix: normalizedPrefix });
+    } catch (error) {
+      if (error instanceof ConflictError) return { error: error.message };
+      throw error;
+    }
   }
 
   override async update(
@@ -34,10 +45,18 @@ export class AssetTypeService extends BaseService<
     if (!assetType) return null;
 
     if (dto.name) {
-      const assetTypeWithSameName = await this.repo.findByName(dto.name);
+      const normalizedPrefix = normalizeAssetTypePrefix(dto.name);
+      const [assetTypeWithSameName, assetTypeWithSamePrefix] = await Promise.all([
+        this.repo.findByName(dto.name),
+        this.repo.findByNormalizedPrefix(normalizedPrefix),
+      ]);
       if (assetTypeWithSameName && assetTypeWithSameName.id !== id) {
         throw new ConflictError('Asset type name already exists');
       }
+      if (assetTypeWithSamePrefix && assetTypeWithSamePrefix.id !== id) {
+        throw new ConflictError('Asset type code prefix already exists');
+      }
+      return this.repo.update(id, { ...dto, normalized_prefix: normalizedPrefix });
     }
 
     return super.update(id, dto);

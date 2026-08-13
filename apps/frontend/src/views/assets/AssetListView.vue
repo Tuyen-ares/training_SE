@@ -36,7 +36,7 @@ const lookups = ref({ brands: [], types: [], models: [], departments: [] })
 const canCreateAsset = computed(() => authStore.hasPermission('asset.create'))
 const canUpdateAsset = computed(() => authStore.hasPermission('asset.update'))
 const columns = [
-  { title: 'Asset Name/ID', key: 'asset', width: 220 },
+  { title: 'Asset', key: 'asset', width: 220 },
   { title: 'Type', key: 'type', width: 150 },
   { title: 'Model & Brand', key: 'modelBrand', width: 190 },
   { title: 'Department', key: 'department', width: 170 },
@@ -168,7 +168,7 @@ onMounted(() => {
                   <a-avatar shape="square" :size="42" :src="record.imageUrl || DEFAULT_ASSET_IMAGE">{{ record.model.name.slice(0, 1) }}</a-avatar>
                   <div>
                     <a-typography-text strong>{{ record.model.name }}</a-typography-text>
-                    <br><a-typography-text type="secondary">AST-{{ String(record.id).padStart(4, '0') }}</a-typography-text>
+                    <br><a-typography-text type="secondary">{{ record.assetCode }}</a-typography-text>
                   </div>
                 </div>
               </template>

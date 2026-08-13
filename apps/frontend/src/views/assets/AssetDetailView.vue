@@ -122,6 +122,7 @@ onMounted(loadAsset)
                   <a-image class="asset-image" :src="asset.imageUrl || DEFAULT_ASSET_IMAGE" :fallback="DEFAULT_ASSET_IMAGE" :alt="asset.model.name" />
                 </div>
                 <a-descriptions :column="{ xs: 1, sm: 2 }" size="small">
+                  <a-descriptions-item label="Asset code">{{ asset.assetCode }}</a-descriptions-item>
                   <a-descriptions-item label="Serial number">{{ asset.serialNumber || 'Not assigned' }}</a-descriptions-item>
                   <a-descriptions-item label="QR code">{{ asset.qrCode }}</a-descriptions-item>
                   <a-descriptions-item label="Category">{{ asset.type.name }}</a-descriptions-item>

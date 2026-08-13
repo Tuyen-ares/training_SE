@@ -18,12 +18,12 @@
 
 | ID | Yêu cầu chức năng |
 |---|---|
-| FR-F02-01 | Hệ thống phải hiển thị danh sách asset cho user có quyền xem. |
-| FR-F02-02 | Hệ thống phải hiển thị chi tiết, danh mục, department và trạng thái hiện tại của asset. |
+| FR-F02-01 | Hệ thống phải hiển thị danh sách asset cho user có quyền xem, gồm asset code bất biến và hỗ trợ tìm theo mã. |
+| FR-F02-02 | Hệ thống phải hiển thị asset code, chi tiết, danh mục, department và trạng thái hiện tại của asset. |
 | FR-F02-03 | Hệ thống phải cung cấp danh sách asset `AVAILABLE` đủ điều kiện tạo yêu cầu mượn. |
-| FR-F02-04 | Hệ thống phải cho phép user có quyền tạo asset với model, dữ liệu nhận diện hợp lệ và image_url tùy chọn. |
+| FR-F02-04 | Hệ thống phải cho phép user có quyền tạo asset với model, dữ liệu nhận diện hợp lệ và image_url tùy chọn; server cấp asset code bất biến theo asset type. |
 | FR-F02-05 | Hệ thống phải cho phép user có quyền cập nhật thông tin, image_url và department quản lý asset. |
-| FR-F02-06 | Hệ thống phải hỗ trợ xem, tạo và cập nhật brand/type/model ở mức MVP. |
+| FR-F02-06 | Hệ thống phải hỗ trợ xem, tạo và cập nhật brand/type/model ở mức MVP; type có prefix asset-code nội bộ duy nhất do server sinh. |
 | FR-F02-07 | Hệ thống phải cho phép lọc asset theo thông tin và trạng thái được hỗ trợ. |
 | FR-F02-08 | Hệ thống phải hỗ trợ ngừng sử dụng asset khi user có permission phù hợp và asset không ở `RESERVED` hoặc `BORROWED`. |
 | FR-F02-09 | Hệ thống phải cho phép quét QR URL bất biến của asset tại màn hình QR Scan và mở trang chi tiết khi QR hợp lệ; QR không tạo inventory session và không đổi trạng thái asset. |

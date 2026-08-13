@@ -21,7 +21,7 @@ User đã đăng nhập và có permission xem asset.
 1. User mở `SCR-F02-01` từ navigation, Dashboard hoặc Create Borrow Request.
 2. User search/filter danh sách hoặc mở `SCR-F02-05` để quét QR bằng camera hoặc tải ảnh QR lên.
 3. Hệ thống hiển thị asset phù hợp; selection mode chỉ cho phép chọn `AVAILABLE`.
-4. User mở `SCR-F02-02` để xem định danh, model, department, QR và status.
+4. User mở `SCR-F02-02` để xem asset code bất biến, model, department, QR và status.
 5. Nếu đang tạo phiếu, user chọn asset rồi trở về `SCR-F03-01` với selection đã giữ trong form.
 
 ## Alternative Flows
@@ -65,7 +65,7 @@ User có permission tương ứng; các reference model/department tồn tại k
 
 1. User mở Asset Form từ Asset List/Detail hoặc Asset Catalog từ navigation.
 2. User nhập/cập nhật dữ liệu asset hoặc catalog.
-3. Hệ thống validate QR, serial, model, department và các ràng buộc liên quan.
+3. Hệ thống validate serial, model, department và các ràng buộc liên quan; server tự cấp asset code theo type và QR độc lập.
 4. User lưu; screen phản ánh dữ liệu mới.
 5. Với retire, user khởi động action từ Asset Detail, xem impact và xác nhận.
 
@@ -76,7 +76,7 @@ User có permission tương ứng; các reference model/department tồn tại k
 
 ## Error / Invalid States
 
-- QR/serial trùng hoặc reference không tồn tại: field/global validation, không lưu dữ liệu sai.
+- Asset code không có input trên create form; edit chỉ hiển thị read-only. QR/serial trùng hoặc reference không tồn tại: field/global validation, không lưu dữ liệu sai.
 - Retire với asset RESERVED/BORROWED: action bị chặn và giải thích trạng thái.
 - Thay đổi status vận hành không thực hiện trong update form thông thường.
 

@@ -230,7 +230,7 @@ paths:
       parameters:
         - name: q
           in: query
-          description: Tìm kiếm không phân biệt hoa thường theo QR code, số serial và tên model. Chuỗi rỗng bị bỏ qua.
+          description: Tìm kiếm không phân biệt hoa thường theo asset code, QR code, số serial và tên model. Chuỗi rỗng bị bỏ qua.
           schema:
             type: string
         - name: status
@@ -281,8 +281,9 @@ paths:
         - F02 - Asset Management
       summary: Tạo tài sản
       description: >-
-        Thêm tài sản với dữ liệu nhận diện và model hợp lệ. Server tự sinh `qrCode` (UUID) và
-        luôn đặt trạng thái ban đầu `AVAILABLE`. `qrCode` và `status` không được gửi lên.
+        Thêm tài sản với dữ liệu nhận diện và model hợp lệ. Server tự sinh `assetCode` bất biến
+        theo prefix normalized của asset type, tự sinh `qrCode` (UUID), và luôn đặt trạng thái
+        ban đầu `AVAILABLE`. `assetCode`, `qrCode` và `status` không được gửi lên.
       operationId: createAsset
       requestBody:
         required: true
@@ -346,7 +347,7 @@ paths:
         - F02 - Asset Management
       summary: Cập nhật tài sản
       description: >-
-        Cập nhật thông tin được phép sửa. Yêu cầu ít nhất một trường. `status`, `qrCode`, `id`
+        Cập nhật thông tin được phép sửa. Yêu cầu ít nhất một trường. `assetCode`, `status`, `qrCode`, `id`
         và trường lạ bị từ chối với `400`.
       operationId: updateAsset
       parameters:
@@ -633,6 +634,9 @@ paths:
       tags:
         - F02 - Asset Management
       summary: Tạo loại thiết bị
+      description: >-
+        Server chuẩn hóa `name` thành prefix nội bộ A-Z/0-9 (tối đa 30 ký tự) để cấp asset code.
+        Prefix rỗng trả `400`; name hoặc prefix đã tồn tại trả `409`. Prefix không là request field.
       operationId: createAssetType
       requestBody:
         required: true
@@ -655,7 +659,7 @@ paths:
         '403':
           $ref: '#/components/responses/Forbidden'
         '409':
-          description: Tên loại thiết bị đã tồn tại
+          description: Tên hoặc code prefix chuẩn hóa đã tồn tại
           content:
             application/json:
               schema:
@@ -688,6 +692,9 @@ paths:
       tags:
         - F02 - Asset Management
       summary: Cập nhật loại thiết bị
+      description: >-
+        Đổi tên cũng đổi prefix nội bộ trong cùng transaction. Asset code đã cấp giữ nguyên;
+        prefix mới bắt đầu sequence riêng và prefix cũ giữ sequence của nó.
       operationId: updateAssetType
       parameters:
         - $ref: '#/components/parameters/ReferenceId'
@@ -716,7 +723,7 @@ paths:
               schema:
                 $ref: '#/components/schemas/Error'
         '409':
-          description: Tên loại thiết bị đã tồn tại
+          description: Tên hoặc code prefix chuẩn hóa đã tồn tại
           content:
             application/json:
               schema:
@@ -2654,6 +2661,9 @@ components:
       properties:
         id:
           type: integer
+        assetCode:
+          type: string
+          maxLength: 64
         serialNumber:
           type: string
           nullable: true
@@ -2676,6 +2686,7 @@ components:
           nullable: true
       required:
         - id
+        - assetCode
         - serialNumber
         - qrCode
         - status
@@ -2719,6 +2730,9 @@ components:
       properties:
         id:
           type: integer
+        assetCode:
+          type: string
+          maxLength: 64
         assetModelId:
           type: integer
         serialNumber:
@@ -2739,6 +2753,7 @@ components:
           format: date-time
       required:
         - id
+        - assetCode
         - assetModelId
         - serialNumber
         - qrCode
