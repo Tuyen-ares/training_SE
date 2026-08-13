@@ -57,14 +57,6 @@ router.post(
   requirePermission('asset.delete'),
   controller.retire,
 );
-router.post(
-  '/:id/qr',
-  requireAuth,
-  requirePositiveAssetId,
-  requirePermission('asset.qr_generate'),
-  controller.regenerateQr,
-);
-
 export default {
   resource: 'assets',
   router,

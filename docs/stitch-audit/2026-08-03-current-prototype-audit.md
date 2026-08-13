@@ -7,7 +7,7 @@
 
 Thứ tự đối chiếu là `docs/mvp-requirements` → `docs/frontend-spec` → `design/DESIGN_SYSTEM.md` → `design/DESIGN.md` → Stitch. Vì vậy, Stitch chỉ là prototype/visual reference, không phải nguồn định nghĩa nghiệp vụ.
 
-Inventory được lấy trực tiếp bằng Stitch MCP từ project `BigIn Asset Management` (`projects/11686200964836917081`). Mỗi screen được map với Screen Inventory gồm 18 logical screen/template. Các screen đại diện của nhóm Asset, Borrow, Return, Repair, Dashboard và Login cũng được kiểm tra visual để đánh giá pattern AppShell, action, status và workflow. Đây không phải kiểm tra pixel-perfect.
+Inventory được lấy trực tiếp bằng Stitch MCP từ project `BigIn Asset Management` (`projects/11686200964836917081`). Mỗi screen được map với Screen Inventory gồm 18 logical screen/template tại thời điểm audit. Asset QR Scan là template implementation được bổ sung sau đó và không thuộc prototype Stitch gốc. Các screen đại diện của nhóm Asset, Borrow, Return, Repair, Dashboard và Login cũng được kiểm tra visual để đánh giá pattern AppShell, action, status và workflow. Đây không phải kiểm tra pixel-perfect.
 
 ## A. Tổng quan
 

@@ -23,8 +23,7 @@ Section không đủ permission không render; layout tự reflow tự nhiên, k
 | --- | --- |
 | Xem phiếu của mình | My Borrow Requests |
 | Duyệt request | Pending Approvals |
-| Xác nhận bàn giao | Handover Queue |
-| Xác nhận hoàn trả | Return Queue |
+| Bàn giao/nhận trả | Handover & Return |
 | Quản lý issue | Issue Queue |
 | Quản lý user | User Management |
 
@@ -42,16 +41,19 @@ Tên permission code cuối cùng thuộc API/permission registry, chưa đượ
 | Hoạt động mượn | `SCR-F05-02` | Xem tài sản đang mượn hoặc lịch sử theo phạm vi. |
 | Sự cố & sửa chữa | `SCR-F06-01` | Permission xem/quản lý issue. |
 | Thông báo | `SCR-F07-01` | User đã đăng nhập; entry có thể từ header. |
-| Người dùng | `SCR-F08-01` | Permission quản lý user. |
+| Administration | `SCR-F08-01`, `SCR-F08-03`, `SCR-F08-05` | Có ít nhất một permission quản lý user, registration request hoặc role. Entry mở tab đầu tiên được phép. |
 | Danh mục asset | `SCR-F02-04` | Permission quản lý danh mục asset. |
 
 ## Quan hệ screen và workflow state
 
 - `SCR-F03-03` phục vụ cả người tạo phiếu và người có quyền xử lý; data/action thay đổi theo ownership và permission.
-- `SCR-F05-01` có hai queue/tab logic: bàn giao và nhận trả. Form xác nhận là state có context, không phải route mới.
+- `SCR-F05-01` là một entry `Handover & Return` với hai tab `Pending Handover` và `Pending Return`; không tạo route Handover Queue hoặc Return Queue riêng. Form xác nhận là state có context, không phải route mới.
+- Tab `Pending Handover` chỉ hiện khi có `asset.checkout`; tab `Pending Return` chỉ hiện khi có `asset.checkin`. Có cả hai quyền thì mặc định mở `Pending Handover`.
 - `SCR-F05-02` tái sử dụng list/history cho “đang mượn”, lịch sử của tôi và lịch sử toàn bộ theo permission.
 - `SCR-F06-02` chứa workflow xác minh, bắt đầu sửa, cập nhật và kết thúc sửa trong cùng context issue.
 - `SCR-F08-02` dùng cùng form surface cho tạo/cập nhật user và vùng gán/gỡ role có sẵn.
+- Administration có tabs Users / Registration Requests / Roles; tab/action ẩn theo permission nhưng backend là authority.
+- Permission descriptions nằm trong Role Create/Detail, không có standalone Permission Catalog.
 
 ## Entry và lỗi điều hướng
 

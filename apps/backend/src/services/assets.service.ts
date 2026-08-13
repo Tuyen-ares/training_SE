@@ -134,12 +134,6 @@ export class AssetService
     return asset ? this.getReadDetail(asset.id) : null;
   }
 
-  async regenerateQr(id: number): Promise<Asset | null> {
-    const asset = await this.repo.findById(id);
-    if (!asset) return null;
-    return this.repo.updateQrCode(id, randomUUID());
-  }
-
   // Call in the same transaction that changes a detail from PENDING to APPROVED.
   reserveForApprovedRequest(
     assetIds: number[],

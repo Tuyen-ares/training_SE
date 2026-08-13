@@ -34,3 +34,7 @@ F01; departments; brands; asset types; asset models.
 ## Out of Scope
 
 Kiểm kê QR, location, asset history, lịch chuyển department, procurement.
+
+QR trong MVP chỉ là mã định danh bất biến được sinh khi tạo asset. Payload là
+`{VITE_PUBLIC_APP_URL}/qr/{qr_code}`; việc quét camera thuộc màn hình Asset QR
+Scan riêng và không tạo bản ghi kiểm kê hay thay đổi trạng thái asset.

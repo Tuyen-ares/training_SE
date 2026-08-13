@@ -1,5 +1,18 @@
 # Delivery Status Audit
 
+## Increment 2026-08-11 — Registration Review and RBAC Management
+
+| User Story | Backend | Frontend | Contract | Status | Evidence |
+| --- | --- | --- | --- | --- | --- |
+| US-F01-05 | Done | Done | Done | IMPLEMENTED | Public request API/UI, DB-safe pending keys; no direct-register route |
+| US-F01-06 | Done | Done | Done | IMPLEMENTED | Queue/detail, atomic approve/reject, department/initial roles, hash cleanup |
+| US-F08-05 | Done | Done | Done | IMPLEMENTED | Non-empty replace-set user roles with essential-admin guard |
+| US-F08-06 | Done | Done | Done | IMPLEMENTED | Role list/detail with counts and permission descriptions |
+| US-F08-07 | Done | Done | Done | IMPLEMENTED | Custom role creation with non-empty permission set |
+| US-F08-08 | Done | Done | Done | IMPLEMENTED | Custom rename, system-name protection and guarded permission replace-set |
+
+Runtime authorization remains based on effective permission codes. Updated role permissions appear in newly issued access tokens at login/refresh. Role delete and permission CRUD remain unsupported.
+
 > Audit date: 2026-08-05. Scope: repository evidence, automated verification,
 > and manual browser verification of the Asset slice.
 >
@@ -66,7 +79,7 @@
 | US-F04-03 | Từ chối một detail | R1 | Implemented Match | Done | Skeleton | API | Passed | IMPLEMENTED | Strict reason validation, reviewer/time persistence and atomic status refresh; curl HTTP 200 | Rejection frontend not connected. |
 | US-F05-01 | Xác nhận bàn giao | R1 | Implemented Match | Done | Skeleton | API | Passed | IMPLEMENTED | Atomic handover/history creation and duplicate guard; curl returned a history ID | Fulfillment frontend not connected. |
 | US-F05-02 | Xem tài sản đang mượn | R1 | Implemented Match | Done | Skeleton | API | Passed | IMPLEMENTED | Owner-scoped paginated current history DTO; curl returned `expectedReturnDate=2099-01-01` | Current-borrow frontend not connected. |
-| US-F05-03 | Xác nhận hoàn trả | R1 normal-return path | Implemented Match | Done | Skeleton | API | Passed | IMPLEMENTED | Empty-body normal return transaction writes canonical `NORMAL`, completes history and restores AVAILABLE; curl and DB integration passed | Frontend not connected; damaged return remains deferred. |
+| US-F05-03 | Xác nhận hoàn trả | Current F05/F06 integration | Implemented Match | Done | Done | API/UI | Passed | IMPLEMENTED | Normal return and atomic damaged-return endpoints; damaged response includes `issueId`, with history/asset/issue/notification transaction coverage | No automated frontend interaction test. |
 | US-F05-04 | Xem lịch sử mượn của tôi | R1 | Implemented Match | Done | Skeleton | API | Passed | IMPLEMENTED | Owner-scoped paginated camelCase history; curl confirmed `NORMAL` and returned asset data | History frontend not connected. |
 | US-F05-05 | Xem toàn bộ lịch sử mượn | R1 | Implemented Match | Done | Skeleton | API | Passed | IMPLEMENTED | Company-wide `borrow_history.view_all` route with pagination; curl HTTP 200 and missing-permission 403 coverage | All-history frontend not connected. |
 
@@ -88,11 +101,11 @@
 | US-F02-05 | Cập nhật thiết bị | R1 Asset management | Implemented Match | Done | Done | Verified | Passed | VERIFIED | Shared `AssetFormView.vue`, `asset.service.js`, strict update DTO, integration test; browser updated serial while QR/status remained server-controlled | None for the agreed scope. |
 | US-F02-06 | Quản lý danh mục thiết bị | R1 Asset management | Implemented Match | Done | Done | Verified | Passed | VERIFIED | Catalog controllers/routes, `AssetCatalogView.vue`, `asset-catalog.service.js`, integration test; browser created and updated a Brand; DELETE routes return 404 | No delete by design. |
 | US-F02-07 | Ngừng sử dụng thiết bị | R1 Asset management | Implemented Match | Done | Done | Verified | Passed | VERIFIED | `AssetService.retire`, dedicated retire route, confirmation UI, unit and DB integration tests for all allowed/blocked states; browser retired asset 128 | None for normal retire scope. |
-| US-F02-08 | Tra cứu thiết bị bằng QR | R1 Asset management | Implemented Match | Done | Done | Verified | Passed | VERIFIED | `GET /api/assets/by-qr/:qrCode`, `AssetListView.vue`, integration test; browser pasted generated QR and opened `/assets/128` without status change | Camera/scanner capture intentionally out of scope; lookup API is reusable. |
+| US-F02-08 | Tra cứu thiết bị bằng QR | R1 Asset management | Implemented Match | Done | Done | Verified | Passed | IMPLEMENTED | `GET /api/assets/by-qr/:qrCode`, `AssetQrScanView.vue`, `AssetListView.vue`, integration test; QR URL/camera scanner opens `/assets/:id` without status change | Camera permission/secure-context behavior still requires manual browser verification. |
 | US-F03-04 | Thu hồi phiếu | R1 API | Implemented Match | Done | Skeleton | API | Passed | IMPLEMENTED | Owner-scoped cancel endpoint releases reserved assets transactionally; DB integration test passed | Frontend action not connected. |
-| US-F04-04 | Duyệt tất cả theo partial success | Deferred | None | Partial | Skeleton | None | None | DEFERRED | borrow detail schema, `FLOW-10` | No bulk action/service/result contract or UI. |
-| US-F05-03 | Hoàn trả thiết bị hỏng | Deferred phase 2 branch | None | Partial | Skeleton | None | Partial | DEFERRED | `AssetService.returnAsset`, `asset_issues` schema, `FLOW-13` | No combined return-and-issue transaction; excluded from R1. |
-| US-F06-01 | Báo sự cố | R1 slice | Done | Done | Done | API | API/DB | IMPLEMENTED | `AssetIssueService`, `ReportIssueDialog.vue`, `asset-api.integration.test.ts` | Issue list, review and repair remain deferred. |
+| US-F04-04 | Duyệt tất cả theo partial success | Current F04 | Implemented Match | Done | Done | API/UI | API/DB | IMPLEMENTED | Approve-all service uses per-detail atomic reservation and returns approved/skipped arrays; UI presents partial success | No automated frontend interaction test. |
+| US-F05-03 | Hoàn trả thiết bị hỏng | Current F05/F06 integration | Implemented Match | Done | Done | API/UI | API/DB | IMPLEMENTED | `POST /api/borrow-histories/:historyId/return-damaged` atomically returns history, changes asset to DAMAGED, creates CONFIRMED issue and returns `issueId` | No automated frontend interaction test. |
+| US-F06-01 | Báo sự cố | Current F06 | Implemented Match | Done | Done | API/UI | API/DB | IMPLEMENTED | `AssetIssueService`, `ReportIssueDialog.vue`, asset issue integration tests | No automated frontend test suite. |
 | US-F06-02 | Xem danh sách và chi tiết sự cố | Current | Implemented Match | Done | Done | API/UI | API/DB + browser | IMPLEMENTED | Asset issue routes/services, `AssetIssueListView.vue`, `AssetIssueDetailView.vue`; browser loaded real list/detail data | No automated frontend test suite. |
 | US-F06-03 | Xác minh sự cố | Current | Implemented Match | Done | Done | API/UI | API/DB | IMPLEMENTED | Transactional confirm/reject APIs and permission/status-aware detail actions | Destructive transition was not repeated in browser verification. |
 | US-F06-04 | Bắt đầu sửa chữa | Current | Implemented Match | Done | Done | API/UI | API/DB | IMPLEMENTED | Start-repair API plus modal workflow state in Issue Detail | No automated frontend interaction test. |

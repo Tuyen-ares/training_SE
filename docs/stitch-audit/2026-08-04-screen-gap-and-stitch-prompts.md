@@ -6,7 +6,7 @@
 
 ## 1. Đọc nhanh: hiện trạng là gì?
 
-Stitch hiện có **41 source screen**, **106 canvas instance** và **43 instance đang hiển thị**. Nhưng MVP chỉ có **18 logical screen/template** theo [Screen Inventory](../delivery/frontend-spec/02-screen-inventory.md).
+Stitch hiện có **41 source screen**, **106 canvas instance** và **43 instance đang hiển thị**. Audit gốc dùng **18 logical screen/template** theo [Screen Inventory](../delivery/frontend-spec/02-screen-inventory.md); Asset QR Scan được bổ sung sau đó như một template implementation riêng cho camera lifecycle.
 
 Vì vậy, không phải mọi screen đang thấy trên canvas đều là screen MVP cần hoàn thiện hoặc dịch tiếng Anh. Có screen mới/canonical, screen cũ làm reference, screen trùng và screen đã ngoài scope.
 

@@ -430,14 +430,16 @@ paths:
         - F02 - Asset Management
       summary: Tra cứu tài sản bằng QR
       description: >-
-        Tra QR để mở chi tiết asset. Chỉ đọc: không tạo bản ghi kiểm kê và không đổi trạng thái asset.
-        Client trim và URL-encode mã QR trước khi gọi.
+        Tra QR để mở chi tiết asset. QR được in dưới dạng frontend URL
+        `{VITE_PUBLIC_APP_URL}/qr/{qr_code}`; màn hình scanner trích xuất mã
+        `qr_code` rồi gọi API này. Chỉ đọc: không tạo bản ghi kiểm kê và không
+        đổi trạng thái asset.
       operationId: getAssetByQr
       parameters:
         - name: qrCode
           in: path
           required: true
-          description: Mã QR đã được trim
+          description: Mã QR đã được trích xuất từ frontend QR URL và đã được trim
           schema:
             type: string
             maxLength: 36
@@ -487,41 +489,6 @@ paths:
                 $ref: '#/components/schemas/Error'
         '409':
           description: Trạng thái không cho phép ngừng sử dụng
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/Error'
-  /assets/{id}/qr:
-    post:
-      tags:
-        - F02 - Asset Management
-      summary: Tạo/tạo lại mã QR
-      description: Tạo hoặc tạo lại mã QR của tài sản (server sinh UUID mới).
-      operationId: regenerateQr
-      parameters:
-        - $ref: '#/components/parameters/AssetId'
-      responses:
-        '200':
-          description: Mã QR mới
-          content:
-            application/json:
-              schema:
-                type: object
-                properties:
-                  data:
-                    type: object
-                    properties:
-                      id:
-                        type: integer
-                      qrCode:
-                        type: string
-                        format: uuid
-        '400':
-          $ref: '#/components/responses/BadRequest'
-        '403':
-          $ref: '#/components/responses/Forbidden'
-        '404':
-          description: Tài sản không tồn tại
           content:
             application/json:
               schema:
@@ -1037,6 +1004,38 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/Error'
+  /borrow-request-details/handover-queue:
+    get:
+      tags:
+        - F05 - Handover, Return & History
+      summary: Hàng đợi bàn giao
+      description: >-
+        Yêu cầu permission `asset.checkout`. Chỉ trả về detail `APPROVED` có asset
+        `RESERVED` và chưa có borrow history; không yêu cầu `borrow_request.view_all`
+        hoặc `borrow_history.view_all`. Sắp xếp request cũ trước, sau đó `detailId`
+        tăng dần.
+      operationId: listHandoverQueue
+      security:
+        - bearerAuth: []
+      parameters:
+        - $ref: '#/components/parameters/Page'
+        - $ref: '#/components/parameters/PageSize'
+      responses:
+        '200':
+          description: Trang hàng đợi bàn giao
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data:
+                    $ref: '#/components/schemas/HandoverQueuePage'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
   /borrow-request-details/review-queue:
     get:
       tags:
@@ -1283,6 +1282,38 @@ paths:
                     $ref: '#/components/schemas/BorrowHistoryPage'
         '400':
           $ref: '#/components/responses/BadRequest'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+  /borrow-histories/return-queue:
+    get:
+      tags:
+        - F05 - Handover, Return & History
+      summary: Hàng đợi nhận trả
+      description: >-
+        Yêu cầu permission `asset.checkin`. Chỉ trả về borrow history chưa có
+        `return_date`; không yêu cầu `borrow_request.view_all` hoặc
+        `borrow_history.view_all`. Sắp xếp theo expected return date gần nhất/quá
+        hạn trước, rồi `borrowedAt` cũ trước và `historyId` tăng dần.
+      operationId: listReturnQueue
+      security:
+        - bearerAuth: []
+      parameters:
+        - $ref: '#/components/parameters/Page'
+        - $ref: '#/components/parameters/PageSize'
+      responses:
+        '200':
+          description: Trang hàng đợi nhận trả
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data:
+                    $ref: '#/components/schemas/BorrowHistoryPage'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
         '403':
           $ref: '#/components/responses/Forbidden'
   /borrow-histories/{historyId}:
@@ -2994,6 +3025,119 @@ components:
           type: integer
       required:
         - historyId
+    HandoverQueueItem:
+      type: object
+      properties:
+        detailId:
+          type: integer
+        requestId:
+          type: integer
+        requestCreatedAt:
+          type: string
+          format: date-time
+        requester:
+          type: object
+          properties:
+            id:
+              type: integer
+            userCode:
+              type: string
+              pattern: '^BI[0-9]{5,}$'
+            name:
+              type: string
+            email:
+              type: string
+              format: email
+            avatarUrl:
+              type: string
+              nullable: true
+            department:
+              type: object
+              nullable: true
+              properties:
+                id:
+                  type: integer
+                name:
+                  type: string
+              required:
+                - id
+                - name
+          required:
+            - id
+            - userCode
+            - name
+            - email
+            - avatarUrl
+            - department
+        asset:
+          type: object
+          properties:
+            id:
+              type: integer
+            serialNumber:
+              type: string
+              nullable: true
+            qrCode:
+              type: string
+            imageUrl:
+              type: string
+              nullable: true
+            status:
+              $ref: '#/components/schemas/AssetStatus'
+            model:
+              $ref: '#/components/schemas/AssetSummary'
+          required:
+            - id
+            - serialNumber
+            - qrCode
+            - imageUrl
+            - status
+            - model
+        expectedReturnDate:
+          type: string
+          format: date
+        approvedBy:
+          type: object
+          nullable: true
+          properties:
+            id:
+              type: integer
+            name:
+              type: string
+          required:
+            - id
+            - name
+        approvedAt:
+          type: string
+          format: date-time
+          nullable: true
+      required:
+        - detailId
+        - requestId
+        - requestCreatedAt
+        - requester
+        - asset
+        - expectedReturnDate
+        - approvedBy
+        - approvedAt
+    HandoverQueuePage:
+      type: object
+      properties:
+        items:
+          type: array
+          items:
+            $ref: '#/components/schemas/HandoverQueueItem'
+        page:
+          type: integer
+        pageSize:
+          type: integer
+        total:
+          type: integer
+      required:
+        - items
+        - page
+        - pageSize
+        - total
     ReturnResult:
       type: object
       properties:

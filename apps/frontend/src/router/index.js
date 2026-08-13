@@ -60,6 +60,18 @@ const router = createRouter({
       meta: { requiresAuth: true, permission: 'asset.view' },
     },
     {
+      path: '/asset-scan',
+      name: 'asset-qr-scan',
+      component: () => import('../views/assets/AssetQrScanView.vue'),
+      meta: { requiresAuth: true, permission: 'asset.view' },
+    },
+    {
+      path: '/qr/:qrCode',
+      name: 'qr-entry',
+      component: () => import('../views/assets/AssetQrEntryView.vue'),
+      meta: { requiresAuth: true, permission: 'asset.view' },
+    },
+    {
       path: '/assets/new',
       name: 'asset-create',
       component: () => import('../views/assets/AssetFormView.vue'),
@@ -118,6 +130,45 @@ const router = createRouter({
       name: 'borrowing-activity',
       component: () => import('../views/borrow/BorrowingActivityView.vue'),
       meta: { requiresAuth: true, permissionsAny: ['borrow_history.view_own', 'borrow_history.view_all'] },
+    },
+    {
+      path: '/administration',
+      name: 'administration',
+      component: () => import('../views/administration/AdministrationIndexView.vue'),
+      meta: {
+        requiresAuth: true,
+        permissionsAny: ['user.view', 'user_registration.review', 'role.view', 'role.assign'],
+      },
+    },
+    {
+      path: '/registration-requests',
+      name: 'registration-requests',
+      component: () => import('../views/administration/RegistrationRequestListView.vue'),
+      meta: { requiresAuth: true, permission: 'user_registration.review' },
+    },
+    {
+      path: '/registration-requests/:id',
+      name: 'registration-request-detail',
+      component: () => import('../views/administration/RegistrationRequestDetailView.vue'),
+      meta: { requiresAuth: true, permission: 'user_registration.review' },
+    },
+    {
+      path: '/roles',
+      name: 'roles',
+      component: () => import('../views/administration/RoleListView.vue'),
+      meta: { requiresAuth: true, permissionsAny: ['role.view', 'role.assign', 'user_registration.review'] },
+    },
+    {
+      path: '/roles/new',
+      name: 'role-create',
+      component: () => import('../views/administration/RoleFormView.vue'),
+      meta: { requiresAuth: true, permission: 'role.create' },
+    },
+    {
+      path: '/roles/:id',
+      name: 'role-detail',
+      component: () => import('../views/administration/RoleFormView.vue'),
+      meta: { requiresAuth: true, permission: 'role.view' },
     },
     {
       path: '/borrowing-activity/:id',
@@ -187,6 +238,8 @@ router.beforeEach(async (to) => {
       { name: 'dashboard', permission: 'dashboard.view' },
       { name: 'assets', permission: 'asset.view' },
       { name: 'users', permission: 'user.view' },
+      { name: 'registration-requests', permission: 'user_registration.review' },
+      { name: 'roles', permission: 'role.view' },
     ].find((item) => item.name !== to.name && authStore.hasPermission(item.permission))
 
     return fallback ? { name: fallback.name } : { name: 'main' }

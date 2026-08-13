@@ -21,7 +21,7 @@ Khi có mâu thuẫn, không sửa requirement để khớp mockup hoặc code c
 
 ## Ranh giới giai đoạn 1
 
-- Có 18 screen/reusable screen template và 22 user flow chính.
+- Có 24 screen/reusable screen template và 22 user flow chính; Asset QR Scan là màn hình riêng để sở hữu camera lifecycle.
 - Dialog/drawer là workflow state của screen cha, không phải screen mới.
 - Không quy định route URL, request/response, component props, SQL, Prisma hoặc service.
 - Không thay đổi màu sắc, design language hoặc Stitch trong giai đoạn này.

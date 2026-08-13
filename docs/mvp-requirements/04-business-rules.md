@@ -7,11 +7,16 @@
 - **BR-AUTH-03:** Refresh token đã dùng, bị thu hồi hoặc hết hạn không được cấp phiên mới.
 - **BR-AUTH-04:** Logout phải kết thúc khả năng tiếp tục refresh của phiên tương ứng.
 - **BR-AUTH-05:** Đăng ký công khai chỉ tạo yêu cầu `PENDING`; yêu cầu này không tạo phiên và không được đăng nhập trước khi được duyệt.
-- **BR-AUTH-06:** Người có permission `user_registration.review` có thể duyệt hoặc từ chối yêu cầu; mapping khởi tạo cấp permission này cho `admin` và `asset_manager`, nhưng runtime chỉ kiểm tra permission code. Khi duyệt phải gán một role có sẵn, mặc định là `employee` nếu không chọn role khác, và có thể chọn department hoặc để trống.
+- **BR-AUTH-06:** Người có permission `user_registration.review` có thể duyệt hoặc từ chối yêu cầu; mapping khởi tạo cấp permission này cho `admin` và `asset_manager`, nhưng runtime chỉ kiểm tra permission code. Khi duyệt bắt buộc chọn department và có thể gán nhiều role có sẵn; nếu bỏ qua `roleIds`, hệ thống gán `employee`.
+- **BR-AUTH-07:** Mỗi email hoặc số điện thoại chỉ có tối đa một registration request `PENDING`; invariant phải được bảo đảm bằng unique key ở database để an toàn khi concurrent. Request terminal phải clear pending key để có thể đăng ký lại.
+- **BR-AUTH-08:** Approve phải tạo user active, cấp userCode, gán department/initial roles, link `createdUserId`, cập nhật audit và clear password hash trong cùng transaction. Reject cũng phải clear password hash; rejection reason là optional.
 - **BR-RBAC-01:** Quyền thực tế được suy ra từ permission gán cho các role của user.
 - **BR-RBAC-02:** Không có role hierarchy hoặc role inheritance.
 - **BR-RBAC-03:** Admin muốn làm nghiệp vụ Manager phải được gán permission tương ứng.
-- **BR-RBAC-04:** MVP chỉ cho gán/gỡ role có sẵn; không CRUD role hoặc permission code.
+- **BR-RBAC-04:** Phiên bản này cho list/detail/create role, rename custom role, replace-set permission của role và replace-set role của user; không delete role và không CRUD permission code.
+- **BR-RBAC-05:** System role không được đổi tên nhưng được thay permission. Mỗi role phải giữ ít nhất một permission và mỗi user phải giữ ít nhất một role.
+- **BR-RBAC-06:** Thao tác nhạy cảm phải giữ ít nhất một active user có đủ tập essential admin permissions: `user.view/create/update/delete`, `role.view/create/update/assign`, `permission.view`, `user_registration.review`. Invariant dựa trên effective permission, không dựa vào tên role.
+- **BR-RBAC-07:** Permission thay đổi theo quan hệ role-permission hiện tại và có hiệu lực cho user ở lần login hoặc refresh tiếp theo.
 
 ## Asset
 

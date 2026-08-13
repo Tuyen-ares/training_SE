@@ -4,7 +4,6 @@ import {
   EyeOutlined,
   PlusOutlined,
   QrcodeOutlined,
-  ScanOutlined,
   SearchOutlined,
 } from '@ant-design/icons-vue'
 import { computed, h, onMounted, reactive, ref } from 'vue'
@@ -14,14 +13,13 @@ import StatusTag from '../../components/common/StatusTag.vue'
 import WorkspaceLayout from '../../components/layout/WorkspaceLayout.vue'
 import { ASSET_STATUSES, statusLabel } from '../../constants/status-meta'
 import { DEFAULT_ASSET_IMAGE } from '../../constants/media'
-import { findAssetByQr, listAssets, listAssetLookups } from '../../services/asset.service'
+import { listAssets, listAssetLookups } from '../../services/asset.service'
 import { useAuthStore } from '../../stores/auth'
 
 const router = useRouter()
 const authStore = useAuthStore()
 const filters = reactive({
   q: '',
-  scanCode: '',
   status: undefined,
   modelId: undefined,
   typeId: undefined,
@@ -92,20 +90,9 @@ function applyFilters() {
 
 function clearFilters() {
   Object.assign(filters, {
-    q: '', scanCode: '', status: undefined, modelId: undefined, typeId: undefined, brandId: undefined, departmentId: undefined, page: 1,
+    q: '', status: undefined, modelId: undefined, typeId: undefined, brandId: undefined, departmentId: undefined, page: 1,
   })
   void load()
-}
-
-async function openQrCode() {
-  const qrCode = filters.scanCode.trim()
-  if (!qrCode) return
-  try {
-    const asset = await findAssetByQr(authStore.api, qrCode)
-    await router.push({ name: 'asset-detail', params: { id: asset.id } })
-  } catch (error) {
-    errorMessage.value = error.status === 404 ? 'No asset was found for this QR code.' : (error.message || 'The QR code could not be opened.')
-  }
 }
 
 function changePage(page) {
@@ -135,9 +122,7 @@ onMounted(() => {
           <a-input v-model:value="filters.q" class="asset-page__search" allow-clear placeholder="Search assets..." @press-enter="applyFilters">
             <template #prefix><SearchOutlined /></template>
           </a-input>
-          <a-input-search v-model:value="filters.scanCode" class="asset-page__scan" allow-clear enter-button="Open QR" placeholder="Enter or paste QR code" @search="openQrCode">
-            <template #prefix><ScanOutlined /></template>
-          </a-input-search>
+          <a-button :icon="h(QrcodeOutlined)" @click="router.push({ name: 'asset-qr-scan' })">Scan QR</a-button>
           <div class="asset-page__toolbar-actions">
             <a-button @click="clearFilters">Clear filters</a-button>
             <a-button v-if="canCreateAsset" type="primary" :icon="h(PlusOutlined)" @click="router.push({ name: 'asset-create' })">Add New Asset</a-button>
@@ -215,7 +200,7 @@ onMounted(() => {
 .asset-page__filters, .asset-page__table-surface { border: 1px solid var(--bigin-border-secondary); border-radius: 8px; background: var(--bigin-surface-panel); box-shadow: var(--bigin-shadow-panel); }
 .asset-page__filters { margin-bottom: 16px; padding: 14px; }
 .asset-page__filter-topline { align-items: center; display: flex; gap: 12px; }
-.asset-page__search, .asset-page__scan { width: 224px; }
+.asset-page__search { width: 224px; }
 .asset-page__toolbar-actions { display: flex; gap: 10px; margin-left: auto; }
 .asset-page__filter-grid { display: grid; gap: 14px; grid-template-columns: repeat(5, minmax(0, 1fr)); margin-top: 16px; max-width: 860px; }
 .asset-page__filter-grid label { display: grid; gap: 5px; color: var(--bigin-text-primary); font-size: 12px; font-weight: 600; }
@@ -227,6 +212,6 @@ onMounted(() => {
 .asset-page__asset-cell :deep(.ant-avatar) { flex: 0 0 auto; background: var(--bigin-surface-primary-soft); border: 1px solid var(--bigin-border-secondary); }
 .asset-page__qr-icon { color: var(--bigin-icon-default); font-size: 16px; }
 .asset-page__footer { align-items: center; display: flex; justify-content: space-between; padding: 12px 14px; }
-@media (max-width: 900px) { .asset-page__filter-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); max-width: none; }.asset-page__filter-topline { align-items: stretch; flex-wrap: wrap; }.asset-page__toolbar-actions { margin-left: 0; }.asset-page__search, .asset-page__scan { flex: 1 1 220px; } }
+@media (max-width: 900px) { .asset-page__filter-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); max-width: none; }.asset-page__filter-topline { align-items: stretch; flex-wrap: wrap; }.asset-page__toolbar-actions { margin-left: 0; }.asset-page__search { flex: 1 1 220px; } }
 @media (max-width: 640px) { .asset-page { padding: 12px; }.asset-page__filter-grid { grid-template-columns: 1fr; }.asset-page__toolbar-actions { width: 100%; }.asset-page__toolbar-actions :deep(.ant-btn) { flex: 1; }.asset-page__footer { align-items: flex-start; flex-direction: column; gap: 12px; } }
 </style>

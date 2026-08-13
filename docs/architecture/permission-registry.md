@@ -4,7 +4,7 @@
 Bảng `permissions` là dữ liệu runtime và phải được migration/seed đồng bộ với danh
 sách này. Không có wildcard; mỗi dòng là một code độc lập.
 
-Snapshot chuẩn hiện tại: **50 permission codes**.
+Snapshot chuẩn hiện tại: **51 permission codes**.
 
 ## Dashboard
 
@@ -44,7 +44,6 @@ asset.view
 asset.create
 asset.update
 asset.delete
-asset.qr_generate
 asset.checkout
 asset.checkin
 
@@ -81,24 +80,34 @@ user.delete
 ## Roles and role assignment
 
 role.view
-role.assign
-
-## Deferred role management — not implemented
-
-The current phase does not expose `role.create`, `role.update`, or
-`role.delete`. Roles are fixed system data.
-
 role.create
 role.update
+role.assign
+
+`role.delete` is intentionally not implemented in this version.
+
 role.delete
 
-## Deferred permission management — not implemented
+## Permission catalogue
+
+permission.view
+
+Permission records are read-only in the application. The following write codes remain deferred and are not exposed by routes:
 
 The current phase does not expose `permission.create`, `permission.update`, or
 `permission.delete`. Permission records and `role_permissions` are managed by
 seed/migration.
 
-permission.view
 permission.create
 permission.update
 permission.delete
+
+## Registration review
+
+user_registration.review
+
+## Essential administration set
+
+The lockout guard uses the explicit set below and never a role name:
+
+`user.view`, `user.create`, `user.update`, `user.delete`, `role.view`, `role.create`, `role.update`, `role.assign`, `permission.view`, `user_registration.review`.

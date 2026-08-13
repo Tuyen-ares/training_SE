@@ -19,14 +19,14 @@ User đã đăng nhập và có permission xem asset.
 ## Main Flow
 
 1. User mở `SCR-F02-01` từ navigation, Dashboard hoặc Create Borrow Request.
-2. User search/filter danh sách hoặc quét/nhập QR.
+2. User search/filter danh sách hoặc mở `SCR-F02-05` để quét QR bằng camera hoặc tải ảnh QR lên.
 3. Hệ thống hiển thị asset phù hợp; selection mode chỉ cho phép chọn `AVAILABLE`.
 4. User mở `SCR-F02-02` để xem định danh, model, department, QR và status.
 5. Nếu đang tạo phiếu, user chọn asset rồi trở về `SCR-F03-01` với selection đã giữ trong form.
 
 ## Alternative Flows
 
-- QR hợp lệ dẫn trực tiếp tới Asset Detail.
+- QR URL hợp lệ từ camera hoặc ảnh dẫn tới `/qr/:qrCode`; route yêu cầu login rồi dẫn tới Asset Detail.
 - User có permission phù hợp mở Asset Form hoặc Catalog từ khu vực asset.
 
 ## Error / Invalid States

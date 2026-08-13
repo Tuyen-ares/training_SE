@@ -241,14 +241,6 @@ export class PrismaAssetRepository implements IAssetRepository {
     return department !== null;
   }
 
-  async updateQrCode(id: number, qrCode: string): Promise<Asset> {
-    try {
-      return await this.prisma.assets.update({ where: { id }, data: { qr_code: qrCode } });
-    } catch (error) {
-      throw toAssetPersistenceError(error);
-    }
-  }
-
   async transitionStatus(
     assetIds: number[],
     expectedStatus: AssetStatus,

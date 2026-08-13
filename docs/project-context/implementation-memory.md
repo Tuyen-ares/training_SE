@@ -10,6 +10,13 @@ giá trị lâu dài cho việc đọc, triển khai và debug project.
 - Flat RBAC: Admin không tự động inherit Manager nếu chưa được gán permission.
 - Approval không đồng nghĩa với Handover.
 - Asset chỉ chuyển sang `BORROWED` khi handover thực tế được xác nhận.
+- Approval workflow chỉ chịu trách nhiệm duyệt và giữ chỗ; fulfillment workflow
+  mới chịu trách nhiệm bàn giao và nhận trả.
+- Approval Queue và Fulfillment Queue dùng queue API và permission độc lập:
+  handover dùng `asset.checkout`, return dùng `asset.checkin`; không yêu cầu
+  `borrow_request.view_all` hoặc `borrow_history.view_all` cho hai queue vận hành.
+- Không cache trạng thái queue ở frontend; queue phải phản ánh trạng thái mới
+  nhất sau các thao tác cạnh tranh hoặc xử lý từ người dùng khác.
 - Asset `RESERVED` có thể được giải phóng khi request được thu hồi hợp lệ trước handover.
 - `borrow_histories` là nguồn xác định handover/return thực tế trong MVP.
 - Normal return cập nhật history và asset state trong cùng workflow transaction.
@@ -17,6 +24,7 @@ giá trị lâu dài cho việc đọc, triển khai và debug project.
 - Confirm Issue mới chuyển issue sang `CONFIRMED` và asset sang `DAMAGED`.
 - Repair thất bại không tự chuyển asset sang `RETIRED`.
 - QR dùng để identify/lookup asset, không phải nghiệp vụ inventory/stocktake.
+- `qr_code` immutable sau khi tạo asset; QR image chứa frontend URL `/qr/{qr_code}`. Camera lifecycle thuộc Asset QR Scan screen, không thuộc Asset List.
 - `department_id` là organizational ownership, không phải location.
 - Inventory/stocktake không thuộc MVP.
 - Future design nằm trong [`../future/`](../future/) và không được tự implement.
@@ -87,6 +95,28 @@ Các ghi chú deployment trên chỉ là context; khi sửa phải kiểm tra lo
 - **Status:** Future candidate; không implement từ future docs.
 
 ## Important Recent Decisions
+
+### 2026-08-13 — Tách Approval Queue khỏi Fulfillment Queue
+
+**Feature:** F04/F05.
+
+**Decision:** Approval Queue chỉ approve/reject. Màn `Handover & Return` giữ một
+route với hai tab `Pending Handover` và `Pending Return`; mỗi tab có read API và
+permission vận hành riêng, còn các mutation handover/return hiện tại được giữ
+nguyên. Approval Detail chỉ điều hướng sang tab handover khi user có
+`asset.checkout`.
+
+**Reason:** Tách rõ quyết định giữ chỗ khỏi việc bàn giao/nhận trả thực tế,
+giảm việc một queue gọi endpoint vượt permission và làm thứ tự xử lý vận hành
+minh bạch hơn.
+
+**Affected areas:** Borrow lifecycle repository/service/controller/routes,
+frontend fulfillment and approval views, API contracts and navigation/screen
+specification.
+
+**Verification:** Backend typecheck and borrow lifecycle integration coverage;
+frontend production build; queue API ordering, permission and state-transition
+checks.
 
 ### 2026-08-11 — Registration requests tách khỏi users và guard essential admin theo permission
 

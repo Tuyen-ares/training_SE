@@ -156,20 +156,37 @@ transition, not a database delete.
 
 ## QR Lookup — US-F02-08
 
+The QR identifier is immutable after asset creation. The MVP does not expose a
+QR regeneration endpoint or `asset.qr_generate` permission. The printed QR
+payload is a frontend entry URL in the form
+`{VITE_PUBLIC_APP_URL}/qr/{qr_code}`. The `/qr/:qrCode` path is a frontend-only
+authenticated entry point and never exposes asset data to guests.
+
 `GET /api/assets/by-qr/:qrCode`
+
+In local Vite development, QR generation and parsing use the browser's current
+origin, so the flow works on `localhost:5173`, `localhost:5174`, or another
+Vite port without changing the QR helper. In production, the frontend must
+define `VITE_PUBLIC_APP_URL` with the deployed frontend origin (for example
+`https://training-se-frontend.vercel.app`). Production never falls back to
+localhost when this variable is missing or invalid.
 
 Permission: `asset.view`.
 
-The client trims an entered/pasted QR identifier, URL-encodes it, calls this
-endpoint and opens `/assets/:id` from the returned `id`.
+The dedicated scanner decodes the frontend QR URL and extracts `qrCode`. Asset
+List only links to the dedicated scanner; it does not accept pasted QR values.
+The client trims and URL-encodes the extracted identifier, calls this endpoint
+and opens `/assets/:id` from the returned `id`.
 
 Success: `200` with the same Asset Detail DTO documented in
 `asset-read-and-report-issue.md`. Missing QR returns `404`; blank/invalid path
 input returns `400`; missing permission returns `403`.
 
 Lookup is read-only: it creates no inventory/stocktake record and never changes
-asset status. A future camera or hardware scanner must reuse this endpoint by
-supplying the decoded identifier; it must not introduce a second lookup contract.
+asset status. The dedicated Asset QR Scan screen can decode the frontend URL
+from a camera or from an uploaded image, then reuses this endpoint. Image
+decoding happens in the browser; the image is not uploaded or persisted. Asset
+List only links to the scanner and does not own the camera or image lifecycle.
 
 ## Evidence plan
 
@@ -182,4 +199,5 @@ supplying the decoded identifier; it must not introduce a second lookup contract
 - `US-F02-07`: unit and API/DB tests for every allowed and rejected source state,
   persistence result, not-found and forbidden.
 - `US-F02-08`: API/DB tests for found/not-found/forbidden and assertion that lookup
-  leaves status unchanged; frontend manual check for paste -> detail navigation.
+  leaves status unchanged; frontend manual checks for camera and image upload ->
+  QR entry -> detail navigation, including the unauthenticated redirect-back flow.

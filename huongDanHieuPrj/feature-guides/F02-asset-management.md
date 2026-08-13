@@ -20,11 +20,13 @@ F02 cung cấp danh sách, chi tiết, lọc, CRUD asset, catalog, QR lookup và
 
 ## Minimum Reading Path
 
-1. [AssetListView.vue](../../apps/frontend/src/views/assets/AssetListView.vue) – `load`, `applyFilters`, `clearFilters`.
-2. [asset.service.js](../../apps/frontend/src/services/asset.service.js) – `listAssets`, `getAsset`, `createAsset`, `updateAsset`, `retireAsset`, `findAssetByQr`.
-3. [asset.routes.ts](../../apps/backend/src/routes/asset.routes.ts).
-4. [assets.service.ts](../../apps/backend/src/services/assets.service.ts) – `getReadPage`, `getReadDetail`, `create`, `update`, `retire`.
-5. [asset-api.integration.test.ts](../../apps/backend/tests/asset-api.integration.test.ts).
+1. [AssetListView.vue](../../apps/frontend/src/views/assets/AssetListView.vue) – `load`, `applyFilters`, `clearFilters`, `openQrCode`.
+2. [AssetQrScanView.vue](../../apps/frontend/src/views/assets/AssetQrScanView.vue) và [AssetQrScanner.vue](../../apps/frontend/src/components/assets/AssetQrScanner.vue) – route entry và camera lifecycle `start`, `stop`, `reset`.
+3. [asset-qr.js](../../apps/frontend/src/utils/asset-qr.js) – `buildAssetQrUrl`, `generateAssetQr`, `parseAssetQrPayload`, download/print label.
+4. [asset.service.js](../../apps/frontend/src/services/asset.service.js) – `listAssets`, `getAsset`, `createAsset`, `updateAsset`, `retireAsset`, `findAssetByQr`.
+5. [asset.routes.ts](../../apps/backend/src/routes/asset.routes.ts) và [asset.controller.ts](../../apps/backend/src/controllers/asset.controller.ts).
+6. [assets.service.ts](../../apps/backend/src/services/assets.service.ts) – `getReadPage`, `getReadDetail`, `create`, `update`, `retire`, `getReadDetailByQr`.
+7. [asset-api.integration.test.ts](../../apps/backend/tests/asset-api.integration.test.ts).
 
 ## User Story/action chính
 
@@ -48,7 +50,7 @@ F02 cung cấp danh sách, chi tiết, lọc, CRUD asset, catalog, QR lookup và
 | `US-F02-05` Cập nhật asset | `AssetFormView:load/submit` → `getAsset/updateAsset` → `GET/PATCH /api/assets/:id` → `asset.routes.ts` permission `asset.view`/`asset.update` → `AssetController.getById/update` → `AssetService.update` → `PrismaAssetRepository` → Prisma `Asset` → DB `assets` → `asset.service.test.ts` | KỸ: field ownership/status protection |
 | `US-F02-06` Catalog | `AssetCatalogView:load/openDialog/saveDialog` → `listCatalog/createCatalogItem/updateCatalogItem` → `/brands`, `/asset-types`, `/asset-models` → catalog route permissions `*.view/create/update` → catalog controllers → `BrandService/AssetTypeService/AssetModelService` → `PrismaBrandRepository/PrismaAssetTypeRepository/PrismaAssetModelRepository` → Prisma `Brand/AssetType/AssetModel` → DB catalog tables → `asset-api.integration.test.ts` | LƯỚT: generic CRUD; KỸ: foreign keys |
 | `US-F02-07` Retire | `AssetDetailView:confirmRetire` → `retireAsset` → `POST /api/assets/:id/retire` → `asset.routes.ts` permission `asset.delete` → `AssetController.retire` → `AssetService.retire` → `PrismaAssetRepository` → Prisma `Asset.status` → DB `assets.status` → `asset.service.test.ts` | KỸ: allowed states |
-| `US-F02-08` QR lookup | `AssetListView:openQrCode` → `findAssetByQr` → `GET /api/assets/by-qr/:qrCode` → `asset.routes.ts` permission `asset.view` → `AssetController.getByQr` → `AssetService.getReadDetailByQr` → `PrismaAssetRepository` → Prisma `Asset.qrCode` → DB `assets.qr_code` → `asset-api.integration.test.ts` | LƯỚT: QR UI; KỸ: lookup/no mutation |
+| `US-F02-08` QR lookup | `AssetQrScanView:handleDecoded` hoặc `AssetListView:openQrCode` → `parseAssetQrPayload` → route `/qr/:qrCode` → `AssetQrEntryView` → `findAssetByQr` → `GET /api/assets/by-qr/:qrCode` → `asset.routes.ts` permission `asset.view` → `AssetController.getByQr` → `AssetService.getReadDetailByQr` → `PrismaAssetRepository` → Prisma `Asset.qrCode` → DB `assets.qr_code` → `asset-api.integration.test.ts` | KỸ: URL-only payload, auth redirect-back, lookup/no mutation; LƯỚT: camera library |
 
 ## SPEC EXPECTS
 
@@ -56,9 +58,10 @@ F02 có đọc, tạo/cập nhật, catalog, retire và QR lookup. Không có pu
 
 ## CURRENT CODE
 
-Các action trên có route, service và backend test. FE có `AssetListView`, `AssetDetailView`, `AssetFormView`, `AssetCatalogView`.
+Các action trên có route, service và backend test. FE có `AssetListView`, `AssetDetailView`, `AssetFormView`, `AssetCatalogView`, `AssetQrScanView` và QR label drawer. QR code được sinh một lần ở backend khi tạo asset; FE chỉ render URL, không regenerate.
 
 ## GAPS
 
-- Camera scan QR không phải scope; code chỉ lookup theo chuỗi QR.
+- Camera scan nằm ở `AssetQrScanView`; Asset List chỉ điều hướng tới scanner hoặc nhận URL được dán.
+- `VITE_PUBLIC_APP_URL` phải được cấu hình đúng origin frontend ở local/deployment để QR mở đúng ứng dụng.
 - Không có delete catalog theo thiết kế hiện tại; evidence nằm trong asset API integration test.

@@ -30,7 +30,6 @@ export interface IAssetRepository {
   findByQrCode(qrCode: string): Promise<Asset | null>;
   assetModelExists(assetModelId: number): Promise<boolean>;
   departmentExists(departmentId: number): Promise<boolean>;
-  updateQrCode(id: number, qrCode: string): Promise<Asset>;
   transitionStatus(
     assetIds: number[],
     expectedStatus: AssetStatus,

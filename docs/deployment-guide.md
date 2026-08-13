@@ -122,6 +122,7 @@ Thêm Environment Variable trên Vercel:
 
 ```env
 VITE_API_BASE_URL=https://<backend-render>.onrender.com/api
+VITE_PUBLIC_APP_URL=https://<ten-app>.vercel.app
 ```
 
 Deploy xong, copy URL frontend dạng:

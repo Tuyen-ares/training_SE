@@ -11,6 +11,8 @@
 | FR-F01-05 | Hệ thống phải kiểm tra permission trước khi thực hiện hành vi được bảo vệ. |
 | FR-F01-06 | Hệ thống phải cho phép người dùng gửi yêu cầu đăng ký với thông tin cơ bản mà không tự chọn role hoặc department. |
 | FR-F01-07 | Hệ thống phải cho phép user có permission `user_registration.review` duyệt hoặc từ chối yêu cầu đăng ký; khi duyệt, hệ thống tạo tài khoản active và gán role/department theo quyết định review. |
+| FR-F01-08 | Hệ thống phải bảo đảm mỗi email/phone chỉ có tối đa một request `PENDING` bằng database constraint an toàn khi concurrent. |
+| FR-F01-09 | Approve/reject phải clear password hash; approve phải tạo user, userCode, department, initial roles và link createdUserId trong một transaction. |
 
 ## F02 – Asset Management
 
@@ -24,7 +26,7 @@
 | FR-F02-06 | Hệ thống phải hỗ trợ xem, tạo và cập nhật brand/type/model ở mức MVP. |
 | FR-F02-07 | Hệ thống phải cho phép lọc asset theo thông tin và trạng thái được hỗ trợ. |
 | FR-F02-08 | Hệ thống phải hỗ trợ ngừng sử dụng asset khi user có permission phù hợp và asset không ở `RESERVED` hoặc `BORROWED`. |
-| FR-F02-09 | Hệ thống phải cho phép tra cứu asset bằng QR và mở trang chi tiết khi QR hợp lệ. |
+| FR-F02-09 | Hệ thống phải cho phép quét QR URL bất biến của asset tại màn hình QR Scan và mở trang chi tiết khi QR hợp lệ; QR không tạo inventory session và không đổi trạng thái asset. |
 
 ## F03 – Borrow Request
 
@@ -91,3 +93,8 @@
 | FR-F08-05 | Hệ thống phải hiển thị các role có sẵn phục vụ việc phân vai trò. |
 | FR-F08-06 | Hệ thống phải cho phép Admin có quyền gán hoặc gỡ role có sẵn của user. |
 | FR-F08-07 | Hệ thống phải từ chối thao tác quản trị khi người thực hiện thiếu permission tương ứng. |
+| FR-F08-08 | Hệ thống phải cho phép list/detail role và hiển thị type, permission count, user count cùng permission descriptions. |
+| FR-F08-09 | Hệ thống phải cho phép tạo custom role với ít nhất một existing permission. |
+| FR-F08-10 | Hệ thống phải cho phép rename custom role và replace-set permission; system role name không được đổi. |
+| FR-F08-11 | Hệ thống chỉ cho đọc permission catalogue để cấu hình role, không cho permission CRUD. |
+| FR-F08-12 | Hệ thống phải rollback mutation nếu không còn active user có đủ essential admin permissions. |

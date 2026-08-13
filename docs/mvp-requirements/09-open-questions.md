@@ -11,7 +11,7 @@ Các quyết định dưới đây đã được chốt và phải được ph�
 | OQ-03 | Người đang mượn được báo issue cho asset mình đang mượn; user có permission quản lý/xử lý issue được báo trong phạm vi được cấp; không phải mọi user đăng nhập. | F06, BR-ISS-01 |
 | OQ-04 | Sửa FAILED chuyển asset IN_REPAIR → DAMAGED; không tự động chuyển RETIRED. | F06, BR-ISS-07 |
 | OQ-05 | Nhân viên được xem asset đủ điều kiện mượn trên toàn công ty. department_id chỉ thể hiện đơn vị quản lý, không giới hạn visibility trong MVP. | F02, BR-AST-08 |
-| OQ-06 | QR thuộc F02 ở mức nhận diện/tra cứu và có thể mở trang chi tiết asset. Không có QR inventory, stocktake hoặc check-in/check-out workflow. | F02, BR-AST-09 |
+| OQ-06 | Đã chốt: QR immutable sau khi tạo, payload là frontend URL `/qr/{qr_code}`; route yêu cầu đăng nhập rồi dùng API tra cứu để mở Asset Detail. Không có QR inventory, stocktake hoặc check-in/check-out workflow. | F02, BR-AST-09 |
 | OQ-07 | Không hỗ trợ xóa brand/type/model đang được tham chiếu; MVP chỉ hỗ trợ tạo/xem/cập nhật danh mục ở mức cần thiết. | F02, BR-AST-10 |
 | OQ-08 | Không có feature self-service profile; thông tin user do Admin quản lý. | F08 |
 | OQ-09 | Chỉ user có permission quản lý asset phù hợp được chuyển RETIRED; không chuyển trực tiếp từ RESERVED hoặc BORROWED; cho phép từ AVAILABLE, DAMAGED, IN_REPAIR khi có quyết định không còn sử dụng. | F02, BR-ISS-06 |

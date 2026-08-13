@@ -213,20 +213,6 @@ class AssetController extends BaseController<Asset, CreateAssetDto, UpdateAssetD
     }
   };
 
-  regenerateQr = async (req: Request, res: Response): Promise<void> => {
-    const id = Number(req.params.id);
-    if (!Number.isInteger(id) || id <= 0) {
-      return ApiResponse.badRequest(res, { id: ['Asset id must be a positive integer'] });
-    }
-    try {
-      const asset = await this.assetService.regenerateQr(id);
-      if (!asset) return ApiResponse.notFound(res, 'Asset not found');
-      return ApiResponse.ok(res, { id: asset.id, qrCode: asset.qr_code });
-    } catch (error) {
-      if (error instanceof ConflictError) return ApiResponse.conflict(res, error.message);
-      return ApiResponse.internalError(res);
-    }
-  };
 }
 
 export default AssetController;

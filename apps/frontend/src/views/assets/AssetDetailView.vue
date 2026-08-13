@@ -9,6 +9,7 @@ import ReportIssueDialog from '../../components/assets/ReportIssueDialog.vue'
 import StatusTag from '../../components/common/StatusTag.vue'
 import { statusLabel } from '../../constants/status-meta'
 import { DEFAULT_ASSET_IMAGE } from '../../constants/media'
+import { downloadAssetQr, generateAssetQr, printAssetQr } from '../../utils/asset-qr'
 import WorkspaceLayout from '../../components/layout/WorkspaceLayout.vue'
 
 const route = useRoute()
@@ -22,6 +23,9 @@ const forbidden = ref(false)
 const showReportDialog = ref(false)
 const retiring = ref(false)
 const qrOpen = ref(false)
+const qrImage = ref('')
+const qrLoading = ref(false)
+const qrError = ref('')
 const canEdit = computed(() => authStore.hasPermission('asset.update'))
 const canRequestRetire = computed(() => authStore.hasPermission('asset.delete'))
 const canRetireStatus = computed(() => ['AVAILABLE', 'DAMAGED', 'IN_REPAIR'].includes(asset.value?.status))
@@ -60,6 +64,19 @@ function confirmRetire() {
     },
   })
 }
+async function openQr() {
+  qrOpen.value = true
+  qrError.value = ''
+  qrLoading.value = true
+  try { qrImage.value = await generateAssetQr(asset.value) } catch (error) { qrError.value = error.message || 'The QR image could not be generated.' } finally { qrLoading.value = false }
+}
+function downloadQr() {
+  if (asset.value && qrImage.value) downloadAssetQr(asset.value, qrImage.value)
+}
+function printQr() {
+  if (!asset.value || !qrImage.value) return
+  try { printAssetQr(asset.value, qrImage.value) } catch (error) { qrError.value = error.message || 'The QR label could not be printed.' }
+}
 watch(() => route.params.id, loadAsset)
 onMounted(loadAsset)
 </script>
@@ -88,7 +105,7 @@ onMounted(loadAsset)
           </div>
           <a-space>
             <StatusTag :status="asset.status" />
-            <a-button :icon="h(QrcodeOutlined)" @click="qrOpen = true">Asset QR</a-button>
+            <a-button :icon="h(QrcodeOutlined)" @click="openQr">Asset QR</a-button>
             <a-button v-if="canEdit" :icon="h(EditOutlined)" @click="router.push({ name: 'asset-edit', params: { id: asset.id } })">Edit</a-button>
             <a-tooltip v-if="canRequestRetire" :title="canRetireStatus ? 'Retire this asset' : `Assets in ${statusLabel(asset.status)} cannot be retired`">
               <span><a-button danger :disabled="!canRetireStatus" :loading="retiring" :icon="h(DeleteOutlined)" @click="confirmRetire">Retire</a-button></span>
@@ -124,13 +141,25 @@ onMounted(loadAsset)
       </template>
 
       <ReportIssueDialog v-if="showReportDialog && asset" :asset-id="asset.id" @close="showReportDialog = false" @reported="issueReported" />
-      <a-drawer v-if="asset" v-model:open="qrOpen" title="Asset Tag QR Code" width="360">
-        <div class="qr-drawer"><QrcodeOutlined /><strong>{{ asset.qrCode }}</strong><span>{{ asset.serialNumber || asset.model.name }}</span><a-button type="primary" block>Print QR Label</a-button></div>
+      <a-drawer v-if="asset" v-model:open="qrOpen" title="Asset QR Label" width="360">
+        <div class="qr-drawer">
+          <a-spin v-if="qrLoading" />
+          <a-alert v-else-if="qrError" type="error" show-icon :message="qrError" />
+          <template v-else-if="qrImage">
+            <img class="qr-drawer__image" :src="qrImage" alt="Asset QR Code" />
+            <strong>{{ asset.serialNumber || asset.model.name }}</strong>
+            <span>{{ asset.model.name }}</span>
+            <a-space direction="vertical" block>
+              <a-button type="primary" block @click="downloadQr">Download QR Label</a-button>
+              <a-button block @click="printQr">Print QR Label</a-button>
+            </a-space>
+          </template>
+        </div>
       </a-drawer>
     </main>
   </WorkspaceLayout>
 </template>
 
 <style scoped>
-.asset-page-content { max-width: 1320px; width: 100%; margin: 0 auto; padding: 20px 24px 32px; }.back-button { padding-inline: 0; margin: 4px 0 12px; }.page-heading { display: flex; align-items: flex-start; justify-content: space-between; gap: 16px; margin-bottom: 8px; }.page-heading :deep(.ant-typography) { margin-bottom: 4px; }.detail-layout{display:grid;grid-template-columns:minmax(0,1fr) 300px;gap:18px}.asset-overview{display:grid;grid-template-columns:220px minmax(0,1fr);gap:24px}.asset-image-frame{width:220px;height:190px;display:flex;align-items:center;justify-content:center;overflow:hidden;border-radius:8px;background:var(--bigin-surface-inset)}.asset-image-frame :deep(.ant-image){width:100%;height:100%;display:flex;align-items:center;justify-content:center}.asset-image-frame :deep(.ant-image-img){width:100%;height:100%;object-fit:contain}.status-card{align-self:start}.status-card p{color:var(--bigin-text-tertiary);margin-top:12px}.qr-drawer{display:grid;gap:18px;text-align:center}.qr-drawer :deep(.anticon){font-size:160px}.qr-drawer strong{word-break:break-all}.qr-drawer span{color:var(--bigin-text-tertiary)}@media(max-width:800px){.detail-layout{grid-template-columns:1fr}.asset-overview{grid-template-columns:1fr}.asset-image-frame{width:100%;max-width:220px}}@media (max-width: 640px) { .asset-page-content { padding: 16px; }.page-heading { align-items: flex-start; flex-direction: column; } }
+.asset-page-content { max-width: 1320px; width: 100%; margin: 0 auto; padding: 20px 24px 32px; }.back-button { padding-inline: 0; margin: 4px 0 12px; }.page-heading { display: flex; align-items: flex-start; justify-content: space-between; gap: 16px; margin-bottom: 8px; }.page-heading :deep(.ant-typography) { margin-bottom: 4px; }.detail-layout{display:grid;grid-template-columns:minmax(0,1fr) 300px;gap:18px}.asset-overview{display:grid;grid-template-columns:220px minmax(0,1fr);gap:24px}.asset-image-frame{width:220px;height:190px;display:flex;align-items:center;justify-content:center;overflow:hidden;border-radius:8px;background:var(--bigin-surface-inset)}.asset-image-frame :deep(.ant-image){width:100%;height:100%;display:flex;align-items:center;justify-content:center}.asset-image-frame :deep(.ant-image-img){width:100%;height:100%;object-fit:contain}.status-card{align-self:start}.status-card p{color:var(--bigin-text-tertiary);margin-top:12px}.qr-drawer{display:grid;gap:18px;text-align:center}.qr-drawer__image{width:256px;height:256px;max-width:100%;object-fit:contain;margin-inline:auto}.qr-drawer strong{word-break:break-all}.qr-drawer span{color:var(--bigin-text-tertiary)}@media(max-width:800px){.detail-layout{grid-template-columns:1fr}.asset-overview{grid-template-columns:1fr}.asset-image-frame{width:100%;max-width:220px}}@media (max-width: 640px) { .asset-page-content { padding: 16px; }.page-heading { align-items: flex-start; flex-direction: column; } }
 </style>

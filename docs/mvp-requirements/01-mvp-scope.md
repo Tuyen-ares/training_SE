@@ -22,4 +22,4 @@
 - Tự chọn role khi đăng ký; role được reviewer gán sau khi duyệt.
 - Bảng handover hoặc event-history mới ngoài baseline.
 
-QR hiện là thuộc tính nhận diện asset. Việc quét QR để mở chi tiết vẫn là câu hỏi mở; không được hiểu thành module kiểm kê.
+QR là thuộc tính nhận diện asset. QR immutable sau khi tạo và chứa frontend entry URL để mở tra cứu asset; không được hiểu thành module kiểm kê.
