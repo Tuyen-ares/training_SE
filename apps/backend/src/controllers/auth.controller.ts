@@ -1,18 +1,10 @@
 import type { CookieOptions, Request, Response } from 'express';
 import { z } from 'zod';
-import type { LoginInputDto, RegisterInputDto } from '@/models/auth.model.js';
+import type { LoginInputDto } from '@/models/auth.model.js';
 import type { AuthService } from '@/services/auth.service.js';
 import { AuthError } from '@/shared/app-error.js';
 import { ApiResponse } from '@/shared/api-response.js';
 import { parseRequestBody } from '@/shared/request-validation.js';
-
-const registerSchema: z.ZodType<RegisterInputDto> = z.strictObject({
-  departmentId: z.number().int().positive(),
-  name: z.string().min(1).max(30),
-  password: z.string().min(6).max(72),
-  email: z.email().max(40),
-  phone: z.string().min(1).max(10),
-});
 
 const loginSchema: z.ZodType<LoginInputDto> = z.strictObject({
   email: z.email().max(40),
@@ -44,31 +36,6 @@ function clearRefreshTokenCookie(res: Response): void {
 
 export default class AuthController {
   constructor(private readonly service: AuthService) {}
-
-  handleRegister = async (req: Request, res: Response): Promise<void> => {
-    const parsed = parseRequestBody(registerSchema, req.body);
-    if (parsed.success === false) {
-      return ApiResponse.badRequest(res, parsed.errors);
-    }
-
-    try {
-      await this.service.register(parsed.data);
-      return ApiResponse.created(res, { message: 'Register successfully' });
-    } catch (error) {
-      if (error instanceof AuthError) {
-        if (error.code === 'EMAIL_IN_USE') {
-          return ApiResponse.conflict(res, 'Email already in use');
-        }
-        if (error.code === 'PHONE_IN_USE') {
-          return ApiResponse.conflict(res, 'Phone number already in use');
-        }
-        if (error.code === 'INVALID_DEPARTMENT') {
-          return ApiResponse.badRequest(res, { departmentId: ['Department does not exist'] });
-        }
-      }
-      return ApiResponse.internalError(res);
-    }
-  };
 
   handleLogin = async (req: Request, res: Response): Promise<void> => {
     const parsed = parseRequestBody(loginSchema, req.body);

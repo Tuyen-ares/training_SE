@@ -26,9 +26,6 @@ export class AssetIssueError extends Error {
 }
 
 export type AuthErrorCode =
-  | 'EMAIL_IN_USE'
-  | 'PHONE_IN_USE'
-  | 'INVALID_DEPARTMENT'
   | 'INVALID_CREDENTIALS'
   | 'INVALID_REFRESH_TOKEN'
   | 'REFRESH_TOKEN_REUSED';
@@ -56,13 +53,37 @@ export class UserError extends Error {
 
 export type RbacErrorCode =
   | 'INVALID_ROLE_SET'
+  | 'INVALID_PERMISSION_SET'
   | 'DEFAULT_ROLE_NOT_FOUND'
-  | 'USER_NOT_FOUND';
+  | 'USER_NOT_FOUND'
+  | 'ROLE_NOT_FOUND'
+  | 'ROLE_NAME_IN_USE'
+  | 'SYSTEM_ROLE_RENAME_FORBIDDEN'
+  | 'ESSENTIAL_ADMIN_REQUIRED'
+  | 'ESSENTIAL_PERMISSION_MISSING';
 
 export class RbacError extends Error {
   constructor(public readonly code: RbacErrorCode) {
     super(code);
     this.name = 'RbacError';
+  }
+}
+
+export type RegistrationErrorCode =
+  | 'EMAIL_IN_USE'
+  | 'PHONE_IN_USE'
+  | 'PENDING_EMAIL_EXISTS'
+  | 'PENDING_PHONE_EXISTS'
+  | 'REQUEST_NOT_FOUND'
+  | 'REQUEST_ALREADY_REVIEWED'
+  | 'INVALID_DEPARTMENT'
+  | 'INVALID_ROLE_SET'
+  | 'PASSWORD_HASH_MISSING';
+
+export class RegistrationError extends Error {
+  constructor(public readonly code: RegistrationErrorCode) {
+    super(code);
+    this.name = 'RegistrationError';
   }
 }
 

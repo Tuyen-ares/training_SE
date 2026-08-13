@@ -14,10 +14,12 @@ tôi muốn **gán hoặc gỡ các role đã có cho user**,
 - AC-US-F08-05-04: Gán lại cùng role không tạo quan hệ trùng.
 - AC-US-F08-05-05: Thay đổi role không tạo role hoặc permission code mới.
 - AC-US-F08-05-06: Admin không tự nhận quyền nghiệp vụ ngoài permission của các role được gán.
+- AC-US-F08-05-07: Replace-set phải giữ ít nhất một role và rollback nếu role không hợp lệ hoặc làm mất essential admin invariant.
+- AC-US-F08-05-08: Effective permissions mới được phản ánh ở lần login hoặc refresh tiếp theo.
 
 ## Business Rules áp dụng
 
-`BR-RBAC-01`, `BR-RBAC-02`, `BR-RBAC-03`, `BR-RBAC-04`.
+`BR-RBAC-01..07`.
 
 ## Functional Requirements liên quan
 

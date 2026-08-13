@@ -63,7 +63,7 @@ Guest; user có permission `user_registration.review`.
 1. Guest mở `SCR-SYS-03` từ Login và nhập họ tên, email, số điện thoại, mật khẩu.
 2. Guest gửi form mà không chọn role hoặc department.
 3. Hệ thống tạo yêu cầu `PENDING` và trả về thông báo chờ xét duyệt; guest không nhận phiên đăng nhập.
-4. Reviewer mở queue xét duyệt, chọn department hoặc để trống và chọn role có sẵn hoặc giữ role mặc định `employee`.
+4. Reviewer mở queue xét duyệt, bắt buộc chọn department và chọn nhiều role có sẵn hoặc giữ role mặc định `employee`.
 5. Reviewer duyệt hoặc từ chối. Chỉ yêu cầu được duyệt mới tạo account active có thể đăng nhập.
 
 ## Error / Invalid States
@@ -74,4 +74,4 @@ Guest; user có permission `user_registration.review`.
 
 ## Related Screens
 
-`SCR-SYS-01`, `SCR-SYS-03`; registration review queue sẽ được bổ sung trong F08 khi backend workflow được triển khai.
+`SCR-SYS-01`, `SCR-SYS-03`, `SCR-F08-03`, `SCR-F08-04`.

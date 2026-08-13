@@ -10,8 +10,7 @@ import type {
 import { AuthService } from '../src/services/auth.service.js';
 import type { SessionService } from '../src/services/session.service.js';
 import { TokenService } from '../src/services/token.service.js';
-import type { UserService } from '../src/services/user.service.js';
-import { AuthError, UserError } from '../src/shared/app-error.js';
+import { AuthError } from '../src/shared/app-error.js';
 import { hashPassword } from '../src/shared/security/password-hasher.js';
 
 process.env.JWT_SECRET = 'test-access-secret-that-is-long-enough';
@@ -76,10 +75,7 @@ class MemoryRefreshTokenRepository implements IRefreshTokenRepository {
   }
 }
 
-async function createAuthHarness(
-  isActive = true,
-  userServiceOverride?: UserService,
-) {
+async function createAuthHarness(isActive = true) {
   const user: AuthUserRecord = {
     id: 1,
     userCode: 'BI26001',
@@ -115,7 +111,6 @@ async function createAuthHarness(
     authRepository,
     refreshRepository,
     tokenService,
-    userServiceOverride ?? ({} as UserService),
     sessionService,
   );
 
@@ -148,7 +143,6 @@ test('login returns a safe user, access token and a persisted refresh session', 
   assert.equal(persisted?.isUsed, false);
   assert.equal(persisted?.isRevoked, false);
 });
-
 test('unknown email and wrong password return the same credential error', async () => {
   const harness = await createAuthHarness();
 
@@ -276,49 +270,4 @@ test('two concurrent refresh requests allow one rotation and detect reuse on the
       .every((token) => token.isRevoked),
     true,
   );
-});
-
-test('register delegates to UserService without role IDs and maps user errors', async () => {
-  let capturedInput: unknown;
-  const userService = {
-    async create(input: unknown) {
-      capturedInput = input;
-      return {};
-    },
-  } as unknown as UserService;
-  const harness = await createAuthHarness(true, userService);
-  const input = {
-    departmentId: 1,
-    name: 'Public Register',
-    password: '123456',
-    email: 'public@example.com',
-    phone: '0900000000',
-  };
-
-  await harness.service.register(input);
-  assert.deepEqual(capturedInput, input);
-  assert.equal(
-    'roleIds' in (capturedInput as Record<string, unknown>),
-    false,
-  );
-
-  const errorCases = [
-    ['EMAIL_IN_USE', 'EMAIL_IN_USE'],
-    ['PHONE_IN_USE', 'PHONE_IN_USE'],
-    ['INVALID_DEPARTMENT', 'INVALID_DEPARTMENT'],
-  ] as const;
-
-  for (const [userCode, authCode] of errorCases) {
-    const failingUserService = {
-      async create() {
-        throw new UserError(userCode);
-      },
-    } as unknown as UserService;
-    const failingHarness = await createAuthHarness(true, failingUserService);
-
-    await assert.rejects(
-      failingHarness.service.register(input),
-      (error) => error instanceof AuthError && error.code === authCode,
-    );
-  }
 });

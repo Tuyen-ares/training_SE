@@ -122,8 +122,8 @@ export class PrismaUserRepository implements IUserRepository {
     return user ? toUserResponseDto(user) : null;
   }
 
-  async emailExists(email: string, excludeUserId?: number): Promise<boolean> {
-    const user = await this.prisma.users.findFirst({
+  async emailExists(email: string, excludeUserId?: number, transaction?: PrismaTransaction): Promise<boolean> {
+    const user = await this.database(transaction).users.findFirst({
       where: {
         email,
         ...(excludeUserId ? { id: { not: excludeUserId } } : {}),
@@ -133,8 +133,8 @@ export class PrismaUserRepository implements IUserRepository {
     return user !== null;
   }
 
-  async phoneExists(phone: string, excludeUserId?: number): Promise<boolean> {
-    const user = await this.prisma.users.findFirst({
+  async phoneExists(phone: string, excludeUserId?: number, transaction?: PrismaTransaction): Promise<boolean> {
+    const user = await this.database(transaction).users.findFirst({
       where: {
         phone,
         ...(excludeUserId ? { id: { not: excludeUserId } } : {}),
@@ -144,8 +144,8 @@ export class PrismaUserRepository implements IUserRepository {
     return user !== null;
   }
 
-  async departmentExists(departmentId: number): Promise<boolean> {
-    const department = await this.prisma.departments.findUnique({
+  async departmentExists(departmentId: number, transaction?: PrismaTransaction): Promise<boolean> {
+    const department = await this.database(transaction).departments.findUnique({
       where: { id: departmentId },
       select: { id: true },
     });

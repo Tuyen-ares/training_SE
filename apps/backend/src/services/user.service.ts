@@ -107,11 +107,15 @@ export class UserService {
     };
 
     return this.prisma.$transaction(async (transaction) => {
+      if (roleIds) {
+        await this.rbacService.lockEssentialAdminGuard(transaction);
+      }
       if (Object.keys(updateData).length > 0) {
         await this.repository.update(id, updateData, transaction);
       }
       if (roleIds) {
         await this.rbacService.assignRoles(id, roleIds, transaction);
+        await this.rbacService.assertEssentialAdminExists(transaction);
       }
 
       const user = await this.repository.findById(id, transaction);
@@ -124,11 +128,15 @@ export class UserService {
     if (!(await this.repository.findById(id))) return null;
 
     return this.prisma.$transaction(async (transaction) => {
+      if (!isActive) {
+        await this.rbacService.lockEssentialAdminGuard(transaction);
+      }
       const updated = await this.repository.setActive(id, isActive, transaction);
       if (!updated) return null;
 
       if (!isActive) {
         await this.sessionService.revokeAllForUser(id, transaction);
+        await this.rbacService.assertEssentialAdminExists(transaction);
       }
 
       return this.repository.findById(id, transaction);

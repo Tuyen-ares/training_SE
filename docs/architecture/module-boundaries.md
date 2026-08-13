@@ -6,8 +6,9 @@ File này là bản đồ ownership chuẩn của hệ thống. Luật phụ thu
 | Module | Dữ liệu sở hữu | Phụ thuộc công khai |
 |---|---|---|
 | Auth | `refresh_tokens` | Users để xác thực tài khoản; RBAC để lấy quyền |
-| Users | `users`, `departments` | RBAC khi gán role; Auth khi thu hồi phiên của user |
+| Users | `users`, `departments` | RBAC khi gán role và kiểm tra essential-admin invariant; Auth khi thu hồi phiên của user |
 | RBAC | `roles`, `permissions`, `role_permissions`, `user_roles` | Users để xác nhận user |
+| Registration Review | `registration_requests` | Users để tạo account/userCode; RBAC để resolve initial roles; Departments để validate department |
 | Asset | `assets`, `asset_models`, `asset_types`, `brands` | Không |
 | Borrow | `borrow_requests`, `borrow_request_details`, `borrow_histories` | Users, Asset |
 | Asset Issues & Repair | `asset_issues` | Users, Asset |
@@ -19,6 +20,7 @@ File này là bản đồ ownership chuẩn của hệ thống. Luật phụ thu
 - Module khác gọi public service của owner, không import Prisma repository của owner.
 - Chỉ Asset service thay đổi `assets.status`.
 - Chỉ RBAC service thay đổi `user_roles` và `role_permissions`.
+- Registration Review orchestration được phép gọi Users/RBAC trong cùng transaction nhưng không tự triển khai logic cấp userCode hoặc effective permission.
 - Use case nhiều module truyền cùng `Prisma.TransactionClient` qua public service theo
   quy tắc transaction trong constitution.
 

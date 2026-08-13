@@ -84,3 +84,15 @@ Tập role của target user nhất quán với flat RBAC.
 ## Related Screens
 
 `SCR-F08-02`, `SCR-F08-01`.
+
+# FLOW-22 – Xét duyệt registration request
+
+Reviewer mở Administration > Registration Requests, lọc/search queue và mở detail. Approval bắt buộc department, hỗ trợ nhiều role và dùng employee khi không chọn; reject có reason optional. UI hiển thị outcome audit. Request đã terminal không còn action. Approve/reject lỗi không hiển thị success state và backend rollback toàn bộ.
+
+Related screens: `SCR-F08-03`, `SCR-F08-04`.
+
+# FLOW-23 – Quản lý role và permission set
+
+Admin mở Administration > Roles để xem system/custom type, permission/user count và detail. Create yêu cầu name + ít nhất một permission. Detail nhóm permission theo domain, luôn hiển thị code và English description. System name disabled; custom name editable. Save permission là replace-set và báo conflict nếu vi phạm essential-admin invariant. Không có delete action hoặc Permission Catalog route.
+
+Related screens: `SCR-F08-05`, `SCR-F08-06`.

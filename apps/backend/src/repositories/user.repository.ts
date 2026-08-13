@@ -11,9 +11,9 @@ export interface IUserRepository {
     id: number,
     transaction?: PrismaTransaction,
   ): Promise<UserResponseDto | null>;
-  emailExists(email: string, excludeUserId?: number): Promise<boolean>;
-  phoneExists(phone: string, excludeUserId?: number): Promise<boolean>;
-  departmentExists(departmentId: number): Promise<boolean>;
+  emailExists(email: string, excludeUserId?: number, transaction?: PrismaTransaction): Promise<boolean>;
+  phoneExists(phone: string, excludeUserId?: number, transaction?: PrismaTransaction): Promise<boolean>;
+  departmentExists(departmentId: number, transaction?: PrismaTransaction): Promise<boolean>;
   create(data: CreateUserData, transaction: PrismaTransaction): Promise<number>;
   update(
     id: number,

@@ -4,6 +4,7 @@ import { reactive, ref } from 'vue'
 import { useRouter } from 'vue-router'
 
 import AuthLayout from '../../components/layout/AuthLayout.vue'
+import { submitRegistration } from '../../services/registration.service'
 
 const router = useRouter()
 const isSubmitting = ref(false)
@@ -89,11 +90,21 @@ const handleRegister = async () => {
 
   isSubmitting.value = true
   try {
+    await submitRegistration({
+      name: registration.fullName.trim(),
+      email: registration.email.trim(),
+      phone: registration.phone.trim(),
+      password: registration.password,
+    })
     message.success('Your registration request is ready for review.')
     await router.push({
       name: 'login',
       query: { registration: 'pending' },
     })
+  } catch (error) {
+    if (error.status === 409) message.error(error.message)
+    else if (error.status === 400) message.error('Review the highlighted registration details.')
+    else message.error('We could not submit your request. Please try again.')
   } finally {
     isSubmitting.value = false
   }

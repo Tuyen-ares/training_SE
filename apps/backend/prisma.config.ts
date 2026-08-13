@@ -3,12 +3,24 @@
 import "dotenv/config";
 import { defineConfig } from "prisma/config";
 
+function runtimeDatabaseUrl(): string | undefined {
+  const { DB_HOST, DB_PORT, DB_USER, DB_PASSWORD, DB_NAME } = process.env;
+  if (!DB_HOST || !DB_USER || DB_PASSWORD === undefined || !DB_NAME) {
+    return process.env["DATABASE_URL"];
+  }
+  const user = encodeURIComponent(DB_USER);
+  const password = encodeURIComponent(DB_PASSWORD);
+  const database = encodeURIComponent(DB_NAME);
+  return `mysql://${user}:${password}@${DB_HOST}:${DB_PORT || "3306"}/${database}`;
+}
+
 export default defineConfig({
   schema: "prisma/schema.prisma",
   migrations: {
     path: "prisma/migrations",
   },
   datasource: {
-    url: process.env["DATABASE_URL"],
+    // Keep Prisma CLI migrations on the same database used by src/prisma.ts.
+    url: runtimeDatabaseUrl(),
   },
 });

@@ -19,10 +19,17 @@ class MemoryRbacRepository implements IRbacRepository {
   ];
   readonly users = new Set([10]);
   readonly userRoles = new Map<number, number[]>();
+  readonly permissions = [
+    { id: 1, name: 'View users', code: 'user.view', description: 'View users.' },
+  ];
 
   async findAllRoles(): Promise<RoleOptionDto[]> {
     return structuredClone(this.roles);
   }
+
+  async findRoleOptions(): Promise<RoleOptionDto[]> { return structuredClone(this.roles); }
+  async findRoleById() { return null; }
+  async findAllPermissions() { return structuredClone(this.permissions); }
 
   async findRoleIdByName(name: string): Promise<number | null> {
     return this.roles.find((role) => role.name === name)?.id ?? null;
@@ -38,6 +45,18 @@ class MemoryRbacRepository implements IRbacRepository {
 
   async replaceUserRoles(userId: number, roleIds: number[]): Promise<void> {
     this.userRoles.set(userId, [...roleIds]);
+  }
+
+  async findExistingPermissionIds(permissionIds: number[]): Promise<number[]> {
+    return permissionIds.filter((id) => this.permissions.some((permission) => permission.id === id));
+  }
+  async createRole() { return 4; }
+  async updateRoleName() {}
+  async replaceRolePermissions() {}
+  async lockEssentialPermissions(permissionCodes: string[]) { return permissionCodes.length; }
+  async hasActiveUserWithPermissions() { return true; }
+  async runInTransaction<T>(work: (transaction: PrismaTransaction) => Promise<T>): Promise<T> {
+    return work({} as PrismaTransaction);
   }
 }
 

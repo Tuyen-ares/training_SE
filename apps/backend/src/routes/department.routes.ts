@@ -1,7 +1,7 @@
 import prisma from '@/prisma.js';
 import DepartmentController from '@/controllers/department.controller.js';
 import { requireAuth } from '@/middleware/auth.middleware.js';
-import { requirePermission } from '@/middleware/rbac.middleware.js';
+import { requireAnyPermission, requirePermission } from '@/middleware/rbac.middleware.js';
 import { PrismaDepartmentRepository } from '@/repositories/department.prisma.repository.js';
 import { DepartmentService } from '@/services/department.service.js';
 import { createRestRouter } from '@/shared/rest-router.js';
@@ -14,7 +14,7 @@ export default {
   resource: 'departments',
   router: createRestRouter(controller, {
     global: [requireAuth],
-    getAll: [requirePermission('department.view')],
+    getAll: [requireAnyPermission('department.view', 'user_registration.review')],
     getById: [requirePermission('department.view')],
     create: [requirePermission('department.create')],
     update: [requirePermission('department.update')],

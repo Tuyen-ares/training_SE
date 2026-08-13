@@ -1,11 +1,3 @@
-export interface RegisterInputDto {
-  departmentId: number;
-  name: string;
-  password: string;
-  email: string;
-  phone: string;
-}
-
 export interface LoginInputDto {
   email: string;
   password: string;

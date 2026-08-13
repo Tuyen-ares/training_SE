@@ -112,6 +112,8 @@ function createHarness(options: HarnessOptions = {}) {
         };
       }
     },
+    async lockEssentialAdminGuard() {},
+    async assertEssentialAdminExists() {},
   } as unknown as RbacService;
 
   const sessionService = {

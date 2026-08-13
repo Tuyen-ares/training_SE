@@ -2,7 +2,7 @@
 
 ## Mục tiêu
 
-Quản lý vòng đời tài khoản và gán các role đã được định nghĩa sẵn.
+Quản lý vòng đời tài khoản, registration requests, role và tập permission của role.
 
 ## Actors
 
@@ -15,14 +15,17 @@ Admin có permission tương ứng.
 - US-F08-03 – Cập nhật user.
 - US-F08-04 – Kích hoạt/vô hiệu hóa user.
 - US-F08-05 – Gán/gỡ role có sẵn.
+- US-F08-06 – Xem danh sách và chi tiết role.
+- US-F08-07 – Tạo role.
+- US-F08-08 – Cập nhật role và tập permission.
 
 ## Business Rules áp dụng
 
-`BR-USR-01..03`, `BR-RBAC-01..04`, `BR-AUTH-01`.
+`BR-USR-01..03`, `BR-RBAC-01..07`, `BR-AUTH-01..08`.
 
 ## Functional Requirements liên quan
 
-`FR-F08-01..07`.
+`FR-F08-01..12`.
 
 ## Dependencies
 
@@ -30,4 +33,4 @@ F01; departments; role và permission baseline.
 
 ## Out of Scope
 
-CRUD role, CRUD permission code, role inheritance và public registration.
+Delete role, CRUD permission code và role inheritance.

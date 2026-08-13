@@ -12,7 +12,6 @@ import { AuthService } from '../src/services/auth.service.js';
 import { RbacService } from '../src/services/rbac.service.js';
 import { SessionService } from '../src/services/session.service.js';
 import { TokenService } from '../src/services/token.service.js';
-import type { UserService } from '../src/services/user.service.js';
 import {
   AuthError,
   ConflictError,
@@ -179,7 +178,6 @@ test('database constraints and conditional updates resolve races in User, Auth, 
           authRepository,
           refreshRepository,
           tokenService,
-          {} as UserService,
           sessionService,
         );
         const issued = tokenService.createRefreshToken(user.id);

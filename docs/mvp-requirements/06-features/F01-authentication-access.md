@@ -15,10 +15,11 @@ User đã có tài khoản; Hệ thống.
 - US-F01-03 – Đăng xuất.
 - US-F01-04 – Truy cập theo permission.
 - US-F01-05 – Đăng ký và xét duyệt tài khoản.
+- US-F01-06 – Xét duyệt yêu cầu đăng ký.
 
 ## Business Rules áp dụng
 
-`BR-AUTH-01..06`, `BR-RBAC-01..03`.
+`BR-AUTH-01..08`, `BR-RBAC-01..07`.
 
 ## Functional Requirements liên quan
 

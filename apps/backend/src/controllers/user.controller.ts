@@ -6,7 +6,7 @@ import type {
   UserStatusFilter,
 } from '@/models/user.model.js';
 import type { UserService } from '@/services/user.service.js';
-import { UserError } from '@/shared/app-error.js';
+import { RbacError, UserError } from '@/shared/app-error.js';
 import { ApiResponse } from '@/shared/api-response.js';
 import { parseRequestBody } from '@/shared/request-validation.js';
 
@@ -63,6 +63,9 @@ function parsePositiveId(value: string | string[] | undefined): number | null {
 }
 
 function handleUserError(error: unknown, res: Response): void {
+  if (error instanceof RbacError && error.code === 'ESSENTIAL_ADMIN_REQUIRED') {
+    return ApiResponse.conflict(res, 'At least one active user must retain all essential administration permissions');
+  }
   if (!(error instanceof UserError)) {
     return ApiResponse.internalError(res);
   }
@@ -180,8 +183,8 @@ export default class UserController {
       const user = await this.service.setStatus(id, parsed.data.isActive);
       if (!user) return ApiResponse.notFound(res, 'User not found');
       return ApiResponse.ok(res, user);
-    } catch {
-      return ApiResponse.internalError(res);
+    } catch (error) {
+      return handleUserError(error, res);
     }
   };
 }

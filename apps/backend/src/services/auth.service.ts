@@ -3,14 +3,12 @@ import type {
   LoginInputDto,
   LoginResult,
   RefreshResult,
-  RegisterInputDto,
 } from '@/models/auth.model.js';
 import type { AuthUserRecord, IAuthRepository } from '@/repositories/auth.repository.js';
 import type { IRefreshTokenRepository } from '@/repositories/refresh-token.repository.js';
 import type { SessionService } from '@/services/session.service.js';
 import { TokenService } from '@/services/token.service.js';
-import type { UserService } from '@/services/user.service.js';
-import { AuthError, UserError } from '@/shared/app-error.js';
+import { AuthError } from '@/shared/app-error.js';
 import { verifyPassword } from '@/shared/security/password-hasher.js';
 
 function toAuthenticatedUserDto(user: AuthUserRecord): AuthenticatedUserDto {
@@ -32,30 +30,8 @@ export class AuthService {
     private readonly authRepository: IAuthRepository,
     private readonly refreshTokenRepository: IRefreshTokenRepository,
     private readonly tokenService: TokenService,
-    private readonly userService: UserService,
     private readonly sessionService: SessionService,
   ) {}
-
-  async register(input: RegisterInputDto): Promise<void> {
-    try {
-      await this.userService.create({
-        departmentId: input.departmentId,
-        name: input.name,
-        password: input.password,
-        email: input.email,
-        phone: input.phone,
-      });
-    } catch (error) {
-      if (error instanceof UserError) {
-        if (error.code === 'EMAIL_IN_USE') throw new AuthError('EMAIL_IN_USE');
-        if (error.code === 'PHONE_IN_USE') throw new AuthError('PHONE_IN_USE');
-        if (error.code === 'INVALID_DEPARTMENT') {
-          throw new AuthError('INVALID_DEPARTMENT');
-        }
-      }
-      throw error;
-    }
-  }
 
   async login(input: LoginInputDto): Promise<LoginResult> {
     const user = await this.authRepository.findUserByEmail(input.email);

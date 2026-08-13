@@ -1,6 +1,7 @@
 <script setup>
 import { computed, onMounted, reactive, ref } from 'vue'
 import { EyeInvisibleOutlined, EyeOutlined, SaveOutlined } from '@ant-design/icons-vue'
+import { message, Modal } from 'ant-design-vue'
 import { useRoute, useRouter } from 'vue-router'
 
 import WorkspaceLayout from '../../components/layout/WorkspaceLayout.vue'
@@ -20,13 +21,16 @@ const submitting = ref(false)
 const errorMessage = ref('')
 const showPassword = ref(false)
 const showConfirmPassword = ref(false)
+const changingStatus = ref(false)
 const form = reactive({ name: '', email: '', phone: '', departmentId: undefined, avatarUrl: '', password: '', confirmPassword: '', roleIds: [], isActive: true })
 
-function toggleRole(roleId) {
-  const index = form.roleIds.indexOf(roleId)
-  if (index >= 0) form.roleIds.splice(index, 1)
-  else form.roleIds.push(roleId)
-}
+const roleOptions = computed(() => roles.value.map((role) => ({
+  value: role.id,
+  label: role.name.replaceAll('_', ' '),
+})))
+const canToggleStatus = computed(() => form.isActive
+  ? authStore.hasPermission('user.delete')
+  : authStore.hasPermission('user.update'))
 
 async function loadPage() {
   loading.value = true
@@ -83,6 +87,38 @@ async function submit() {
   }
 }
 
+function changeStatus(nextIsActive) {
+  if (!isEdit.value || changingStatus.value || !canToggleStatus.value) return
+  if (!nextIsActive) {
+    Modal.confirm({
+      title: 'Deactivate this user?',
+      content: 'The user will not be able to sign in. Existing business history will be preserved.',
+      okText: 'Deactivate',
+      okType: 'danger',
+      cancelText: 'Cancel',
+      onOk: () => updateStatus(nextIsActive),
+    })
+    return
+  }
+  updateStatus(nextIsActive)
+}
+
+async function updateStatus(nextIsActive) {
+  changingStatus.value = true
+  try {
+    await authStore.api(`/users/${route.params.id}/status`, {
+      method: 'PATCH',
+      body: { isActive: nextIsActive },
+    })
+    form.isActive = nextIsActive
+    message.success(nextIsActive ? 'User activated successfully.' : 'User deactivated successfully.')
+  } catch (error) {
+    message.error(error.message || 'The user status could not be changed.')
+  } finally {
+    changingStatus.value = false
+  }
+}
+
 onMounted(loadPage)
 </script>
 
@@ -115,13 +151,43 @@ onMounted(loadPage)
 
         <aside>
           <h2>{{ isEdit ? 'Role Assignment' : 'System Roles' }}</h2><p class="helper">Select one or more existing roles for this user.</p>
-          <div v-if="authStore.hasPermission('role.assign')" class="role-list">
-            <button v-for="role in roles" :key="role.id" type="button" class="role-option" :class="{ 'role-option--selected': form.roleIds.includes(role.id) }" @click="toggleRole(role.id)">
-              <span class="role-radio">{{ form.roleIds.includes(role.id) ? '●' : '○' }}</span><span><strong>{{ role.name.replaceAll('_', ' ') }}</strong><small>Use the effective permissions assigned to this role.</small></span>
-            </button>
+          <div v-if="authStore.hasPermission('role.assign')" class="role-picker">
+            <a-select
+              v-model:value="form.roleIds"
+              class="role-select"
+              mode="multiple"
+              show-search
+              option-filter-prop="label"
+              :options="roleOptions"
+              :max-tag-count="'responsive'"
+              :list-height="256"
+              placeholder="Select one or more roles"
+            />
+            <small class="role-count">{{ form.roleIds.length }} role{{ form.roleIds.length === 1 ? '' : 's' }} selected</small>
           </div>
           <a-alert v-else type="info" message="The default employee role will be assigned." />
-          <template v-if="isEdit"><a-divider /><h2>Account Status</h2><StatusTag :status="form.isActive ? 'ACTIVE' : 'INACTIVE'" /><p class="helper">Account status is changed from User Details.</p></template>
+          <section v-if="isEdit" class="account-status-section">
+            <a-divider />
+            <div class="account-status-heading">
+              <div>
+                <h2>Account Status</h2>
+                <p class="helper">Control whether this user can sign in.</p>
+              </div>
+              <StatusTag :status="form.isActive ? 'ACTIVE' : 'INACTIVE'" />
+            </div>
+            <div class="account-status-control">
+              <span>{{ form.isActive ? 'Active' : 'Inactive' }}</span>
+              <a-switch
+                :checked="form.isActive"
+                :disabled="!canToggleStatus"
+                :loading="changingStatus"
+                checked-children="Active"
+                un-checked-children="Inactive"
+                @change="changeStatus"
+              />
+            </div>
+            <small v-if="!canToggleStatus" class="status-permission-help">You do not have permission to change this status.</small>
+          </section>
         </aside>
 
         <footer><a-button @click="router.back()">Cancel</a-button><a-button type="primary" html-type="submit" class="primary-action" :loading="submitting"><template #icon><SaveOutlined /></template>{{ isEdit ? 'Save Changes' : 'Save User' }}</a-button></footer>
@@ -134,7 +200,8 @@ onMounted(loadPage)
 .form-page { margin: 0 auto; max-width: 1160px; padding: 24px 28px 48px; }.muted,.helper { color: var(--bigin-text-tertiary); }.divider { color: var(--bigin-text-disabled); }.form-heading h1 { font-size: 20px; margin: 10px 0 4px; }.form-heading p { color: var(--bigin-text-tertiary); margin: 0 0 18px; }.form-alert { margin-bottom: 16px; }
 .user-form-card { background: var(--bigin-surface-panel); border: 1px solid var(--bigin-border-secondary); border-radius: 8px; display: grid; grid-template-columns: minmax(0, 1.5fr) minmax(280px, .8fr); overflow: hidden; }.user-form-card section,.user-form-card aside { padding: 24px; }.user-form-card aside { border-left: 1px solid var(--bigin-border-secondary); }.user-form-card h2 { font-size: 15px; margin: 0 0 16px; }.user-form-card h2 small { color: var(--bigin-text-tertiary); float: right; font-size: 11px; font-weight: 400; }
 .field-grid { display: grid; gap: 16px; grid-template-columns: 1fr 1fr; }.field-grid label { display: grid; gap: 7px; }.field-grid label > span { font-size: 13px; font-weight: 600; }.field-grid b { color: var(--bigin-color-error); }.full-width { grid-column: 1 / -1; }.full-control { width: 100%; }.helper { font-size: 12px; margin: -8px 0 14px; }.visibility-button { background: transparent; border: 0; color: var(--bigin-icon-muted); cursor: pointer; padding: 0; }
-.role-list { display: grid; gap: 10px; }.role-option { align-items: flex-start; background: var(--bigin-surface-panel); border: 1px solid var(--bigin-border-secondary); border-radius: 6px; cursor: pointer; display: flex; gap: 10px; padding: 12px; text-align: left; }.role-option--selected { background: var(--bigin-surface-primary-soft); border-color: var(--bigin-border-primary); }.role-radio { color: var(--bigin-color-primary); }.role-option span:last-child { display: grid; gap: 3px; text-transform: capitalize; }.role-option small { color: var(--bigin-text-tertiary); line-height: 1.35; text-transform: none; }
+.role-picker { display: grid; gap: 7px; }.role-select { width: 100%; }.role-count { color: var(--bigin-text-tertiary); }
+.account-status-section { margin-top: 4px; }.account-status-heading { align-items: flex-start; display: flex; gap: 12px; justify-content: space-between; }.account-status-heading h2 { margin-bottom: 4px; }.account-status-heading .helper { margin: 0; }.account-status-control { align-items: center; background: var(--bigin-surface-subtle); border: 1px solid var(--bigin-border-secondary); border-radius: 6px; display: flex; justify-content: space-between; margin-top: 14px; padding: 12px; }.account-status-control > span { font-size: 13px; font-weight: 600; }.status-permission-help { color: var(--bigin-text-tertiary); display: block; margin-top: 8px; }
 .user-form-card footer { border-top: 1px solid var(--bigin-border-secondary); display: flex; gap: 10px; grid-column: 1 / -1; justify-content: flex-end; padding: 14px 24px; }.primary-action { background: var(--bigin-color-primary); }
 @media (max-width: 800px) { .user-form-card { grid-template-columns: 1fr; }.user-form-card aside { border-left: 0; border-top: 1px solid var(--bigin-border-secondary); }.field-grid { grid-template-columns: 1fr; }.full-width { grid-column: auto; }.form-page { padding: 16px; } }
 </style>

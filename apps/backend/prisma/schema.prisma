@@ -44,6 +44,8 @@ model users {
   notifications                          notifications[]
   refresh_tokens                         refresh_tokens[]
   user_roles                             user_roles[]
+  reviewed_registration_requests        registration_requests[] @relation("registration_requests_reviewed_by")
+  created_from_registration_request     registration_requests?  @relation("registration_requests_created_user")
   department                             departments              @relation(fields: [department_id], references: [id], onUpdate: NoAction, map: "fk_users_department")
 
   @@index([department_id], map: "fk_users_department")
@@ -193,6 +195,7 @@ model permissions {
   id               Int                @id @default(autoincrement())
   name             String             @db.VarChar(30)
   code             String             @unique(map: "code") @db.VarChar(30)
+  description      String             @db.VarChar(255)
   role_permissions role_permissions[]
 }
 
@@ -209,8 +212,31 @@ model role_permissions {
 model roles {
   id               Int                @id @default(autoincrement())
   name             String             @unique(map: "name") @db.VarChar(30)
+  is_system        Boolean            @default(false)
   role_permissions role_permissions[]
   user_roles       user_roles[]
+}
+
+model registration_requests {
+  id                Int                          @id @default(autoincrement())
+  name              String                       @db.VarChar(30)
+  email             String                       @db.VarChar(40)
+  phone             String                       @db.VarChar(10)
+  password_hash     String?                      @db.VarChar(60)
+  status            registration_requests_status @default(pending)
+  pending_email_key String?                      @unique(map: "uq_registration_pending_email") @db.VarChar(40)
+  pending_phone_key String?                      @unique(map: "uq_registration_pending_phone") @db.VarChar(10)
+  reviewed_by       Int?
+  reviewed_at       DateTime?                    @db.DateTime(0)
+  rejection_reason  String?                      @db.Text
+  created_user_id   Int?                         @unique(map: "uq_registration_created_user")
+  created_at        DateTime                     @default(now()) @db.DateTime(0)
+  updated_at        DateTime                     @default(now()) @updatedAt @db.DateTime(0)
+  reviewer          users?                       @relation("registration_requests_reviewed_by", fields: [reviewed_by], references: [id], onDelete: Restrict, onUpdate: NoAction, map: "fk_registration_reviewer")
+  created_user      users?                       @relation("registration_requests_created_user", fields: [created_user_id], references: [id], onDelete: Restrict, onUpdate: NoAction, map: "fk_registration_created_user")
+
+  @@index([status, created_at], map: "idx_registration_status_created")
+  @@index([reviewed_by], map: "idx_registration_reviewer")
 }
 
 model user_roles {
@@ -239,4 +265,10 @@ enum borrow_requests_status {
   partially_approved @map("PARTIALLY_APPROVED")
   completed          @map("COMPLETED")
   cancelled          @map("CANCELLED")
+}
+
+enum registration_requests_status {
+  pending  @map("PENDING")
+  approved @map("APPROVED")
+  rejected @map("REJECTED")
 }
