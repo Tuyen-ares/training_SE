@@ -18,7 +18,7 @@ const optionalNoteSchema = z.strictObject({
 });
 
 const repairFields = {
-  repairProvider: z.string().trim().min(1).max(255).nullable().optional(),
+  vendorId: z.number().int().positive().nullable().optional(),
   cost: z.number().min(0).max(9999999999.99).nullable().optional(),
   result: z.string().trim().min(1).max(300).nullable().optional(),
   note: z.string().trim().min(1).max(300).nullable().optional(),
@@ -45,6 +45,11 @@ function handleIssueError(error: unknown, res: Response): void {
     return ApiResponse.notFound(res, 'Asset issue not found');
   }
   if (error.code === 'REPORT_FORBIDDEN') return ApiResponse.forbidden(res);
+  if (error.code === 'VENDOR_PERMISSION_REQUIRED') {
+    return ApiResponse.forbidden(res, 'vendor.view is required to change the repair vendor');
+  }
+  if (error.code === 'VENDOR_NOT_FOUND') return ApiResponse.conflict(res, 'Vendor does not exist');
+  if (error.code === 'VENDOR_INACTIVE') return ApiResponse.conflict(res, 'Inactive vendors cannot be assigned to new repairs');
   return ApiResponse.conflict(res, 'Asset issue is not in a valid state for this action');
 }
 
@@ -83,7 +88,7 @@ export class AssetIssueController {
   startRepair = async (req: Request, res: Response): Promise<void> => {
     const parsed = parseRequestBody(repairStartSchema, req.body ?? {});
     if (parsed.success === false) return ApiResponse.badRequest(res, parsed.errors);
-    return this.run(req, res, (id, actorId) => this.service.startRepair(id, actorId, parsed.data));
+    return this.run(req, res, (id, actorId, permissionCodes) => this.service.startRepair(id, actorId, permissionCodes, parsed.data));
   };
 
   updateRepair = async (req: Request, res: Response): Promise<void> => {
@@ -92,7 +97,8 @@ export class AssetIssueController {
     const parsed = parseRequestBody(repairUpdateSchema, req.body);
     if (parsed.success === false) return ApiResponse.badRequest(res, parsed.errors);
     try {
-      return ApiResponse.ok(res, await this.service.updateRepair(id, parsed.data));
+      if (!req.auth) return ApiResponse.unauthorized(res);
+      return ApiResponse.ok(res, await this.service.updateRepair(id, parsed.data, req.auth.permissionCodes));
     } catch (error) {
       return handleIssueError(error, res);
     }
@@ -101,27 +107,27 @@ export class AssetIssueController {
   complete = async (req: Request, res: Response): Promise<void> => {
     const parsed = parseRequestBody(repairCloseSchema, req.body);
     if (parsed.success === false) return ApiResponse.badRequest(res, parsed.errors);
-    return this.run(req, res, (id, actorId) =>
-      this.service.finishRepair(id, actorId, 'COMPLETED', parsed.data));
+    return this.run(req, res, (id, actorId, permissionCodes) =>
+      this.service.finishRepair(id, actorId, 'COMPLETED', permissionCodes, parsed.data));
   };
 
   fail = async (req: Request, res: Response): Promise<void> => {
     const parsed = parseRequestBody(repairUpdateSchema, req.body);
     if (parsed.success === false) return ApiResponse.badRequest(res, parsed.errors);
-    return this.run(req, res, (id, actorId) =>
-      this.service.finishRepair(id, actorId, 'FAILED', parsed.data));
+    return this.run(req, res, (id, actorId, permissionCodes) =>
+      this.service.finishRepair(id, actorId, 'FAILED', permissionCodes, parsed.data));
   };
 
   private run = async (
     req: Request,
     res: Response,
-    action: (id: number, actorId: number) => Promise<unknown>,
+    action: (id: number, actorId: number, permissionCodes: string[]) => Promise<unknown>,
   ): Promise<void> => {
     if (!req.auth) return ApiResponse.unauthorized(res);
     const id = positiveId(req.params.id);
     if (!id) return ApiResponse.badRequest(res, { id: ['A positive issue id is required'] });
     try {
-      return ApiResponse.ok(res, await action(id, req.auth.sub));
+      return ApiResponse.ok(res, await action(id, req.auth.sub, req.auth.permissionCodes));
     } catch (error) {
       return handleIssueError(error, res);
     }

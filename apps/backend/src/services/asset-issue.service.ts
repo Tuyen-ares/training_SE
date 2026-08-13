@@ -6,7 +6,7 @@ import type {
   AssetIssueStatus,
 } from '@/models/asset-issue.model.js';
 import type { IAssetRepository } from '@/repositories/asset.repository.js';
-import type { IAssetIssueRepository } from '@/repositories/asset-issue.repository.js';
+import type { AssetIssueTransaction, IAssetIssueRepository } from '@/repositories/asset-issue.repository.js';
 import type { INotificationRepository } from '@/repositories/notification.repository.js';
 import { AssetIssueError } from '@/shared/app-error.js';
 
@@ -104,10 +104,13 @@ export class AssetIssueService {
   startRepair(
     id: number,
     actorId: number,
+    permissionCodes: string[],
     data: AssetIssueRepairUpdate,
   ): Promise<AssetIssue> {
+    this.assertVendorChangePermission(data, permissionCodes);
     return this.issueRepository.transaction(async (transaction) => {
       const issue = await this.requireIssue(id, transaction, 'CONFIRMED');
+      await this.lockAndValidateVendorChange(issue, data, transaction);
       const assetChanged = await this.issueRepository.transitionAsset(
         issue.assetId, 'damaged', 'in_repair', transaction,
       );
@@ -122,9 +125,15 @@ export class AssetIssueService {
     });
   }
 
-  updateRepair(id: number, data: AssetIssueRepairUpdate): Promise<AssetIssue> {
+  updateRepair(
+    id: number,
+    data: AssetIssueRepairUpdate,
+    permissionCodes: string[],
+  ): Promise<AssetIssue> {
+    this.assertVendorChangePermission(data, permissionCodes);
     return this.issueRepository.transaction(async (transaction) => {
       const issue = await this.requireIssue(id, transaction, 'IN_REPAIR');
+      await this.lockAndValidateVendorChange(issue, data, transaction);
       const effectiveStart = data.startDate ?? issue.startDate;
       if (data.endDate && effectiveStart && data.endDate < effectiveStart) {
         throw new AssetIssueError('INVALID_ISSUE_STATE');
@@ -137,10 +146,13 @@ export class AssetIssueService {
     id: number,
     actorId: number,
     status: 'COMPLETED' | 'FAILED',
+    permissionCodes: string[],
     data: AssetIssueRepairUpdate,
   ): Promise<AssetIssue> {
+    this.assertVendorChangePermission(data, permissionCodes);
     return this.issueRepository.transaction(async (transaction) => {
       const issue = await this.requireIssue(id, transaction, 'IN_REPAIR');
+      await this.lockAndValidateVendorChange(issue, data, transaction);
       const assetChanged = await this.issueRepository.transitionAsset(
         issue.assetId,
         'in_repair',
@@ -194,6 +206,36 @@ export class AssetIssueService {
     if (!issue) throw new AssetIssueError('ISSUE_NOT_FOUND');
     if (issue.status !== expectedStatus) throw new AssetIssueError('INVALID_ISSUE_STATE');
     return issue;
+  }
+
+  private assertVendorChangePermission(
+    data: AssetIssueRepairUpdate,
+    permissionCodes: string[],
+  ): void {
+    const changesVendor = Object.prototype.hasOwnProperty.call(data, 'vendorId');
+    if (changesVendor && !permissionCodes.includes('vendor.view')) {
+      throw new AssetIssueError('VENDOR_PERMISSION_REQUIRED');
+    }
+  }
+
+  private async lockAndValidateVendorChange(
+    issue: AssetIssue,
+    data: AssetIssueRepairUpdate,
+    transaction: AssetIssueTransaction,
+  ): Promise<void> {
+    if (!Object.prototype.hasOwnProperty.call(data, 'vendorId')) return;
+
+    // Lock the target (or current vendor when clearing) before checking
+    // is_active. Assign and deactivate therefore serialize on the same row:
+    // whichever transaction locks first wins the ordering, and an assignment
+    // never succeeds after a committed deactivation.
+    const targetId = data.vendorId ?? issue.vendor?.id;
+    if (targetId === undefined) return;
+    const vendor = await this.issueRepository.lockVendor(targetId, transaction);
+    if (!vendor) throw new AssetIssueError('VENDOR_NOT_FOUND');
+    if (data.vendorId !== null && !vendor.isActive) {
+      throw new AssetIssueError('VENDOR_INACTIVE');
+    }
   }
 
   private async notifyReporter(

@@ -37,6 +37,8 @@ tags:
     description: Thông báo
   - name: F08 - Administration
     description: Quản trị người dùng, phân quyền và phòng ban
+  - name: Vendor Management
+    description: Quản lý shared vendor master dùng cho repair và các workflow tài sản mở rộng
 paths:
   /registration-requests:
     post:
@@ -1757,6 +1759,104 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/Error'
+  /vendors:
+    get:
+      tags: [Vendor Management]
+      summary: Danh sách vendor
+      description: Tìm kiếm, phân trang và lọc vendor theo trạng thái. Yêu cầu `vendor.view`.
+      operationId: listVendors
+      parameters:
+        - name: q
+          in: query
+          schema: { type: string, maxLength: 255 }
+        - $ref: '#/components/parameters/Page'
+        - $ref: '#/components/parameters/PageSize'
+        - name: isActive
+          in: query
+          description: true chỉ vendor active; false chỉ inactive; bỏ trống là tất cả
+          schema: { type: boolean }
+      responses:
+        '200':
+          description: Trang vendor
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data: { $ref: '#/components/schemas/VendorPage' }
+        '400': { $ref: '#/components/responses/BadRequest' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+    post:
+      tags: [Vendor Management]
+      summary: Tạo vendor
+      description: Tạo vendor active; yêu cầu `vendor.create`. Chuỗi contact rỗng được lưu thành null.
+      operationId: createVendor
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/VendorWriteInput' }
+      responses:
+        '201':
+          description: Vendor đã tạo
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data: { $ref: '#/components/schemas/Vendor' }
+        '400': { $ref: '#/components/responses/BadRequest' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+        '409': { description: Tên vendor đã tồn tại, content: { application/json: { schema: { $ref: '#/components/schemas/Error' } } } }
+  /vendors/{id}:
+    get:
+      tags: [Vendor Management]
+      summary: Chi tiết vendor
+      description: Trả contact data; yêu cầu `vendor.view`.
+      operationId: getVendor
+      parameters:
+        - $ref: '#/components/parameters/VendorId'
+      responses:
+        '200':
+          description: Vendor detail
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data: { $ref: '#/components/schemas/Vendor' }
+        '400': { $ref: '#/components/responses/BadRequest' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+        '404': { description: Không tìm thấy vendor, content: { application/json: { schema: { $ref: '#/components/schemas/Error' } } } }
+    patch:
+      tags: [Vendor Management]
+      summary: Cập nhật vendor
+      description: Sửa thông tin hoặc isActive; yêu cầu `vendor.update`. Deactivate giữ nguyên lịch sử.
+      operationId: updateVendor
+      parameters:
+        - $ref: '#/components/parameters/VendorId'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/VendorUpdateInput' }
+      responses:
+        '200':
+          description: Vendor đã cập nhật
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data: { $ref: '#/components/schemas/Vendor' }
+        '400': { $ref: '#/components/responses/BadRequest' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+        '404': { description: Không tìm thấy vendor, content: { application/json: { schema: { $ref: '#/components/schemas/Error' } } } }
+        '409': { description: Tên vendor đã tồn tại, content: { application/json: { schema: { $ref: '#/components/schemas/Error' } } } }
   /notifications:
     get:
       tags:
@@ -2368,6 +2468,13 @@ components:
         type: integer
         minimum: 1
     IssueId:
+      name: id
+      in: path
+      required: true
+      schema:
+        type: integer
+        minimum: 1
+    VendorId:
       name: id
       in: path
       required: true
@@ -3456,6 +3563,57 @@ components:
         - IN_REPAIR
         - COMPLETED
         - FAILED
+    Vendor:
+      type: object
+      properties:
+        id: { type: integer }
+        name: { type: string, minLength: 1, maxLength: 255 }
+        contactName: { type: string, maxLength: 255, nullable: true }
+        phone: { type: string, maxLength: 50, nullable: true }
+        email: { type: string, format: email, maxLength: 255, nullable: true }
+        address: { type: string, maxLength: 1000, nullable: true }
+        isActive: { type: boolean }
+        createdAt: { type: string, format: date-time }
+        updatedAt: { type: string, format: date-time }
+      required: [id, name, contactName, phone, email, address, isActive, createdAt, updatedAt]
+    VendorReference:
+      type: object
+      description: Tên vendor được trả cho mọi user có asset_issue.view; contact fields chỉ có ở Vendor API.
+      properties:
+        id: { type: integer }
+        name: { type: string }
+      required: [id, name]
+    VendorPage:
+      type: object
+      properties:
+        items:
+          type: array
+          items: { $ref: '#/components/schemas/Vendor' }
+        page: { type: integer }
+        pageSize: { type: integer }
+        total: { type: integer }
+      required: [items, page, pageSize, total]
+    VendorWriteInput:
+      type: object
+      properties:
+        name: { type: string, minLength: 1, maxLength: 255 }
+        contactName: { type: string, maxLength: 255, nullable: true }
+        phone: { type: string, maxLength: 50, nullable: true }
+        email: { type: string, format: email, maxLength: 255, nullable: true }
+        address: { type: string, maxLength: 1000, nullable: true }
+      required: [name]
+      additionalProperties: false
+    VendorUpdateInput:
+      type: object
+      properties:
+        name: { type: string, minLength: 1, maxLength: 255 }
+        contactName: { type: string, maxLength: 255, nullable: true }
+        phone: { type: string, maxLength: 50, nullable: true }
+        email: { type: string, format: email, maxLength: 255, nullable: true }
+        address: { type: string, maxLength: 1000, nullable: true }
+        isActive: { type: boolean }
+      minProperties: 1
+      additionalProperties: false
     AssetIssue:
       type: object
       properties:
@@ -3491,8 +3649,8 @@ components:
           required:
             - id
             - name
-        repairProvider:
-          type: string
+        vendor:
+          $ref: '#/components/schemas/VendorReference'
           nullable: true
         startDate:
           type: string
@@ -3547,6 +3705,7 @@ components:
         - assetId
         - description
         - status
+        - vendor
     AssetIssuePage:
       type: object
       properties:
@@ -3575,11 +3734,11 @@ components:
       additionalProperties: false
     RepairUpdateInput:
       type: object
+      description: vendorId omitted preserves current vendor; null clears it; number assigns an active vendor. Any set/clear requires both the endpoint's repair permission and vendor.view. repairProvider is rejected.
       properties:
-        repairProvider:
-          type: string
-          minLength: 1
-          maxLength: 255
+        vendorId:
+          type: integer
+          minimum: 1
           nullable: true
         cost:
           type: number
@@ -3607,11 +3766,11 @@ components:
       additionalProperties: false
     RepairCloseInput:
       type: object
+      description: Same vendorId semantics as RepairUpdateInput; setting or clearing it requires both the close permission and vendor.view.
       properties:
-        repairProvider:
-          type: string
-          minLength: 1
-          maxLength: 255
+        vendorId:
+          type: integer
+          minimum: 1
           nullable: true
         cost:
           type: number

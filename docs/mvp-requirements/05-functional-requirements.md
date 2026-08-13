@@ -68,9 +68,19 @@
 | FR-F06-03 | Hệ thống phải cho phép xác nhận issue `REPORTED`. |
 | FR-F06-04 | Hệ thống phải cho phép từ chối issue `REPORTED`. |
 | FR-F06-05 | Hệ thống phải cho phép bắt đầu sửa issue đã xác nhận. |
-| FR-F06-06 | Hệ thống phải cho phép cập nhật đơn vị sửa, thời gian, chi phí, kết quả và ghi chú phù hợp giai đoạn xử lý. |
+| FR-F06-06 | Hệ thống phải cho phép cập nhật vendor sửa chữa, thời gian, chi phí, kết quả và ghi chú phù hợp giai đoạn xử lý; set/clear vendor cần cả repair permission và `vendor.view`. |
 | FR-F06-07 | Hệ thống phải cho phép hoàn tất sửa thành công và đồng bộ asset về `AVAILABLE`. |
 | FR-F06-08 | Hệ thống phải ghi nhận sửa thất bại ở issue `FAILED` và chuyển asset `IN_REPAIR → DAMAGED`. |
+
+## Shared Vendor Master
+
+| ID | Yêu cầu chức năng |
+|---|---|
+| FR-VEN-01 | Hệ thống phải cho phép user có `vendor.view` tìm kiếm, phân trang và lọc vendor theo active/inactive. |
+| FR-VEN-02 | Hệ thống phải cho phép user có `vendor.create` tạo vendor active; contact field rỗng phải được lưu thành `null`. |
+| FR-VEN-03 | Hệ thống phải cho phép user có `vendor.update` sửa thông tin và activate/deactivate vendor bằng PATCH. |
+| FR-VEN-04 | Hệ thống không cung cấp thao tác xóa vendor trong MVP; vendor không còn sử dụng phải được deactivate để giữ lịch sử. |
+| FR-VEN-05 | Hệ thống phải hiển thị tên vendor hiện tại trong issue history; vendor inactive không được assign cho repair mới. |
 
 ## F07 – Notifications
 

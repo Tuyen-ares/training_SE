@@ -87,9 +87,18 @@
 | `POST /api/asset-issues/:issueId/confirm` | Confirm asset issue | Xác minh sự cố | Confirm a `REPORTED` issue when its asset is `AVAILABLE` or `BORROWED`, then mark the asset damaged. / Xác nhận issue `REPORTED` khi asset `AVAILABLE` hoặc `BORROWED`, rồi chuyển asset sang damaged. | Existing |
 | `POST /api/asset-issues/:issueId/reject` | Reject asset issue | Từ chối sự cố | Reject a `REPORTED` issue with an optional note; asset status is unchanged. / Từ chối issue `REPORTED` với note tùy chọn; không đổi trạng thái asset. | Existing |
 | `POST /api/asset-issues/:issueId/start-repair` | Start repair | Bắt đầu sửa chữa | Start repair for a confirmed damaged issue and move the asset into repair. / Bắt đầu sửa issue confirmed/damaged và chuyển asset sang in repair. | Existing |
-| `PATCH /api/asset-issues/:issueId/repair` | Update repair progress | Cập nhật quá trình sửa | Update repair provider, timing, cost, result and notes. / Cập nhật đơn vị, thời gian, chi phí, kết quả và ghi chú sửa chữa. | Existing |
+| `PATCH /api/asset-issues/:issueId/repair` | Update repair progress | Cập nhật quá trình sửa | Update vendor, timing, cost, result and notes. `vendorId` omitted preserves; number/null changes it and requires both `asset_issue.update` and `vendor.view`. / Cập nhật vendor, thời gian, chi phí, kết quả và ghi chú; set/clear vendor cần đồng thời `asset_issue.update` và `vendor.view`. | Existing |
 | `POST /api/asset-issues/:issueId/complete` | Complete repair | Hoàn tất sửa chữa | Complete an in-progress repair and move the asset to available. / Hoàn tất sửa chữa đang thực hiện và đưa asset về available. | Existing |
 | `POST /api/asset-issues/:issueId/fail` | Fail repair | Ghi nhận sửa chữa thất bại | Record a failed repair and move the asset to damaged; never retire it automatically. / Ghi nhận sửa thất bại và chuyển asset về damaged; không tự retire. | Existing |
+
+## Vendor Management / Quản lý vendor dùng chung
+
+| API | English name | Tên tiếng Việt | Purpose / Mục đích | Status |
+| --- | --- | --- | --- | --- |
+| `GET /api/vendors` | List vendors | Xem danh sách vendor | Search, paginate and filter active/inactive vendors; requires `vendor.view`. / Tìm kiếm, phân trang và lọc vendor active/inactive; cần `vendor.view`. | New |
+| `GET /api/vendors/:vendorId` | Get vendor detail | Xem chi tiết vendor | Read vendor contact data; requires `vendor.view`. / Xem contact vendor; cần `vendor.view`. | New |
+| `POST /api/vendors` | Create vendor | Tạo vendor | Create an active shared vendor master record; requires `vendor.create`. / Tạo vendor dùng chung ở trạng thái active; cần `vendor.create`. | New |
+| `PATCH /api/vendors/:vendorId` | Update vendor | Cập nhật vendor | Update details or `isActive`; requires `vendor.update`. Deactivation preserves history. / Sửa thông tin hoặc active status; deactivate giữ lịch sử. | New |
 
 ## F07 — Notifications / Thông báo
 

@@ -40,6 +40,7 @@ Tên permission code cuối cùng thuộc API/permission registry, chưa đượ
 | Bàn giao & hoàn trả | `SCR-F05-01` | Có ít nhất một permission bàn giao hoặc nhận trả. |
 | Hoạt động mượn | `SCR-F05-02` | Xem tài sản đang mượn hoặc lịch sử theo phạm vi. |
 | Sự cố & sửa chữa | `SCR-F06-01` | Permission xem/quản lý issue. |
+| Vendors | `SCR-VEN-01` | `vendor.view`; create và edit actions render theo `vendor.create/update`. |
 | Thông báo | `SCR-F07-01` | User đã đăng nhập; entry có thể từ header. |
 | Administration | `SCR-F08-01`, `SCR-F08-03`, `SCR-F08-05` | Có ít nhất một permission quản lý user, registration request hoặc role. Entry mở tab đầu tiên được phép. |
 | Danh mục asset | `SCR-F02-04` | Permission quản lý danh mục asset. |
@@ -51,6 +52,7 @@ Tên permission code cuối cùng thuộc API/permission registry, chưa đượ
 - Tab `Pending Handover` chỉ hiện khi có `asset.checkout`; tab `Pending Return` chỉ hiện khi có `asset.checkin`. Có cả hai quyền thì mặc định mở `Pending Handover`.
 - `SCR-F05-02` tái sử dụng list/history cho “đang mượn”, lịch sử của tôi và lịch sử toàn bộ theo permission.
 - `SCR-F06-02` chứa workflow xác minh, bắt đầu sửa, cập nhật và kết thúc sửa trong cùng context issue.
+- `SCR-VEN-01` là màn standalone cho shared vendor master; repair selector remote-search chỉ lấy vendor active, còn issue đang giữ vendor inactive vẫn hiển thị tên.
 - `SCR-F08-02` dùng cùng form surface cho tạo/cập nhật user và vùng gán/gỡ role có sẵn.
 - Administration có tabs Users / Registration Requests / Roles; tab/action ẩn theo permission nhưng backend là authority.
 - Permission descriptions nằm trong Role Create/Detail, không có standalone Permission Catalog.

@@ -16,7 +16,10 @@ export type AssetIssueErrorCode =
   | 'ASSET_NOT_FOUND'
   | 'ISSUE_NOT_FOUND'
   | 'REPORT_FORBIDDEN'
-  | 'INVALID_ISSUE_STATE';
+  | 'INVALID_ISSUE_STATE'
+  | 'VENDOR_PERMISSION_REQUIRED'
+  | 'VENDOR_NOT_FOUND'
+  | 'VENDOR_INACTIVE';
 
 export class AssetIssueError extends Error {
   constructor(public readonly code: AssetIssueErrorCode) {

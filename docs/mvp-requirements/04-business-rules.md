@@ -78,6 +78,16 @@
 - **BR-ISS-07:** Khi sửa thất bại, issue thành `FAILED` và asset chuyển `IN_REPAIR → DAMAGED`; không tự chuyển `RETIRED`.
 - **BR-ISS-08:** Khi người có quyền xác nhận asset hỏng lúc trả, history ghi trả và `return_condition = DAMAGED`, issue được tạo `CONFIRMED`, asset chuyển `BORROWED → DAMAGED`.
 
+## Shared Vendor Master
+
+- **BR-VEN-01:** `vendors.name` là duy nhất theo database collation; các contact field tùy chọn được trim và chuỗi rỗng được lưu thành `NULL`.
+- **BR-VEN-02:** Vendor mới active; vendor inactive không xuất hiện trong selector repair mặc định và không được assign cho repair mới.
+- **BR-VEN-03:** Vendor inactive vẫn được xem/sửa trong Vendor Management theo permission và vẫn hiển thị trong issue history.
+- **BR-VEN-04:** `asset_issues.vendor_id` nullable tham chiếu `vendors.id` bằng FK `ON DELETE RESTRICT`; MVP không cung cấp nghiệp vụ xóa vendor, deactivate giữ record và lịch sử.
+- **BR-VEN-05:** Đổi tên vendor làm thay đổi tên hiển thị của issue lịch sử; phase này không lưu name snapshot.
+- **BR-VEN-06:** `vendorId` omitted giữ nguyên vendor và chỉ cần repair permission; `vendorId` number hoặc `null` là thay đổi field và cần đồng thời repair permission phù hợp và `vendor.view`.
+- **BR-VEN-07:** Assign/clear và activate/deactivate khóa cùng vendor row bằng transaction; assignment thấy vendor inactive sau khi deactivation commit thì bị từ chối.
+
 ## Notification và User
 
 - **BR-NOT-01:** `related_entity_type` và `related_entity_id` là tham chiếu logic, không phải quan hệ khóa ngoại.

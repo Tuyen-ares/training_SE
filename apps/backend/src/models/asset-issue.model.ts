@@ -7,7 +7,7 @@ export interface AssetIssue {
   createdAt: Date | null;
   updatedAt: Date | null;
   handledBy: { id: number; name: string } | null;
-  repairProvider: string | null;
+  vendor: { id: number; name: string } | null;
   startDate: Date | null;
   endDate: Date | null;
   cost: string | null;
@@ -55,7 +55,7 @@ export interface AssetIssuePage {
 }
 
 export interface AssetIssueRepairUpdate {
-  repairProvider?: string | null;
+  vendorId?: number | null;
   cost?: number | null;
   result?: string | null;
   note?: string | null;

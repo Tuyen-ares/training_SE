@@ -22,6 +22,10 @@ File này không sao chép lại toàn bộ model/column để tránh tài liệ
 - Enum `assets_status` có `retired` để ngừng sử dụng Asset mà không xóa lịch sử.
 - `assets.asset_code` là mã duy nhất, bất biến; `asset_types.normalized_prefix` và
   `asset_code_sequences` cấp sequence an toàn theo prefix trong transaction.
+- Shared `vendors` lưu master vendor với `is_active`; `asset_issues.vendor_id`
+  tham chiếu `vendors.id` bằng `ON DELETE RESTRICT`. Legacy
+  `asset_issues.repair_provider` đã được trim/deduplicate/backfill theo expand
+  migration và đã bị loại bỏ bởi contract migration sau khi code mới sẵn sàng.
 
 Khi migration hoàn thành, cập nhật mục này để phản ánh trạng thái đã triển khai,
 không tạo một bản schema Markdown thứ hai.

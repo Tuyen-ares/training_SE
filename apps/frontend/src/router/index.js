@@ -202,6 +202,12 @@ const router = createRouter({
       meta: { requiresAuth: true, permission: 'asset_issue.view' },
     },
     {
+      path: '/vendors',
+      name: 'vendors',
+      component: () => import('../views/vendors/VendorListView.vue'),
+      meta: { requiresAuth: true, permission: 'vendor.view' },
+    },
+    {
       path: '/notifications',
       name: 'notifications',
       component: () => import('../views/notifications/NotificationCenterView.vue'),

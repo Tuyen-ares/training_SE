@@ -12,6 +12,7 @@ import borrowHistoryRoutes from '@/routes/borrow-history.routes.js';
 import assetIssueRoutes from '@/routes/asset-issue.routes.js';
 import notificationRoutes from '@/routes/notification.routes.js';
 import registrationRoutes from '@/routes/registration.routes.js';
+import vendorRoutes from '@/routes/vendor.routes.js';
 import type { Express } from 'express';
 import type { RouteDefinition } from '@/shared/rest-router.js';
 
@@ -29,6 +30,7 @@ const routes: RouteDefinition[] = [
   assetIssueRoutes,
   notificationRoutes,
   registrationRoutes,
+  vendorRoutes,
   authRoutes,
 ];
 export function registerRoutes(app: Express): void {

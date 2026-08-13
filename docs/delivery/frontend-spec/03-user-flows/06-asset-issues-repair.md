@@ -104,8 +104,8 @@ Issue CONFIRMED và asset DAMAGED để bắt đầu sửa.
 
 1. User mở Issue Detail và chọn bắt đầu sửa.
 2. Hệ thống chuyển issue/asset cùng sang IN_REPAIR, ghi người xử lý/ngày bắt đầu phù hợp.
-3. Ở Start Repair, UI chỉ yêu cầu thông tin khởi tạo: repair provider, cost, start date và diagnosis/initial notes; không hiển thị trường Repair result.
-4. Ở Update/Complete/Fail, user cập nhật repair provider, thời gian, cost, result hoặc note ở giai đoạn cho phép.
+3. Ở Start Repair, UI chỉ yêu cầu thông tin khởi tạo: vendor active (nếu user có `vendor.view`), cost, start date và diagnosis/initial notes; không hiển thị trường Repair result.
+4. Ở Update/Complete/Fail, user cập nhật vendor, thời gian, cost, result hoặc note ở giai đoạn cho phép. `vendorId` omitted giữ vendor, còn set/clear cần cả repair permission và `vendor.view`.
 5. UI hiển thị thông tin repair mới trên cùng Issue Detail.
 
 ## Alternative Flows
@@ -115,6 +115,7 @@ Issue CONFIRMED và asset DAMAGED để bắt đầu sửa.
 ## Error / Invalid States
 
 - Issue/asset không ở source state, chi phí/thời gian không hợp lệ hoặc thiếu permission: không thay đổi dữ liệu.
+- Vendor inactive không được assign mới; vendor inactive đã có trong issue vẫn hiển thị read-only nếu user không có `vendor.view`.
 
 ## Result
 

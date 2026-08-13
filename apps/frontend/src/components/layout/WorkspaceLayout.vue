@@ -11,6 +11,7 @@ import {
   MenuFoldOutlined,
   MenuUnfoldOutlined,
   SettingOutlined,
+  ShopOutlined,
   TeamOutlined,
   ToolOutlined,
 } from '@ant-design/icons-vue'
@@ -72,6 +73,7 @@ const navigationItems = computed(() => [
   { key: 'handover-return', label: 'Handover & Return', icon: SettingOutlined, routeName: 'handover-return', visible: hasAnyPermission('asset.checkout', 'asset.checkin') },
   { key: 'borrowing-activity', label: 'Borrowing Activity', icon: HistoryOutlined, routeName: 'borrowing-activity', visible: hasAnyPermission('borrow_history.view_own', 'borrow_history.view_all') },
   { key: 'asset-issues', label: 'Asset Issues & Repairs', icon: ToolOutlined, routeName: 'asset-issues', visible: authStore.hasPermission('asset_issue.view') },
+  { key: 'vendors', label: 'Vendors', icon: ShopOutlined, routeName: 'vendors', visible: authStore.hasPermission('vendor.view') },
   { key: 'asset-catalog', label: 'Asset Catalog', icon: AppstoreOutlined, routeName: 'asset-catalog', visible: hasAnyPermission('brand.create', 'brand.update', 'asset_type.create', 'asset_type.update', 'asset_model.create', 'asset_model.update') },
   {
     key: 'administration',

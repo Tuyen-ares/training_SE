@@ -53,3 +53,10 @@ future doc → code trực tiếp
 
 - [`scale-system.md`](scale-system.md) — hướng scale BigIn thành workflow ITAM đầy đủ hơn.
 - [`open-questions.md`](open-questions.md) — các quyết định future chưa được chốt.
+- [`scale-phases/`](scale-phases/README.md) — roadmap triển khai theo từng phase
+  sau khi future scope được activation.
+
+Các quyết định roadmap đã được review trong conversation được ghi ở
+[`scale-phases/README.md`](scale-phases/README.md). Chúng vẫn là future planning
+cho tới khi được chuyển thành requirement, contract và spec active; các câu hỏi
+chưa được quyết định vẫn giữ trạng thái OPEN trong `open-questions.md`.

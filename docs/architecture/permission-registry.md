@@ -4,7 +4,7 @@
 Bảng `permissions` là dữ liệu runtime và phải được migration/seed đồng bộ với danh
 sách này. Không có wildcard; mỗi dòng là một code độc lập.
 
-Snapshot chuẩn hiện tại: **51 permission codes**.
+Snapshot chuẩn hiện tại: **54 permission codes**.
 
 ## Dashboard
 
@@ -54,6 +54,12 @@ asset_issue.view
 asset_issue.create
 asset_issue.update
 asset_issue.close
+
+## Vendors
+
+vendor.view
+vendor.create
+vendor.update
 
 ## Borrow requests
 

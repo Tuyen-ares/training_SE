@@ -22,6 +22,7 @@ import {
   startAssetRepair,
   updateAssetRepair,
 } from '../../services/asset-issue.service'
+import { listVendors } from '../../services/vendor.service'
 import { useAuthStore } from '../../stores/auth'
 
 const route = useRoute()
@@ -34,7 +35,10 @@ const conflictMessage = ref('')
 const busy = ref(false)
 const modalOpen = ref(false)
 const workflow = ref('start')
-const form = reactive({ repairProvider: '', startDate: '', endDate: '', cost: null, result: '', note: '' })
+const form = reactive({ vendorId: undefined, startDate: '', endDate: '', cost: null, result: '', note: '' })
+const vendors = ref([])
+const vendorLoading = ref(false)
+const vendorTouched = ref(false)
 
 const canReview = computed(() => authStore.hasPermission('asset_issue.update'))
 const canStart = computed(() => authStore.hasPermission('asset_issue.create'))
@@ -47,7 +51,7 @@ const timeline = computed(() => {
   const timelineItem = (status, item) => ({ ...item, color: statusTimelineColor(status) })
   const items = [timelineItem('REPORTED', { title: 'Issue reported', date: issue.value.createdAt, description: issue.value.description })]
   if (['CONFIRMED', 'IN_REPAIR', 'COMPLETED', 'FAILED'].includes(issue.value.status)) items.push(timelineItem('CONFIRMED', { title: 'Issue confirmed', date: issue.value.updatedAt, description: 'The asset issue was verified.' }))
-  if (issue.value.startDate && ['IN_REPAIR', 'COMPLETED', 'FAILED'].includes(issue.value.status)) items.push(timelineItem('IN_REPAIR', { title: 'Repair started', date: issue.value.startDate, description: issue.value.repairProvider || 'Repair is in progress.' }))
+  if (issue.value.startDate && ['IN_REPAIR', 'COMPLETED', 'FAILED'].includes(issue.value.status)) items.push(timelineItem('IN_REPAIR', { title: 'Repair started', date: issue.value.startDate, description: issue.value.vendor?.name || 'Repair is in progress.' }))
   if (['COMPLETED', 'FAILED'].includes(issue.value.status)) items.push(timelineItem(issue.value.status, { title: issue.value.status === 'COMPLETED' ? 'Repair completed' : 'Repair failed', date: issue.value.endDate || issue.value.updatedAt, description: issue.value.result || 'Repair lifecycle closed.' }))
   if (['REJECTED', 'CANCELLED'].includes(issue.value.status)) items.push(timelineItem(issue.value.status, { title: issue.value.status === 'REJECTED' ? 'Issue rejected' : 'Issue cancelled', date: issue.value.updatedAt, description: issue.value.note || 'No further action is required.' }))
   return items
@@ -63,9 +67,26 @@ function formatCost(value) {
 async function load() {
   loading.value = true
   errorMessage.value = ''
-  try { issue.value = await getAssetIssue(authStore.api, route.params.id) }
+  try {
+    issue.value = await getAssetIssue(authStore.api, route.params.id)
+    if (authStore.hasPermission('vendor.view')) await searchVendors()
+  }
   catch (error) { errorMessage.value = error.message || 'The asset issue could not be loaded.' }
   finally { loading.value = false }
+}
+
+async function searchVendors(search = '') {
+  if (!authStore.hasPermission('vendor.view')) return
+  vendorLoading.value = true
+  try {
+    const result = await listVendors(authStore.api, { q: search, page: 1, pageSize: 20, isActive: true })
+    vendors.value = result.items || []
+    if (issue.value?.vendor && !vendors.value.some((item) => item.id === issue.value.vendor.id)) {
+      vendors.value.unshift({ ...issue.value.vendor, isActive: false })
+    }
+  } catch (error) {
+    if (error.status !== 403) message.error(error.message || 'Vendors could not be loaded.')
+  } finally { vendorLoading.value = false }
 }
 
 async function runTransition(action, successMessage) {
@@ -97,19 +118,20 @@ function rejectIssue() {
 
 function resetForm() {
   Object.assign(form, {
-    repairProvider: issue.value?.repairProvider || '',
+    vendorId: issue.value?.vendor?.id,
     startDate: issue.value?.startDate ? new Date(issue.value.startDate).toISOString().slice(0, 16) : '',
     endDate: issue.value?.endDate ? new Date(issue.value.endDate).toISOString().slice(0, 16) : '',
     cost: issue.value?.cost == null ? null : Number(issue.value.cost),
     result: issue.value?.result || '',
     note: issue.value?.note || '',
   })
+  vendorTouched.value = false
 }
 function openWorkflow(type) { workflow.value = type; resetForm(); modalOpen.value = true }
 
 function payload() {
   const body = {}
-  if (form.repairProvider.trim()) body.repairProvider = form.repairProvider.trim()
+  if (authStore.hasPermission('vendor.view') && vendorTouched.value) body.vendorId = form.vendorId ?? null
   if (form.startDate) body.startDate = new Date(form.startDate).toISOString()
   if (form.endDate) body.endDate = new Date(form.endDate).toISOString()
   if (form.cost !== null && form.cost !== '') body.cost = Number(form.cost)
@@ -180,7 +202,7 @@ onMounted(load)
           <section class="panel repair-panel">
             <h2>Repair Information</h2>
             <a-descriptions :column="{ xs: 1, sm: 3 }" size="small">
-              <a-descriptions-item label="Repair provider">{{ issue.repairProvider || '—' }}</a-descriptions-item>
+              <a-descriptions-item label="Repair provider">{{ issue.vendor?.name || '—' }}</a-descriptions-item>
               <a-descriptions-item label="Start date">{{ formatDate(issue.startDate) }}</a-descriptions-item>
               <a-descriptions-item label="End date">{{ formatDate(issue.endDate) }}</a-descriptions-item>
               <a-descriptions-item label="Cost">{{ formatCost(issue.cost) }}</a-descriptions-item>
@@ -194,7 +216,22 @@ onMounted(load)
       <a-modal v-model:open="modalOpen" wrap-class-name="bigin-modal-content" :title="modalTitle" :confirm-loading="busy" :ok-text="modalTitle" :ok-type="workflow === 'fail' ? 'danger' : 'primary'" width="620px" @ok="submitWorkflow">
         <a-form layout="vertical">
           <div class="form-grid">
-            <a-form-item label="Repair provider"><a-input v-model:value="form.repairProvider" :maxlength="255" placeholder="Internal team or service provider" /></a-form-item>
+            <a-form-item label="Repair provider" :required="authStore.hasPermission('vendor.view')">
+              <a-select
+                v-if="authStore.hasPermission('vendor.view')"
+                v-model:value="form.vendorId"
+                show-search
+                allow-clear
+                :filter-option="false"
+                :loading="vendorLoading"
+                placeholder="Search vendor..."
+                :options="vendors.map(item => ({ value: item.id, label: item.isActive === false ? `${item.name} (Inactive)` : item.name }))"
+                @search="searchVendors"
+                @focus="searchVendors"
+                @change="vendorTouched = true"
+              />
+              <a-input v-else :value="issue.vendor?.name || '—'" disabled />
+            </a-form-item>
             <a-form-item label="Cost (VND)"><a-input-number v-model:value="form.cost" :min="0" :max="9999999999.99" style="width: 100%" /></a-form-item>
             <a-form-item label="Start date"><a-input v-model:value="form.startDate" type="datetime-local" /></a-form-item>
             <a-form-item v-if="workflow !== 'start'" label="End date"><a-input v-model:value="form.endDate" type="datetime-local" /></a-form-item>

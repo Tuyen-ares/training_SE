@@ -27,10 +27,12 @@ Người báo sự cố; User có permission xử lý issue/sửa chữa.
 
 ## Quy ước dữ liệu sửa chữa
 
-- Khi bắt đầu sửa chữa, người xử lý ghi thông tin khởi tạo như đơn vị sửa, ngày bắt đầu, chi phí và chẩn đoán/ghi chú ban đầu.
+- Khi bắt đầu sửa chữa, người xử lý ghi thông tin khởi tạo như vendor, ngày bắt đầu, chi phí và chẩn đoán/ghi chú ban đầu.
 - `result` là kết quả kỹ thuật sau khi xử lý; không phải tên trạng thái issue và không cần nhập ở bước Start Repair.
 - `result` được nhập khi cập nhật hoặc kết thúc sửa chữa; Complete Repair bắt buộc có kết quả, còn Fail Repair dùng kết quả để ghi nguyên nhân/kết quả thất bại.
 - Report Issue chỉ nhập mô tả sự cố, không nhập repair result.
+- Repair mutations dùng strict `vendorId`: omitted giữ vendor hiện tại; number gán vendor active; `null` clear vendor. Set/clear cần cả repair permission của endpoint và `vendor.view`; `repairProvider` bị từ chối.
+- Vendor inactive không được chọn cho repair mới, nhưng vendor hiện tại của issue lịch sử vẫn hiển thị theo tên master hiện tại.
 
 ## Dependencies
 

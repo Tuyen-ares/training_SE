@@ -12,6 +12,7 @@ tôi muốn **bắt đầu xử lý một issue đã xác nhận**,
 - AC-US-F06-04-02: Then hệ thống ghi người xử lý và ngày bắt đầu phù hợp thông tin được cung cấp.
 - AC-US-F06-04-03: Given issue hoặc asset không đúng trạng thái nguồn, then hệ thống từ chối.
 - AC-US-F06-04-04: Given một cập nhật thất bại, then issue và asset giữ trạng thái cũ.
+- AC-US-F06-04-05: `vendorId` omitted không đổi vendor; set/clear vendor cần đồng thời `asset_issue.create` và `vendor.view`, và chỉ vendor active mới được gán.
 
 ## Business Rules áp dụng
 

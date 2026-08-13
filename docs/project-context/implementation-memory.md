@@ -100,6 +100,25 @@ Các ghi chú deployment trên chỉ là context; khi sửa phải kiểm tra lo
 
 ## Important Recent Decisions
 
+### 2026-08-14 — Shared vendor master for repair provider
+
+**Feature:** Vendor Management / F06 Asset Issues & Repair.
+
+**Decision:** Replace free-text `asset_issues.repair_provider` with nullable
+`asset_issues.vendor_id` referencing a shared `vendors` master. Vendor lifecycle
+uses active/deactivate only; the application never deletes vendor records so
+historical issues remain valid and resolve the current vendor name without a
+snapshot in this phase. Legacy data uses an expand/backfill/contract migration
+so old instances can be drained before the destructive column drop.
+
+Repair mutations distinguish omitted `vendorId` (preserve, repair permission
+only) from number/null (assign or clear, both repair permission and
+`vendor.view`). Assign/deactivate/update serialize on a vendor row via
+`SELECT ... FOR UPDATE`; inactive vendors cannot be assigned to new repairs.
+The one-time compatibility grant selects roles from actual existing
+repair-mutation permission assignments; it is not runtime permission
+inheritance.
+
 ### 2026-08-13 — Shared responsive workspace contract
 
 **Feature:** Active frontend responsive behavior.

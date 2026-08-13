@@ -10,7 +10,7 @@ import type { Prisma } from '../../generated/prisma/index.js';
 
 export type AssetIssueTransaction = Pick<
   Prisma.TransactionClient,
-  'asset_issues' | 'assets' | 'notifications'
+  'asset_issues' | 'assets' | 'notifications' | 'vendors' | '$queryRaw'
 >;
 
 export interface IAssetIssueRepository {
@@ -19,6 +19,7 @@ export interface IAssetIssueRepository {
   isCurrentBorrower(assetId: number, userId: number): Promise<boolean>;
   findPage(query: AssetIssueListQuery): Promise<AssetIssuePage>;
   findById(id: number, transaction?: AssetIssueTransaction): Promise<AssetIssue | null>;
+  lockVendor(id: number, transaction: AssetIssueTransaction): Promise<{ id: number; name: string; isActive: boolean } | null>;
   transition(
     id: number,
     expectedStatus: AssetIssueStatus,

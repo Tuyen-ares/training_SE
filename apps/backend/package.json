@@ -4,8 +4,8 @@
   "private": true,
   "main": "dist/server.js",
   "scripts": {
-    "test": "tsx --test tests/password-hasher.test.ts tests/auth.middleware.test.ts tests/user.service.test.ts tests/auth.service.test.ts tests/asset.service.test.ts tests/rbac.service.test.ts tests/borrow-workflow.service.test.ts",
-    "test:db": "tsx --test --test-concurrency=1 tests/user-api.integration.test.ts tests/registration-rbac.integration.test.ts tests/asset-api.integration.test.ts tests/borrow-lifecycle.integration.test.ts tests/asset-issue-notification.integration.test.ts tests/race-condition.integration.test.ts",
+    "test": "tsx --test tests/password-hasher.test.ts tests/auth.middleware.test.ts tests/user.service.test.ts tests/auth.service.test.ts tests/asset.service.test.ts tests/rbac.service.test.ts tests/borrow-workflow.service.test.ts tests/vendor.service.test.ts tests/asset-issue-vendor.service.test.ts",
+    "test:db": "tsx --test --test-concurrency=1 tests/user-api.integration.test.ts tests/registration-rbac.integration.test.ts tests/asset-api.integration.test.ts tests/borrow-lifecycle.integration.test.ts tests/asset-issue-notification.integration.test.ts tests/vendor-api.integration.test.ts tests/race-condition.integration.test.ts",
     "build": "tsc -p tsconfig.json && tsc-alias -p tsconfig.json",
     "typecheck": "tsc -p tsconfig.json --noEmit",
     "start": "node dist/server.js",

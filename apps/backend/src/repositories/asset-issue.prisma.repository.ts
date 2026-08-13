@@ -11,6 +11,7 @@ import type {
   IAssetIssueRepository,
 } from '@/repositories/asset-issue.repository.js';
 import type { PrismaClient } from '../../generated/prisma/index.js';
+import { Prisma } from '../../generated/prisma/index.js';
 
 const issueSelect = {
   id: true,
@@ -19,7 +20,7 @@ const issueSelect = {
   description: true,
   status: true,
   handled_by: true,
-  repair_provider: true,
+  vendor_id: true,
   start_date: true,
   end_date: true,
   cost: true,
@@ -37,6 +38,7 @@ const issueSelect = {
   },
   reported_by_users: { select: { id: true, name: true } },
   handled_by_users: { select: { id: true, name: true } },
+  vendors: { select: { id: true, name: true } },
 } as const;
 
 function mapIssue(issue: any): AssetIssue {
@@ -49,7 +51,7 @@ function mapIssue(issue: any): AssetIssue {
     handledBy: issue.handled_by_users
       ? { id: issue.handled_by_users.id, name: issue.handled_by_users.name }
       : null,
-    repairProvider: issue.repair_provider,
+    vendor: issue.vendors ? { id: issue.vendors.id, name: issue.vendors.name } : null,
     startDate: issue.start_date,
     endDate: issue.end_date,
     cost: issue.cost?.toString() ?? null,
@@ -133,6 +135,19 @@ export class PrismaAssetIssueRepository implements IAssetIssueRepository {
     return issue ? mapIssue(issue) : null;
   }
 
+  async lockVendor(
+    id: number,
+    transaction: AssetIssueTransaction,
+  ): Promise<{ id: number; name: string; isActive: boolean } | null> {
+    const rows = await transaction.$queryRaw<Array<{ id: number; name: string; is_active: number | boolean }>>(
+      Prisma.sql`SELECT id, name, is_active FROM vendors WHERE id = ${id} FOR UPDATE`,
+    );
+    const vendor = rows[0];
+    return vendor
+      ? { id: vendor.id, name: vendor.name, isActive: Boolean(vendor.is_active) }
+      : null;
+  }
+
   async transition(
     id: number,
     expectedStatus: AssetIssueStatus,
@@ -160,7 +175,7 @@ export class PrismaAssetIssueRepository implements IAssetIssueRepository {
     const issue = await transaction.asset_issues.update({
       where: { id },
       data: {
-        repair_provider: data.repairProvider,
+        ...(data.vendorId !== undefined ? { vendor_id: data.vendorId } : {}),
         cost: data.cost,
         result: data.result,
         note: data.note,
@@ -185,7 +200,7 @@ export class PrismaAssetIssueRepository implements IAssetIssueRepository {
       data: {
         status,
         handled_by: actorId,
-        repair_provider: data.repairProvider,
+        ...(data.vendorId !== undefined ? { vendor_id: data.vendorId } : {}),
         cost: data.cost,
         result: data.result,
         note: data.note,
