@@ -5,4 +5,5 @@ export interface IDepartmentRepository
   extends IBaseRepository<Department, CreateDepartmentDto, UpdateDepartmentDto> {
   findByName(name: string): Promise<Department | null>;
   countUsers(departmentId: number): Promise<number>;
+  setActive(id: number, isActive: boolean): Promise<Department | null>;
 }

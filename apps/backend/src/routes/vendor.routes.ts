@@ -16,5 +16,6 @@ router.get('/', requirePermission('vendor.view'), controller.list);
 router.get('/:id', requirePermission('vendor.view'), controller.getById);
 router.post('/', requirePermission('vendor.create'), controller.create);
 router.patch('/:id', requirePermission('vendor.update'), controller.update);
+router.patch('/:id/status', requirePermission('vendor.manage_status'), controller.updateStatus);
 
 export default { resource: 'vendors', router };

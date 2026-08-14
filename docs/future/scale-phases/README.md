@@ -22,15 +22,14 @@ dùng để tự động thay đổi code, database, API, permission hoặc giao
 
 | Chủ đề | Quyết định hiện tại |
 |---|---|
-| Kiến trúc | Tách entity nghiệp vụ riêng, nhưng schema phải lean và tách theo nhu cầu thực tế. |
-| Evidence | Optional; Phase 1 chỉ hỗ trợ image. |
-| Storage | Object storage qua adapter; provider và URL strategy chốt trong design Phase 1. |
+| Kiến trúc | Phase 1 chốt bốn conceptual entity: `media_files`, `handover_evidence`, `return_evidence`, `repair_evidence`; schema vẫn phải lean. |
+| Evidence | Optional; Phase 1 chỉ hỗ trợ image cho handover, return và post-repair. |
+| Storage | Binary ở public object storage; MariaDB giữ metadata và typed relations; đọc bằng public/stable URL. Provider và chi tiết kỹ thuật chốt trong Phase 1. |
 | Quyền xem | Dùng permission hiện có kết hợp quan hệ nghiệp vụ; chưa thêm `evidence.view`. |
-| Acknowledgement | Nút xác nhận của authenticated user; không bắt buộc để đóng lifecycle. |
 | Accessories | Checklist trước, chưa quản lý accessory như asset độc lập. |
 | Discrepancy | Thiếu/hỏng phụ kiện không chặn return; lưu discrepancy để xử lý tiếp. |
 | Repair handback | Repair Complete → `AVAILABLE`; employee tự tạo request mới. |
-| Repair audit | Repair record + parts rows; image evidence cho tài liệu trước mắt. |
+| Repair audit | Phase 3 mới làm `repair_records`, parts, warranty, cost và timeline; Phase 1 chỉ có `repair_evidence` gắn ban đầu với `asset_issues`. |
 | IT Support | Chưa thêm role; tiếp tục cấp capability bằng permission. |
 | Governance | Baseline bảo mật/audit ở Phase 1; retention, privacy sâu và immutable log ở Phase 5. |
 | Receipt/PDF | Để Phase 5. |
@@ -40,7 +39,7 @@ dùng để tự động thay đổi code, database, API, permission hoặc giao
 ```text
 Phase 0 — Activation
         ↓
-Phase 1 — Evidence & Custody
+Phase 1 — Image Evidence Core
         ↓
 Phase 2 — Accessories       Phase 3 — Repair Audit
         \\                         /
@@ -57,7 +56,7 @@ policy tối giản, không thêm workflow `WAITING_HANDBACK`.
 ## Danh sách phase
 
 - [Phase 0 — Activation và chốt thiết kế](phase-0-activation.md)
-- [Phase 1 — Evidence & Custody Core](phase-1-evidence-custody.md)
+- [Phase 1 — Image Evidence Core](phase-1-image-evidence-core.md)
 - [Phase 2 — Accessories Checklist](phase-2-accessories-checklist.md)
 - [Phase 3 — Repair Audit](phase-3-repair-audit.md)
 - [Phase 4 — Repair Handback theo Option A](phase-4-repair-handback.md)
@@ -69,6 +68,17 @@ policy tối giản, không thêm workflow `WAITING_HANDBACK`.
 - Approval không đồng nghĩa với handover.
 - Authorization kiểm tra effective permission, không hard-code tên role.
 - Không lưu binary trong MariaDB.
+- Binary nằm ở public object storage và đọc bằng public/stable URL; public URL
+  không có BigIn authorization, còn upload/delete vẫn qua API/backend được xác thực.
+- Ưu tiên lưu `storage_path` và derive URL từ `PUBLIC_MEDIA_BASE_URL + storage_path`;
+  không lưu signed URL.
+- `storage_path` dùng UUID hoặc random filename, không chứa employee name, asset
+  serial, issue description, email hay business-sensitive text. UUID chỉ giảm khả
+  năng đoán URL, không phải privacy/security boundary.
+- `media_files` chỉ chứa generic metadata; không dùng `owner_type`/`owner_id`,
+  nullable business FK hoặc parse path để authorize ownership.
 - Không backfill evidence giả cho history MVP cũ.
+- Không reuse cùng media giữa handover, return và repair.
+- Phase 1 không phụ thuộc `repair_records`; Phase 3 chỉ review migration khi
+  structured repair attempts thực sự cần.
 - Không thêm status mới nếu chưa có requirement và business rule riêng.
-

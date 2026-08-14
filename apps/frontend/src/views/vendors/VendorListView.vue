@@ -4,7 +4,7 @@ import { computed, h, onMounted, reactive, ref } from 'vue'
 import { message } from 'ant-design-vue'
 
 import WorkspaceLayout from '../../components/layout/WorkspaceLayout.vue'
-import { createVendor, listVendors, updateVendor } from '../../services/vendor.service'
+import { createVendor, listVendors, updateVendor, updateVendorStatus } from '../../services/vendor.service'
 import { useAuthStore } from '../../stores/auth'
 
 const authStore = useAuthStore()
@@ -17,6 +17,7 @@ const dialog = reactive({ open: false, saving: false, item: null, name: '', cont
 
 const canCreate = computed(() => authStore.hasPermission('vendor.create'))
 const canUpdate = computed(() => authStore.hasPermission('vendor.update'))
+const canManageStatus = computed(() => authStore.hasPermission('vendor.manage_status'))
 
 function displayValue(value) {
   return value || '—'
@@ -67,10 +68,15 @@ async function saveDialog() {
       phone: dialog.phone,
       email: dialog.email,
       address: dialog.address,
-      ...(dialog.item ? { isActive: dialog.isActive } : {}),
     }
-    if (dialog.item) await updateVendor(authStore.api, dialog.item.id, body)
-    else await createVendor(authStore.api, body)
+    if (dialog.item) {
+      if (canUpdate.value) await updateVendor(authStore.api, dialog.item.id, body)
+    } else {
+      await createVendor(authStore.api, body)
+    }
+    if (dialog.item && canManageStatus.value && dialog.isActive !== dialog.item.isActive) {
+      await updateVendorStatus(authStore.api, dialog.item.id, dialog.isActive)
+    }
     message.success(dialog.item ? 'Vendor updated.' : 'Vendor created.')
     dialog.open = false
     await load()
@@ -109,7 +115,7 @@ onMounted(load)
             <a-table-column title="Email" :width="230"><template #default="{ record }">{{ displayValue(record.email) }}</template></a-table-column>
             <a-table-column title="Status" :width="120"><template #default="{ record }"><a-tag :color="record.isActive ? 'green' : 'default'">{{ record.isActive ? 'Active' : 'Inactive' }}</a-tag></template></a-table-column>
             <a-table-column title="Actions" fixed="right" :width="100"><template #default="{ record }"><a-space wrap>
-              <a-button v-if="canUpdate" type="link" class="bigin-touch-target" @click="openDialog(record)"><template #icon><EditOutlined /></template>Edit</a-button>
+              <a-button v-if="canUpdate || canManageStatus" type="link" class="bigin-touch-target" @click="openDialog(record)"><template #icon><EditOutlined /></template>Edit</a-button>
             </a-space></template></a-table-column>
           </a-table>
         </div>
@@ -118,12 +124,12 @@ onMounted(load)
     </main>
     <a-modal v-model:open="dialog.open" wrap-class-name="bigin-modal-content" :title="dialog.item ? 'Edit vendor' : 'Create vendor'" :confirm-loading="dialog.saving" ok-text="Save" @ok="saveDialog">
       <a-form layout="vertical">
-        <a-form-item label="Name" required><a-input v-model:value="dialog.name" maxlength="255" /></a-form-item>
-        <a-form-item label="Contact name"><a-input v-model:value="dialog.contactName" maxlength="255" /></a-form-item>
-        <a-form-item label="Phone"><a-input v-model:value="dialog.phone" maxlength="50" /></a-form-item>
-        <a-form-item label="Email"><a-input v-model:value="dialog.email" maxlength="255" /></a-form-item>
-        <a-form-item label="Address"><a-textarea v-model:value="dialog.address" :rows="3" maxlength="1000" show-count /></a-form-item>
-        <a-form-item v-if="dialog.item" label="Status"><a-switch v-model:checked="dialog.isActive" checked-children="Active" un-checked-children="Inactive" /></a-form-item>
+        <a-form-item label="Name" required><a-input v-model:value="dialog.name" :disabled="dialog.item && !canUpdate" maxlength="255" /></a-form-item>
+        <a-form-item label="Contact name"><a-input v-model:value="dialog.contactName" :disabled="dialog.item && !canUpdate" maxlength="255" /></a-form-item>
+        <a-form-item label="Phone"><a-input v-model:value="dialog.phone" :disabled="dialog.item && !canUpdate" maxlength="50" /></a-form-item>
+        <a-form-item label="Email"><a-input v-model:value="dialog.email" :disabled="dialog.item && !canUpdate" maxlength="255" /></a-form-item>
+        <a-form-item label="Address"><a-textarea v-model:value="dialog.address" :disabled="dialog.item && !canUpdate" :rows="3" maxlength="1000" show-count /></a-form-item>
+        <a-form-item v-if="dialog.item && canManageStatus" label="Status"><a-switch v-model:checked="dialog.isActive" checked-children="Active" un-checked-children="Inactive" /></a-form-item>
       </a-form>
     </a-modal>
   </WorkspaceLayout>

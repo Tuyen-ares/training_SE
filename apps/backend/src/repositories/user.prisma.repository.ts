@@ -147,9 +147,9 @@ export class PrismaUserRepository implements IUserRepository {
   async departmentExists(departmentId: number, transaction?: PrismaTransaction): Promise<boolean> {
     const department = await this.database(transaction).departments.findUnique({
       where: { id: departmentId },
-      select: { id: true },
+      select: { id: true, is_active: true },
     });
-    return department !== null;
+    return department?.is_active === true;
   }
 
   async create(data: CreateUserData, transaction: PrismaTransaction): Promise<number> {

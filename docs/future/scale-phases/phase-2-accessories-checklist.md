@@ -1,7 +1,7 @@
 # Phase 2 — Accessories Checklist
 
 **Status: FUTURE / NOT IMPLEMENTED**
-**Phụ thuộc: Phase 0 đã đạt gate; Phase 1 custody record đã ổn định**
+**Phụ thuộc: Phase 0 đã đạt gate; Phase 1 image evidence relation đã ổn định**
 
 ## Mục tiêu
 
@@ -42,7 +42,8 @@ riêng. Nếu cần xử lý như hư hỏng, actor phải đi qua flow issue hi
 
 1. Chốt model template, snapshot và discrepancy trong design phase.
 2. Thêm repository/service cho create/read checklist và compare giao-trả.
-3. Gắn checklist với custody record Phase 1.
+3. Gắn checklist với `borrow_histories` và các handover/return evidence relation
+   của Phase 1.
 4. Bảo đảm retry/idempotency không tạo snapshot trùng.
 5. Expose API contract cho template, handover checklist, return checklist và
    discrepancy.
@@ -71,7 +72,7 @@ riêng. Nếu cần xử lý như hư hỏng, actor phải đi qua flow issue hi
 Phase 2 đạt khi:
 
 - Có thể chứng minh checklist lúc giao và lúc trả.
-- Có báo cáo discrepancy theo custody record.
+- Có báo cáo discrepancy theo `borrow_histories`.
 - Discrepancy không làm kẹt return queue.
 - Không phát sinh lifecycle riêng cho accessory.
 - Contract, migration, frontend flow và integration tests đã verified.

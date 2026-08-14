@@ -32,7 +32,7 @@ async function loadPage() {
       listRoles(authStore.api),
     ])
     request.value = requestData
-    departments.value = departmentData
+    departments.value = departmentData.filter((department) => department.isActive)
     roles.value = roleData
   } catch (error) { errorMessage.value = error.status === 404 ? 'This registration request no longer exists.' : 'We could not load the review details.' }
   finally { loading.value = false }

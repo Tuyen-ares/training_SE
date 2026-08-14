@@ -23,7 +23,7 @@ const statusFilter = ref('all')
 
 const canCreate = computed(() => authStore.hasPermission('user.create'))
 const canUpdate = computed(() => authStore.hasPermission('user.update'))
-const canDeactivate = computed(() => authStore.hasPermission('user.delete'))
+const canManageStatus = computed(() => authStore.hasPermission('user.manage_status'))
 
 const filteredUsers = computed(() => {
   const query = searchQuery.value.trim().toLowerCase()
@@ -164,12 +164,12 @@ onMounted(loadPage)
             <template #default="{ record }">
               <a-space>
                   <a-button class="bigin-touch-target" type="link" size="small" @click="router.push({ name: 'user-detail', params: { id: record.id } })">View</a-button>
-                <a-dropdown v-if="canUpdate || canDeactivate">
+                <a-dropdown v-if="canUpdate || canManageStatus">
                   <a-button class="bigin-touch-target" type="text" size="small" aria-label="More user actions">•••</a-button>
                   <template #overlay>
                     <a-menu>
                       <a-menu-item v-if="canUpdate" @click="router.push({ name: 'user-edit', params: { id: record.id } })">Edit user</a-menu-item>
-                      <a-menu-item v-if="(record.isActive && canDeactivate) || (!record.isActive && canUpdate)" :danger="record.isActive" @click="changeStatus(record)">
+                      <a-menu-item v-if="canManageStatus" :danger="record.isActive" @click="changeStatus(record)">
                         {{ record.isActive ? 'Deactivate' : 'Reactivate' }}
                       </a-menu-item>
                     </a-menu>

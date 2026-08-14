@@ -13,6 +13,7 @@ const hasAdministrationAccess = computed(() => [
   'user_registration.review',
   'role.view',
   'role.assign',
+  'department.view',
 ].some((permission) => authStore.hasPermission(permission)))
 const redirecting = ref(true)
 
@@ -23,6 +24,8 @@ function openFirstAvailableSection() {
       ? 'registration-requests'
       : ['role.view', 'role.assign'].some((permission) => authStore.hasPermission(permission))
         ? 'roles'
+        : authStore.hasPermission('department.view')
+          ? 'departments'
         : null
 
   if (destination) {

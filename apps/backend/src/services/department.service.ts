@@ -39,6 +39,10 @@ export class DepartmentService extends BaseService<
     return super.update(id, dto);
   }
 
+  setStatus(id: number, isActive: boolean): Promise<Department | null> {
+    return this.repo.setActive(id, isActive);
+  }
+
   override async delete(id: number): Promise<boolean> {
     const department = await this.repo.findById(id);
     if (!department) return false;

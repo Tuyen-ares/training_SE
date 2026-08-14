@@ -10,7 +10,7 @@ const emit = defineEmits(['update:modelValue'])
 
 const groups = computed(() => {
   const grouped = new Map()
-  props.permissions.forEach((permission) => {
+  props.permissions.filter((permission) => permission.code !== 'role.delete').forEach((permission) => {
     const key = permission.code.split('.')[0]
     if (!grouped.has(key)) grouped.set(key, [])
     grouped.get(key).push(permission)

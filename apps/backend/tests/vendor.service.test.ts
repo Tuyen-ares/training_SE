@@ -54,6 +54,13 @@ class MemoryVendorRepository implements IVendorRepository {
     this.records.set(id, updated);
     return updated;
   }
+  async setActive(id: number, isActive: boolean): Promise<Vendor | null> {
+    const current = this.records.get(id);
+    if (!current) return null;
+    const updated = vendor({ ...current, isActive, id });
+    this.records.set(id, updated);
+    return updated;
+  }
   async delete(id: number): Promise<Vendor | null> { return this.records.get(id) ?? null; }
 }
 
@@ -82,9 +89,18 @@ test('vendor service preserves omitted update fields and normalizes changed blan
   const repository = new MemoryVendorRepository();
   const service = new VendorService(repository);
 
-  await service.update(1, { contactName: '  ', isActive: false });
+  await service.update(1, { contactName: '  ' });
 
-  assert.deepEqual(repository.lastUpdate, { contactName: null, isActive: false });
+  assert.deepEqual(repository.lastUpdate, { contactName: null });
+});
+
+test('vendor status is changed through the dedicated status operation', async () => {
+  const repository = new MemoryVendorRepository();
+  const service = new VendorService(repository);
+
+  await service.setStatus(1, false);
+
+  assert.equal(repository.records.get(1)?.isActive, false);
 });
 
 test('duplicate vendor names are rejected before persistence', async () => {

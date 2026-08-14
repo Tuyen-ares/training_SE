@@ -32,13 +32,17 @@ Permissions are read-only in the application and include an English description 
 
 The protected capability set is:
 
-`user.view`, `user.create`, `user.update`, `user.delete`, `role.view`, `role.create`, `role.update`, `role.assign`, `permission.view`, `user_registration.review`.
+`user.view`, `user.create`, `user.update`, `user.manage_status`, `role.view`, `role.create`, `role.update`, `role.assign`, `permission.view`, `user_registration.review`.
 
 Role-permission replacement, user-role replacement, role changes through user update, and user deactivation lock the same essential permission rows in deterministic order. After the mutation, the transaction must still find at least one active user whose effective permission union contains the entire set. Otherwise the transaction returns conflict and rolls back. The check never uses an admin role name.
 
 ## Interface
 
-Authenticated administration uses one sidebar entry and three tabs: Users, Registration Requests, and Roles. Tabs and actions are shown by permission; backend checks remain authoritative.
+Authenticated administration uses one sidebar entry and four tabs: Users,
+Departments, Registration Requests, and Roles. Tabs and actions are shown by
+permission; backend checks remain authoritative. User status uses
+`user.manage_status`; information updates use `user.update`. Department status
+uses `department.manage_status` and there is no department delete action.
 
 - Registration Queue: status segment, applicant search, oldest pending first, history newest first.
 - Registration Detail: applicant identity, review audit, required department, optional multi-role selection with employee default, approve and reject actions.

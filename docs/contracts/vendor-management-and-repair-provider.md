@@ -14,8 +14,10 @@ New vendors are active.
 
 An inactive vendor is hidden from the default repair selector and cannot be
 assigned to a new repair. It remains visible in Vendor Management and remains
-valid for existing issue history. `PATCH /api/vendors/:id` changes
-`isActive`; no separate activate/deactivate permission or endpoint exists.
+valid for existing issue history. `PATCH /api/vendors/:id` changes only vendor
+information; `PATCH /api/vendors/:id/status` changes `isActive` and requires
+the dedicated `vendor.manage_status` permission for both activation and
+deactivation.
 
 Vendor records are never deleted through the MVP API. Deactivation is the
 only supported way to stop using a vendor and preserves the record/history;
@@ -32,7 +34,10 @@ All successful responses use `{ "data": ... }`.
 - `POST /api/vendors` requires `vendor.create` and accepts `name` plus optional
   contact fields. It always creates `isActive=true`.
 - `PATCH /api/vendors/:id` requires `vendor.update` and accepts any non-empty
-  subset of name/contact fields plus `isActive`.
+  subset of name/contact fields (`name`, `contactName`, `phone`, `email`, and
+  `address`). Sending `isActive` returns `400`.
+- `PATCH /api/vendors/:id/status` requires `vendor.manage_status` and accepts
+  `{ "isActive": true|false }` for either direction.
 There is no vendor delete endpoint or `vendor.delete` permission in the MVP.
 
 Duplicate names follow the database collation and return `409`. Invalid input

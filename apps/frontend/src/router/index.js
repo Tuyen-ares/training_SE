@@ -137,7 +137,7 @@ const router = createRouter({
       component: () => import('../views/administration/AdministrationIndexView.vue'),
       meta: {
         requiresAuth: true,
-        permissionsAny: ['user.view', 'user_registration.review', 'role.view', 'role.assign'],
+        permissionsAny: ['user.view', 'user_registration.review', 'role.view', 'role.assign', 'department.view'],
       },
     },
     {
@@ -169,6 +169,12 @@ const router = createRouter({
       name: 'role-detail',
       component: () => import('../views/administration/RoleFormView.vue'),
       meta: { requiresAuth: true, permission: 'role.view' },
+    },
+    {
+      path: '/departments',
+      name: 'departments',
+      component: () => import('../views/administration/DepartmentListView.vue'),
+      meta: { requiresAuth: true, permissionsAny: ['department.view', 'user_registration.review'] },
     },
     {
       path: '/borrowing-activity/:id',
@@ -246,6 +252,7 @@ router.beforeEach(async (to) => {
       { name: 'users', permission: 'user.view' },
       { name: 'registration-requests', permission: 'user_registration.review' },
       { name: 'roles', permission: 'role.view' },
+      { name: 'departments', permission: 'department.view' },
     ].find((item) => item.name !== to.name && authStore.hasPermission(item.permission))
 
     return fallback ? { name: fallback.name } : { name: 'main' }

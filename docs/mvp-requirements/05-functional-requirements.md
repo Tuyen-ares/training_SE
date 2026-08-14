@@ -78,7 +78,8 @@
 |---|---|
 | FR-VEN-01 | Hệ thống phải cho phép user có `vendor.view` tìm kiếm, phân trang và lọc vendor theo active/inactive. |
 | FR-VEN-02 | Hệ thống phải cho phép user có `vendor.create` tạo vendor active; contact field rỗng phải được lưu thành `null`. |
-| FR-VEN-03 | Hệ thống phải cho phép user có `vendor.update` sửa thông tin và activate/deactivate vendor bằng PATCH. |
+| FR-VEN-03 | Hệ thống phải cho phép user có `vendor.update` sửa thông tin vendor; endpoint update thông tin không được đổi `isActive`. |
+| FR-VEN-03A | Hệ thống phải cho phép user có `vendor.manage_status` activate/deactivate vendor qua endpoint status riêng cho cả hai chiều. |
 | FR-VEN-04 | Hệ thống không cung cấp thao tác xóa vendor trong MVP; vendor không còn sử dụng phải được deactivate để giữ lịch sử. |
 | FR-VEN-05 | Hệ thống phải hiển thị tên vendor hiện tại trong issue history; vendor inactive không được assign cho repair mới. |
 
@@ -108,3 +109,6 @@
 | FR-F08-10 | Hệ thống phải cho phép rename custom role và replace-set permission; system role name không được đổi. |
 | FR-F08-11 | Hệ thống chỉ cho đọc permission catalogue để cấu hình role, không cho permission CRUD. |
 | FR-F08-12 | Hệ thống phải rollback mutation nếu không còn active user có đủ essential admin permissions. |
+| FR-F08-13 | Hệ thống phải cho phép user có `department.view` xem danh sách department active/inactive và user có `department.create` tạo department active. |
+| FR-F08-14 | Hệ thống phải cho phép user có `department.update` sửa tên department; không cho phép đổi status trong endpoint update thông tin. |
+| FR-F08-15 | Hệ thống phải cho phép user có `department.manage_status` bật/tắt department; department inactive vẫn giữ lịch sử nhưng không dùng cho assignment mới. |

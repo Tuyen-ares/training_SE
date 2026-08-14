@@ -1,6 +1,6 @@
 <script setup>
 import { computed, onMounted, ref } from 'vue'
-import { DeleteOutlined, EditOutlined, MailOutlined, PhoneOutlined } from '@ant-design/icons-vue'
+import { EditOutlined, MailOutlined, PhoneOutlined, PoweroffOutlined } from '@ant-design/icons-vue'
 import { useRoute, useRouter } from 'vue-router'
 
 import WorkspaceLayout from '../../components/layout/WorkspaceLayout.vue'
@@ -20,7 +20,7 @@ const roleModalOpen = ref(false)
 const roleOptions = ref([])
 const selectedRoleIds = ref([])
 const canUpdate = computed(() => authStore.hasPermission('user.update'))
-const canDeactivate = computed(() => authStore.hasPermission('user.delete'))
+const canManageStatus = computed(() => authStore.hasPermission('user.manage_status'))
 const canAssignRoles = computed(() => authStore.hasPermission('role.assign'))
 
 const initials = computed(() => user.value?.name.split(/\s+/).filter(Boolean).slice(-2).map((part) => part[0]).join('').toUpperCase() || 'U')
@@ -87,8 +87,8 @@ onMounted(loadUser)
         <div class="detail-heading">
           <div><a-breadcrumb><a-breadcrumb-item>Admin</a-breadcrumb-item><a-breadcrumb-item>Users</a-breadcrumb-item><a-breadcrumb-item>User Details</a-breadcrumb-item></a-breadcrumb><h1>User Details</h1></div>
           <a-space class="bigin-mobile-action-stack">
-            <a-button class="bigin-touch-target" v-if="(user.isActive && canDeactivate) || (!user.isActive && canUpdate)" :danger="user.isActive" :loading="mutating" @click="changeStatus">
-              <template #icon><DeleteOutlined v-if="user.isActive" /></template>{{ user.isActive ? 'Deactivate' : 'Reactivate' }}
+            <a-button class="bigin-touch-target" v-if="canManageStatus" :danger="user.isActive" :loading="mutating" @click="changeStatus">
+              <template #icon><PoweroffOutlined /></template>{{ user.isActive ? 'Deactivate' : 'Reactivate' }}
             </a-button>
             <a-button v-if="canUpdate" class="primary-action bigin-touch-target" type="primary" @click="router.push({ name: 'user-edit', params: { id: user.id } })"><template #icon><EditOutlined /></template>Edit</a-button>
           </a-space>

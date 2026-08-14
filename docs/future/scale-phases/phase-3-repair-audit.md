@@ -9,6 +9,27 @@ Biến repair từ các field summary mutable trong `asset_issues` thành lịch
 chữa có cấu trúc, vẫn giữ `asset_issues` làm incident gốc và giữ nguyên state
 machine MVP.
 
+## Boundary với Image Evidence Core
+
+Phase 1 khởi đầu với relation:
+
+```text
+asset_issues → repair_evidence → media_files
+```
+
+Phase 3 chịu trách nhiệm structured `repair_records`, parts, warranty, cost,
+provider, timeline, repair result và test result. Khi `repair_records` được
+activate, Phase 3 bắt buộc mở migration/ownership review để quyết định có chuyển
+repair evidence sang:
+
+```text
+repair_records → repair_evidence → media_files
+```
+
+Chỉ migrate nếu structured Repair Audit thực sự cần phân biệt nhiều repair
+attempt. Review này không phải dependency của Phase 1 và không được làm Phase 1
+phụ thuộc `repair_records`.
+
 ## Phạm vi lần đầu
 
 ### Repair record
@@ -55,7 +76,9 @@ Fail          → FAILED + asset DAMAGED
 1. Thêm repair record liên kết với `asset_issue`.
 2. Tách dữ liệu mới khỏi summary cũ nhưng giữ read compatibility cho MVP.
 3. Thêm parts rows với transaction và idempotency phù hợp.
-4. Gắn shared evidence Phase 1 cho intake/result/before/after.
+4. Review ownership của `repair_evidence → media_files` với relation ban đầu là
+   `asset_issues → repair_evidence`; chỉ migrate sang `repair_records` nếu cần
+   nhiều repair attempt.
 5. Mở API cho timeline, parts, cost, warranty, result và test result.
 6. Bảo đảm complete/fail atomic với asset transition.
 
@@ -73,7 +96,8 @@ Fail          → FAILED + asset DAMAGED
 - Parts không bị mất khi cập nhật repair record.
 - Complete/fail giữ nguyên asset state và issue status hiện hành.
 - Concurrent complete không tạo kết quả hoàn tất thứ hai.
-- Evidence repair chịu cùng access control và cleanup rule của Phase 1.
+- `repair_evidence → media_files` chịu cùng public media availability, API
+  permission, cleanup và reconciliation rule của Phase 1.
 - Read API cũ không bị phá bởi repair record mới.
 - Cost, warranty và test result validate đúng boundary.
 

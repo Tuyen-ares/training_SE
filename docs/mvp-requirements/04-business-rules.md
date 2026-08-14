@@ -15,7 +15,7 @@
 - **BR-RBAC-03:** Admin muốn làm nghiệp vụ Manager phải được gán permission tương ứng.
 - **BR-RBAC-04:** Phiên bản này cho list/detail/create role, rename custom role, replace-set permission của role và replace-set role của user; không delete role và không CRUD permission code.
 - **BR-RBAC-05:** System role không được đổi tên nhưng được thay permission. Mỗi role phải giữ ít nhất một permission và mỗi user phải giữ ít nhất một role.
-- **BR-RBAC-06:** Thao tác nhạy cảm phải giữ ít nhất một active user có đủ tập essential admin permissions: `user.view/create/update/delete`, `role.view/create/update/assign`, `permission.view`, `user_registration.review`. Invariant dựa trên effective permission, không dựa vào tên role.
+- **BR-RBAC-06:** Thao tác nhạy cảm phải giữ ít nhất một active user có đủ tập essential admin permissions: `user.view/create/update/manage_status`, `role.view/create/update/assign`, `permission.view`, `user_registration.review`. Invariant dựa trên effective permission, không dựa vào tên role.
 - **BR-RBAC-07:** Permission thay đổi theo quan hệ role-permission hiện tại và có hiệu lực cho user ở lần login hoặc refresh tiếp theo.
 
 ## Asset
@@ -88,6 +88,12 @@
 - **BR-VEN-06:** `vendorId` omitted giữ nguyên vendor và chỉ cần repair permission; `vendorId` number hoặc `null` là thay đổi field và cần đồng thời repair permission phù hợp và `vendor.view`.
 - **BR-VEN-07:** Assign/clear và activate/deactivate khóa cùng vendor row bằng transaction; assignment thấy vendor inactive sau khi deactivation commit thì bị từ chối.
 
+## Department
+
+- **BR-DEP-01:** Department mới active; `department.update` chỉ sửa thông tin department, còn bật/tắt `is_active` cần `department.manage_status`.
+- **BR-DEP-02:** Department inactive giữ các quan hệ user/asset và lịch sử hiện có, nhưng không được chọn cho assignment user mới, registration approval hoặc asset mới/cập nhật.
+- **BR-DEP-03:** MVP không cung cấp xóa department; `department.delete` không thuộc permission catalogue.
+
 ## Notification và User
 
 - **BR-NOT-01:** `related_entity_type` và `related_entity_id` là tham chiếu logic, không phải quan hệ khóa ngoại.
@@ -104,3 +110,4 @@
 - **BR-USR-01:** Email và số điện thoại user phải duy nhất.
 - **BR-USR-02:** Mật khẩu không được hiển thị trong dữ liệu trả cho người dùng.
 - **BR-USR-03:** Vô hiệu hóa user không được xóa các quan hệ và lịch sử nghiệp vụ đã có.
+- **BR-USR-04:** `user.update` chỉ sửa thông tin; bật/tắt `is_active` cho cả hai chiều cần `user.manage_status`.

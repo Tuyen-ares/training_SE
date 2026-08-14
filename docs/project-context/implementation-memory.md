@@ -100,6 +100,30 @@ Các ghi chú deployment trên chỉ là context; khi sửa phải kiểm tra lo
 
 ## Important Recent Decisions
 
+### 2026-08-14 — Tách permission quản lý status cho User, Vendor và Department
+
+**Feature:** F08 Administration và Shared Vendor/Department master data.
+
+**Decision:** `*.update` chỉ sửa thông tin. `user.manage_status`,
+`vendor.manage_status` và `department.manage_status` là capability riêng cho
+cả bật và tắt `isActive`; không có DELETE API cho ba resource này. Asset giữ
+`asset.delete` cho nghiệp vụ Retire. `role.delete` không có API/lifecycle và bị
+loại khỏi permission catalogue.
+
+**Migration:** Dùng expand/contract. Giai đoạn expand thêm ba permission và
+backfill `role_permissions` từ các grant legacy thực tế, không theo role name.
+Giai đoạn contract xóa các permission legacy khỏi catalogue và role grants.
+Token cũ cần login/refresh lại để nhận capability mới.
+
+**Department rule:** Department inactive vẫn giữ user/asset/history links nhưng
+không được dùng cho assignment mới. Backend kiểm tra active state ở user,
+registration approval và asset assignment; frontend chỉ đưa department active
+vào selector, ngoại lệ là department hiện tại của bản ghi đang sửa.
+
+**Affected areas:** Prisma schema/migrations, User/Vendor/Department routes,
+RBAC essential-admin guard, assignment repositories, Administration frontend,
+OpenAPI/contracts/requirements and tests.
+
 ### 2026-08-14 — Shared vendor master for repair provider
 
 **Feature:** Vendor Management / F06 Asset Issues & Repair.
@@ -181,13 +205,13 @@ Sensitive role-permission, user-role và user-deactivation mutations khóa tập
 
 **Verification:** Backend typecheck/unit tests, registration/RBAC DB integration including concurrent duplicate submission and atomic hash cleanup, frontend build, OpenAPI parse, Stitch queue/detail generation.
 
-### 2026-08-10 — Gom active-status thành một API PATCH
+### 2026-08-10 — Gom active-status thành một API PATCH (superseded)
 
 **Feature:** F08 Administration.
 
 **Decision:** Dùng `PATCH /api/users/:userId/status` với body `isActive: boolean` cho cả kích hoạt
-và vô hiệu hóa. Quyền được kiểm tra theo capability tương ứng: `user.update` khi kích hoạt và
-`user.delete` khi vô hiệu hóa; không dùng DELETE cho nghiệp vụ đổi trạng thái.
+và vô hiệu hóa. Quyền legacy `user.update`/`user.delete` đã được thay bằng
+`user.manage_status` cho cả hai chiều; không dùng DELETE cho nghiệp vụ đổi trạng thái.
 
 **Reason:** Một API thống nhất nhưng vẫn giữ được phân quyền khác nhau cho hai hành động.
 
@@ -242,7 +266,7 @@ thêm role sau mà không hard-code role vào business logic.
 **Feature:** F03 Borrow Request.
 
 **Decision:** `borrow_requests.note` (Borrowing Purpose) phải là chuỗi sau khi trim,
-từ 1 đến 2.000 ký tự. Frontend validate để phản hồi sớm; backend Zod schema là
+từ 1 đến 300 ký tự. Frontend validate để phản hồi sớm; backend Zod schema là
 biên bảo vệ bắt buộc; database giữ cột `NOT NULL`. Migration backfill các request
 legacy chưa có purpose bằng nhãn minh bạch trước khi đổi nullability.
 

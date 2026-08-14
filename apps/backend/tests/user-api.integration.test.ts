@@ -48,12 +48,12 @@ test('User API creates safe responses, enforces role.assign and deactivates inst
     'user.view',
     'user.create',
     'user.update',
-    'user.delete',
+    'user.manage_status',
     'role.assign',
   ]);
   const createOnlyToken = tokenService.createAccessToken(1, ['user.create']);
   const updateOnlyToken = tokenService.createAccessToken(1, ['user.update']);
-  const deleteOnlyToken = tokenService.createAccessToken(1, ['user.delete']);
+  const statusOnlyToken = tokenService.createAccessToken(1, ['user.manage_status']);
   const suffix = Date.now().toString().slice(-8);
 
   async function request(
@@ -193,7 +193,7 @@ test('User API creates safe responses, enforces role.assign and deactivates inst
 
   const activateResponse = await request(
     `/users/${explicitRoleResponse.body.data.id}/status`,
-    fullAccessToken,
+    statusOnlyToken,
     { method: 'PATCH', body: JSON.stringify({ isActive: true }) },
   );
   assert.equal(activateResponse.status, 200);
@@ -208,7 +208,7 @@ test('User API creates safe responses, enforces role.assign and deactivates inst
 
   const forbiddenActivateResponse = await request(
     `/users/${explicitRoleResponse.body.data.id}/status`,
-    deleteOnlyToken,
+    updateOnlyToken,
     { method: 'PATCH', body: JSON.stringify({ isActive: true }) },
   );
   assert.equal(forbiddenActivateResponse.status, 403);

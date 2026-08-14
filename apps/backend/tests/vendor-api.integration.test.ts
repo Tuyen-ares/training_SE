@@ -19,7 +19,7 @@ test('Vendor API enforces lifecycle, filters and historical names', async (conte
   assert.ok(address && typeof address === 'object');
   const baseUrl = `http://127.0.0.1:${address.port}/api`;
   const tokenService = new TokenService();
-  const managerToken = tokenService.createAccessToken(1, ['vendor.view', 'vendor.create', 'vendor.update']);
+  const managerToken = tokenService.createAccessToken(1, ['vendor.view', 'vendor.create', 'vendor.update', 'vendor.manage_status']);
   const issueViewerToken = tokenService.createAccessToken(1, ['asset_issue.view']);
   const request = async (path: string, token: string, init: RequestInit = {}) => {
     const response = await fetch(`${baseUrl}${path}`, {
@@ -51,7 +51,12 @@ test('Vendor API enforces lifecycle, filters and historical names', async (conte
   const deleteResponse = await request(`/vendors/${vendorId}`, managerToken, { method: 'DELETE' });
   assert.equal(deleteResponse.status, 404);
 
-  const deactivated = await request(`/vendors/${vendorId}`, managerToken, {
+  const statusInInfoUpdate = await request(`/vendors/${vendorId}`, managerToken, {
+    method: 'PATCH', body: JSON.stringify({ isActive: false }),
+  });
+  assert.equal(statusInInfoUpdate.status, 400);
+
+  const deactivated = await request(`/vendors/${vendorId}/status`, managerToken, {
     method: 'PATCH', body: JSON.stringify({ isActive: false }),
   });
   assert.equal(deactivated.status, 200, JSON.stringify(deactivated.body));

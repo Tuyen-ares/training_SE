@@ -9,15 +9,23 @@ import { createRestRouter } from '@/shared/rest-router.js';
 const repository = new PrismaDepartmentRepository(prisma);
 const service = new DepartmentService(repository);
 const controller = new DepartmentController(service);
+const router = createRestRouter(controller, {
+  global: [requireAuth],
+  getAll: [requireAnyPermission('department.view', 'user_registration.review')],
+  getById: [requirePermission('department.view')],
+  create: [requirePermission('department.create')],
+  update: [requirePermission('department.update')],
+  delete: false,
+});
+
+router.patch(
+  '/:id/status',
+  requireAuth,
+  requirePermission('department.manage_status'),
+  controller.updateStatus,
+);
 
 export default {
   resource: 'departments',
-  router: createRestRouter(controller, {
-    global: [requireAuth],
-    getAll: [requireAnyPermission('department.view', 'user_registration.review')],
-    getById: [requirePermission('department.view')],
-    create: [requirePermission('department.create')],
-    update: [requirePermission('department.update')],
-    delete: [requirePermission('department.delete')],
-  }),
+  router,
 };

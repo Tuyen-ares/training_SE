@@ -89,8 +89,10 @@ export class AssetService
       throw new ConflictError('Asset model does not exist');
     }
 
+    const changingDepartment =
+      dto.department_id !== undefined && dto.department_id !== asset.department_id;
     if (
-      dto.department_id !== undefined &&
+      changingDepartment &&
       dto.department_id !== null &&
       !(await this.repo.departmentExists(dto.department_id))
     ) {

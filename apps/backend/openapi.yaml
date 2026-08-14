@@ -1834,7 +1834,7 @@ paths:
     patch:
       tags: [Vendor Management]
       summary: Cập nhật vendor
-      description: Sửa thông tin hoặc isActive; yêu cầu `vendor.update`. Deactivate giữ nguyên lịch sử.
+      description: Chỉ sửa thông tin vendor; yêu cầu `vendor.update`. Trạng thái được thay đổi qua endpoint status.
       operationId: updateVendor
       parameters:
         - $ref: '#/components/parameters/VendorId'
@@ -1857,6 +1857,33 @@ paths:
         '403': { $ref: '#/components/responses/Forbidden' }
         '404': { description: Không tìm thấy vendor, content: { application/json: { schema: { $ref: '#/components/schemas/Error' } } } }
         '409': { description: Tên vendor đã tồn tại, content: { application/json: { schema: { $ref: '#/components/schemas/Error' } } } }
+  /vendors/{id}/status:
+    patch:
+      tags: [Vendor Management]
+      summary: Kích hoạt/vô hiệu hóa vendor
+      description: Gửi `isActive` để bật/tắt vendor; yêu cầu `vendor.manage_status`. Vendor inactive vẫn giữ lịch sử.
+      operationId: updateVendorStatus
+      parameters:
+        - $ref: '#/components/parameters/VendorId'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/UpdateStatusInput'
+      responses:
+        '200':
+          description: Vendor sau khi thay đổi trạng thái
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data: { $ref: '#/components/schemas/Vendor' }
+        '400': { $ref: '#/components/responses/BadRequest' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+        '404': { description: Không tìm thấy vendor, content: { application/json: { schema: { $ref: '#/components/schemas/Error' } } } }
   /notifications:
     get:
       tags:
@@ -2059,7 +2086,7 @@ paths:
       tags:
         - F08 - Administration
       summary: Cập nhật người dùng
-      description: Cập nhật hồ sơ, department hoặc role được phép. Yêu cầu ít nhất một trường.
+      description: Cập nhật hồ sơ, department hoặc role được phép với `user.update`; chỉ sửa thông tin, không đổi `isActive`. Yêu cầu ít nhất một trường.
       operationId: updateUser
       parameters:
         - $ref: '#/components/parameters/UserId'
@@ -2102,8 +2129,8 @@ paths:
       summary: Kích hoạt/vô hiệu hóa người dùng
       description: >-
         Gửi isActive=true để kích hoạt hoặc false để vô hiệu hóa user mà không
-        xóa lịch sử. Kích hoạt yêu cầu permission user.update; vô hiệu hóa yêu
-        cầu permission user.delete.
+        xóa lịch sử. Cả kích hoạt và vô hiệu hóa đều yêu cầu permission
+        user.manage_status.
       operationId: updateUserStatus
       parameters:
         - $ref: '#/components/parameters/UserId'
@@ -2125,6 +2152,8 @@ paths:
                     $ref: '#/components/schemas/User'
         '400':
           $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
         '403':
           $ref: '#/components/responses/Forbidden'
         '404':
@@ -2302,6 +2331,7 @@ paths:
       tags:
         - F08 - Administration
       summary: Danh sách phòng ban
+      description: Liệt kê department active/inactive; yêu cầu `department.view` hoặc `user_registration.review`.
       operationId: listDepartments
       responses:
         '200':
@@ -2314,7 +2344,7 @@ paths:
                   data:
                     type: array
                     items:
-                      $ref: '#/components/schemas/Reference'
+                      $ref: '#/components/schemas/Department'
         '401':
           $ref: '#/components/responses/Unauthorized'
         '403':
@@ -2323,6 +2353,7 @@ paths:
       tags:
         - F08 - Administration
       summary: Tạo phòng ban
+      description: Tạo department active; yêu cầu `department.create`.
       operationId: createDepartment
       requestBody:
         required: true
@@ -2339,9 +2370,11 @@ paths:
                 type: object
                 properties:
                   data:
-                    $ref: '#/components/schemas/Reference'
+                    $ref: '#/components/schemas/Department'
         '400':
           $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
         '403':
           $ref: '#/components/responses/Forbidden'
         '409':
@@ -2355,6 +2388,7 @@ paths:
       tags:
         - F08 - Administration
       summary: Chi tiết phòng ban
+      description: Trả department theo ID; yêu cầu `department.view`.
       operationId: getDepartment
       parameters:
         - $ref: '#/components/parameters/ReferenceId'
@@ -2367,7 +2401,11 @@ paths:
                 type: object
                 properties:
                   data:
-                    $ref: '#/components/schemas/Reference'
+                    $ref: '#/components/schemas/Department'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
         '404':
           description: Không tồn tại
           content:
@@ -2378,6 +2416,7 @@ paths:
       tags:
         - F08 - Administration
       summary: Cập nhật phòng ban
+      description: Chỉ sửa tên department bằng `department.update`; gửi `isActive` bị từ chối. Status dùng endpoint riêng.
       operationId: updateDepartment
       parameters:
         - $ref: '#/components/parameters/ReferenceId'
@@ -2396,9 +2435,13 @@ paths:
                 type: object
                 properties:
                   data:
-                    $ref: '#/components/schemas/Reference'
+                    $ref: '#/components/schemas/Department'
         '400':
           $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
         '404':
           description: Không tồn tại
           content:
@@ -2411,26 +2454,35 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/Error'
-    delete:
+  /departments/{id}/status:
+    patch:
       tags:
         - F08 - Administration
-      summary: Xóa phòng ban
-      operationId: deleteDepartment
+      summary: Kích hoạt/vô hiệu hóa phòng ban
+      description: Gửi `isActive` để bật/tắt department; yêu cầu `department.manage_status`. Department inactive giữ liên kết/history nhưng không được gán mới.
+      operationId: updateDepartmentStatus
       parameters:
         - $ref: '#/components/parameters/ReferenceId'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/UpdateStatusInput'
       responses:
-        '204':
-          description: Xóa thành công
-        '400':
-          $ref: '#/components/responses/BadRequest'
-        '403':
-          $ref: '#/components/responses/Forbidden'
-        '404':
-          description: Không tồn tại
+        '200':
+          description: Department sau khi thay đổi trạng thái
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/Error'
+                type: object
+                properties:
+                  data:
+                    $ref: '#/components/schemas/Department'
+        '400': { $ref: '#/components/responses/BadRequest' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+        '404': { description: Không tìm thấy department, content: { application/json: { schema: { $ref: '#/components/schemas/Error' } } } }
 components:
   securitySchemes:
     bearerAuth:
@@ -2632,6 +2684,13 @@ components:
       required:
         - id
         - name
+    Department:
+      type: object
+      properties:
+        id: { type: integer }
+        name: { type: string, minLength: 1, maxLength: 30 }
+        isActive: { type: boolean }
+      required: [id, name, isActive]
     ReferenceInput:
       type: object
       properties:
@@ -3611,7 +3670,6 @@ components:
         phone: { type: string, maxLength: 50, nullable: true }
         email: { type: string, format: email, maxLength: 255, nullable: true }
         address: { type: string, maxLength: 1000, nullable: true }
-        isActive: { type: boolean }
       minProperties: 1
       additionalProperties: false
     AssetIssue:
@@ -3975,6 +4033,12 @@ components:
           type: boolean
       required:
         - isActive
+      additionalProperties: false
+    UpdateStatusInput:
+      type: object
+      properties:
+        isActive: { type: boolean }
+      required: [isActive]
       additionalProperties: false
     RegistrationSubmitInput:
       type: object

@@ -110,12 +110,29 @@ export class PrismaVendorRepository implements IVendorRepository {
             ...(dto.phone !== undefined ? { phone: dto.phone } : {}),
             ...(dto.email !== undefined ? { email: dto.email } : {}),
             ...(dto.address !== undefined ? { address: dto.address } : {}),
-            ...(dto.isActive !== undefined ? { is_active: dto.isActive } : {}),
           },
           select: vendorSelect,
         });
         return mapVendor(vendor);
       });
+    } catch (error) {
+      return mapWriteError(error);
+    }
+  }
+
+  async setActive(id: number, isActive: boolean): Promise<Vendor | null> {
+    try {
+      const current = await this.prisma.vendors.findUnique({
+        where: { id },
+        select: { id: true },
+      });
+      if (!current) return null;
+      const vendor = await this.prisma.vendors.update({
+        where: { id },
+        data: { is_active: isActive },
+        select: vendorSelect,
+      });
+      return mapVendor(vendor);
     } catch (error) {
       return mapWriteError(error);
     }

@@ -27,7 +27,7 @@ Frontend MVP giúp user được cấp quyền quản lý asset, mượn–duy�
 | FD-01 | Stitch có 3 dashboard theo role. | Một dashboard chung, widget theo permission. |
 | FD-02 | `AUTH-02` hỗ trợ registration trực tiếp. | Registration tạo yêu cầu `PENDING`; reviewer có permission xét duyệt mới cấp account, role và department. |
 | FD-03 | Một số screen duyệt ở header hoặc coi duyệt là bàn giao. | Duyệt theo detail; bàn giao/hoàn trả xác định qua borrow history. |
-| FD-04 | Stitch có CRUD department, role và permission. | Không có CRUD role/permission; department CRUD không thuộc feature MVP. |
+| FD-04 | Stitch có CRUD department, role và permission. | Có Department Management cho list/create/update/status theo permission; vẫn không có CRUD role/permission hoặc delete department. |
 | FD-05 | Repair có nhiều page bước riêng. | Issue Detail giữ context; các bước repair là workflow state, không buộc thành page riêng. |
 
 ## Kết quả cần có trước implementation

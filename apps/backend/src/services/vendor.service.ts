@@ -31,7 +31,6 @@ function normalizeUpdate(dto: UpdateVendorDto): UpdateVendorDto {
     ...(dto.phone !== undefined ? { phone: normalizeOptional(dto.phone) } : {}),
     ...(dto.email !== undefined ? { email: normalizeOptional(dto.email) } : {}),
     ...(dto.address !== undefined ? { address: normalizeOptional(dto.address) } : {}),
-    ...(dto.isActive !== undefined ? { isActive: dto.isActive } : {}),
   };
 }
 
@@ -63,5 +62,9 @@ export class VendorService {
       if (duplicate && duplicate.id !== id) throw new ConflictError('Vendor name already exists');
     }
     return this.repository.update(id, normalized);
+  }
+
+  setStatus(id: number, isActive: boolean): Promise<Vendor | null> {
+    return this.repository.setActive(id, isActive);
   }
 }

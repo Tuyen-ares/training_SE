@@ -12,12 +12,10 @@ File này không sao chép lại toàn bộ model/column để tránh tài liệ
 - Business transition không được suy ra chỉ từ enum; phải theo
   [`system-overview.md`](system-overview.md).
 
-## Thay đổi đã chốt nhưng chưa migrate
-
-- Thêm `users.is_active Boolean @default(true)`.
-
 ## Thay đổi đã triển khai
 
+- `users.is_active` và `departments.is_active` là boolean với default `true`;
+  status được đổi qua lifecycle endpoint, không phải hard-delete.
 - Enum `assets_status` có `reserved` để giữ Asset cho một đơn mượn `pending`.
 - Enum `assets_status` có `retired` để ngừng sử dụng Asset mà không xóa lịch sử.
 - `assets.asset_code` là mã duy nhất, bất biến; `asset_types.normalized_prefix` và
@@ -26,6 +24,10 @@ File này không sao chép lại toàn bộ model/column để tránh tài liệ
   tham chiếu `vendors.id` bằng `ON DELETE RESTRICT`. Legacy
   `asset_issues.repair_provider` đã được trim/deduplicate/backfill theo expand
   migration và đã bị loại bỏ bởi contract migration sau khi code mới sẵn sàng.
+- Permission migration thêm `user.manage_status`, `vendor.manage_status` và
+  `department.manage_status`, backfill các role grant cũ theo permission row,
+  rồi loại bỏ `user.delete`, `vendor.delete`, `department.delete` và
+  `role.delete` khỏi runtime catalogue.
 
-Khi migration hoàn thành, cập nhật mục này để phản ánh trạng thái đã triển khai,
-không tạo một bản schema Markdown thứ hai.
+Mọi thay đổi schema tiếp theo phải cập nhật mục đã triển khai này, không tạo một
+bản schema Markdown thứ hai.

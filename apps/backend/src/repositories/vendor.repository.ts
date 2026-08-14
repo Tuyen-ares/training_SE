@@ -12,4 +12,5 @@ export interface IVendorRepository {
   findByName(name: string): Promise<Vendor | null>;
   create(dto: CreateVendorDto): Promise<Vendor>;
   update(id: number, dto: UpdateVendorDto): Promise<Vendor | null>;
+  setActive(id: number, isActive: boolean): Promise<Vendor | null>;
 }

@@ -98,7 +98,8 @@
 | `GET /api/vendors` | List vendors | Xem danh sách vendor | Search, paginate and filter active/inactive vendors; requires `vendor.view`. / Tìm kiếm, phân trang và lọc vendor active/inactive; cần `vendor.view`. | New |
 | `GET /api/vendors/:vendorId` | Get vendor detail | Xem chi tiết vendor | Read vendor contact data; requires `vendor.view`. / Xem contact vendor; cần `vendor.view`. | New |
 | `POST /api/vendors` | Create vendor | Tạo vendor | Create an active shared vendor master record; requires `vendor.create`. / Tạo vendor dùng chung ở trạng thái active; cần `vendor.create`. | New |
-| `PATCH /api/vendors/:vendorId` | Update vendor | Cập nhật vendor | Update details or `isActive`; requires `vendor.update`. Deactivation preserves history. / Sửa thông tin hoặc active status; deactivate giữ lịch sử. | New |
+| `PATCH /api/vendors/:vendorId` | Update vendor information | Cập nhật thông tin vendor | Update name/contact/address only; requires `vendor.update`. `isActive` is rejected here. / Chỉ sửa name/contact/address; cần `vendor.update`. `isActive` bị từ chối ở endpoint này. | Existing |
+| `PATCH /api/vendors/:vendorId/status` | Change vendor active status | Kích hoạt/vô hiệu hóa vendor | Set `isActive` to `true` or `false`; requires `vendor.manage_status`. Deactivation preserves history. / Đổi `isActive`; cần `vendor.manage_status`, deactivate giữ lịch sử. | Existing |
 
 ## F07 — Notifications / Thông báo
 
@@ -116,8 +117,8 @@
 | `GET /api/users` | List users | Xem danh sách người dùng | Search and list users for administration. / Tìm kiếm và liệt kê user phục vụ quản trị. | Existing |
 | `GET /api/users/:userId` | Get user | Xem chi tiết người dùng | Read one user's profile and assigned roles. / Xem hồ sơ và role của một user. | Existing |
 | `POST /api/users` | Create user | Tạo người dùng | Create an administrative user account. / Tạo user từ màn quản trị. | Existing |
-| `PATCH /api/users/:userId` | Update user | Cập nhật người dùng | Update user profile, department or allowed roles. / Cập nhật hồ sơ, department hoặc role được phép. | Existing |
-| `PATCH /api/users/:userId/status` | Change user active status | Kích hoạt/vô hiệu hóa người dùng | Set `isActive` to `true` or `false` without deleting history. / Gửi `isActive` là `true` hoặc `false` để đổi trạng thái mà không xóa lịch sử. | Existing |
+| `PATCH /api/users/:userId` | Update user information | Cập nhật thông tin người dùng | Update profile, department or allowed roles; status is not changed here and requires `user.update`. / Cập nhật hồ sơ, department hoặc role; không đổi status và cần `user.update`. | Existing |
+| `PATCH /api/users/:userId/status` | Change user active status | Kích hoạt/vô hiệu hóa người dùng | Set `isActive` to `true` or `false` without deleting history; requires `user.manage_status` for both directions. / Gửi `isActive` là `true` hoặc `false`; cả hai chiều cần `user.manage_status`. | Existing |
 | `GET /api/rbac/roles` | List roles | Xem role | List role type and permission/user counts. / Liệt kê type và count permission/user. | Existing |
 | `GET /api/rbac/roles/:roleId` | Get role detail | Xem chi tiết role | Read role and its described permission set. / Xem role và permission descriptions. | Existing |
 | `POST /api/rbac/roles` | Create role | Tạo role | Create a custom role with a non-empty initial permission set. / Tạo custom role với permission set không rỗng. | Existing |
@@ -125,12 +126,14 @@
 | `PUT /api/rbac/roles/:roleId/permissions` | Replace role permissions | Thay permission của role | Atomically replace the set and enforce essential-admin invariant. / Replace-set và giữ essential-admin invariant. | Existing |
 | `GET /api/rbac/permissions` | List permissions | Xem permission | Read permission codes and English descriptions; no write API. / Đọc code và description; không có write API. | Existing |
 | `PUT /api/rbac/users/:userId/roles` | Replace user roles | Gán/gỡ role người dùng | Replace a non-empty user role set with lockout protection. / Replace role set không rỗng và chống mất quyền quản trị. | Existing |
-| `GET /api/departments` | List departments | Xem phòng ban | List departments for asset and user assignment. / Liệt kê department phục vụ gán asset/user. | Existing |
+| `GET /api/departments` | List departments | Xem phòng ban | List active and inactive departments for asset and user assignment; requires `department.view` or `user_registration.review`. / Liệt kê department active/inactive; cần `department.view` hoặc `user_registration.review`. | Existing |
 | `POST /api/departments` | Create department | Tạo phòng ban | Add a department. / Thêm department. | Existing |
-| `PATCH /api/departments/:departmentId` | Update department | Cập nhật phòng ban | Update a department. / Cập nhật department. | Existing |
+| `PATCH /api/departments/:departmentId` | Update department information | Cập nhật thông tin phòng ban | Update name only; requires `department.update`, and `isActive` is rejected. / Chỉ sửa name; cần `department.update`, `isActive` bị từ chối. | Existing |
+| `PATCH /api/departments/:departmentId/status` | Change department active status | Kích hoạt/vô hiệu hóa phòng ban | Set `isActive` to `true` or `false`; requires `department.manage_status`. Inactive departments retain links/history but cannot be selected for new assignments. / Đổi status; department inactive giữ liên kết/lịch sử nhưng không được chọn cho assignment mới. | Existing |
 
 ## Not planned as public APIs / Không triển khai thành public API
 
 - Role delete and permission-code CRUD are not public APIs. / Delete role và CRUD permission code không có public API.
+- User, vendor and department delete are not public APIs; their lifecycle status is changed through the dedicated `*.manage_status` endpoints. / Không có API delete cho user, vendor và department; status dùng endpoint `*.manage_status` riêng.
 - QR inventory session, asset-location history, procurement and accounting. / Phiên kiểm kê QR, lịch sử vị trí, mua sắm và kế toán.
 - Email, SMS, mobile push and scheduled notifications. / Email, SMS, push mobile và thông báo theo lịch.

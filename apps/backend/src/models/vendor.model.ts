@@ -24,7 +24,6 @@ export interface UpdateVendorDto {
   phone?: string | null;
   email?: string | null;
   address?: string | null;
-  isActive?: boolean;
 }
 
 export interface VendorListQuery {

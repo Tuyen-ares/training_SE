@@ -13,10 +13,11 @@ so that **I can control access while preserving business history**.
 - AC-US-F08-04-03: Then the user's requests, history, issues, and related data are retained.
 - AC-US-F08-04-04: Given the user is inactive, when valid reactivation is performed, then the user can log in with valid credentials.
 - AC-US-F08-04-05: Given the user lacks permission, then the user's status does not change.
+- AC-US-F08-04-06: Both activation and deactivation require `user.manage_status`; `user.update` alone is insufficient.
 
 ## Applicable Business Rules
 
-`BR-USR-03`, `BR-AUTH-01`, `BR-RBAC-01`.
+`BR-USR-03`, `BR-USR-04`, `BR-AUTH-01`, `BR-RBAC-01`.
 
 ## Related Functional Requirements
 

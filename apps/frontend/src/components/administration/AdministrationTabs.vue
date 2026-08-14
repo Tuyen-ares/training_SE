@@ -11,12 +11,14 @@ const items = computed(() => [
   { key: 'users', label: 'Users', route: 'users', visible: authStore.hasPermission('user.view') },
   { key: 'registration', label: 'Registration Requests', route: 'registration-requests', visible: authStore.hasPermission('user_registration.review') },
   { key: 'roles', label: 'Roles', route: 'roles', visible: ['role.view', 'role.assign', 'user_registration.review'].some((permission) => authStore.hasPermission(permission)) },
+  { key: 'departments', label: 'Departments', route: 'departments', visible: ['department.view', 'user_registration.review'].some((permission) => authStore.hasPermission(permission)) },
 ].filter((item) => item.visible))
 
 const activeKey = computed(() => {
   if (String(route.name).startsWith('registration-request')) return 'registration'
   if (String(route.name).startsWith('role')) return 'roles'
   if (String(route.name).startsWith('user')) return 'users'
+  if (String(route.name).startsWith('department')) return 'departments'
   return items.value[0]?.key
 })
 

@@ -41,7 +41,10 @@ async function load() {
       listAssetLookups(authStore.api),
       isEdit.value ? getAsset(authStore.api, route.params.id) : Promise.resolve(null),
     ])
-    lookups.value = lookupData
+    lookups.value = {
+      ...lookupData,
+      departments: lookupData.departments.filter((department) => department.isActive || department.id === asset?.department?.id),
+    }
     if (asset) {
       Object.assign(form, {
         assetCode: asset.assetCode,

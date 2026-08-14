@@ -284,9 +284,9 @@ export class PrismaAssetRepository implements IAssetRepository {
   async departmentExists(departmentId: number): Promise<boolean> {
     const department = await this.prisma.departments.findUnique({
       where: { id: departmentId },
-      select: { id: true },
+      select: { id: true, is_active: true },
     });
-    return department !== null;
+    return department?.is_active === true;
   }
 
   async transitionStatus(

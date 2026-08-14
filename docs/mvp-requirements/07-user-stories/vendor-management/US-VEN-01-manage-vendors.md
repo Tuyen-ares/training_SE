@@ -12,8 +12,9 @@ when a vendor stops working with the company.
   `vendor.view`.
 - An active vendor can be created with `vendor.create`; an empty contact is
   stored as `null`.
-- Vendor information can be edited and the vendor can be activated/deactivated
-  with `vendor.update`.
+- Vendor information can be edited with `vendor.update`; activation and
+  deactivation use the dedicated status endpoint and `vendor.manage_status`.
+- Sending `isActive` to the information update endpoint is rejected.
 - An inactive vendor does not appear in the default repair selector but remains
   visible in Vendor Management and issue history.
 - Vendor deletion is not available in the MVP; a vendor that no longer works

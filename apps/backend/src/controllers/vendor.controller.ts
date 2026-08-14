@@ -31,10 +31,11 @@ const updateSchema: z.ZodType<UpdateVendorDto> = z.strictObject({
     z.email().trim().max(255).nullable().optional(),
   ),
   address: optionalText(1000),
-  isActive: z.boolean().optional(),
 }).refine((value) => Object.keys(value).length > 0, {
   message: 'At least one vendor field is required',
 });
+
+const statusSchema = z.strictObject({ isActive: z.boolean() });
 
 const querySchema = z.object({
   q: z.string().trim().optional(),
@@ -95,6 +96,20 @@ export class VendorController {
     if (parsed.success === false) return ApiResponse.badRequest(res, parsed.errors);
     try {
       const vendor = await this.service.update(id, parsed.data);
+      if (!vendor) return ApiResponse.notFound(res, 'Vendor not found');
+      return ApiResponse.ok(res, vendor);
+    } catch (error) {
+      return handleError(error, res);
+    }
+  };
+
+  updateStatus = async (req: Request, res: Response): Promise<void> => {
+    const id = positiveId(req.params.id);
+    if (!id) return ApiResponse.badRequest(res, { id: ['A positive vendor id is required'] });
+    const parsed = parseRequestBody(statusSchema, req.body);
+    if (parsed.success === false) return ApiResponse.badRequest(res, parsed.errors);
+    try {
+      const vendor = await this.service.setStatus(id, parsed.data.isActive);
       if (!vendor) return ApiResponse.notFound(res, 'Vendor not found');
       return ApiResponse.ok(res, vendor);
     } catch (error) {

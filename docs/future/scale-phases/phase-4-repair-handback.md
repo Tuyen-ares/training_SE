@@ -56,7 +56,10 @@ asset. Khi đó phải tạo scope mới cho:
 - Status/workflow chờ handback.
 - Queue và permission.
 - Notification.
-- Employee acknowledgement bắt buộc.
+- Employee confirmation bắt buộc, nếu requirement mới chứng minh điều đó.
 - State transition và history semantics.
 
 Không thêm các thành phần trên chỉ vì có file phase này.
+
+Nếu cần employee confirmation/acknowledgement, phải mở requirement custody riêng;
+đó không phải scope của Phase 1 Image Evidence Core.

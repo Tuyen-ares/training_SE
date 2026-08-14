@@ -174,11 +174,6 @@ export default class UserController {
       return ApiResponse.badRequest(res, parsed.errors);
     }
 
-    const requiredPermission = parsed.data.isActive ? 'user.update' : 'user.delete';
-    if (!req.auth?.permissionCodes.includes(requiredPermission)) {
-      return ApiResponse.forbidden(res, 'Missing required permission');
-    }
-
     try {
       const user = await this.service.setStatus(id, parsed.data.isActive);
       if (!user) return ApiResponse.notFound(res, 'User not found');

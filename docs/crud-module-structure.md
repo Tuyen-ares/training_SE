@@ -58,13 +58,15 @@ apps/backend/src/
 | GET | `/api/departments/:id` | `department.view` | Chi tiết hoặc `404` |
 | POST | `/api/departments` | `department.create` | Tạo mới hoặc `409` nếu trùng tên |
 | PATCH | `/api/departments/:id` | `department.update` | Đổi tên, `404` nếu không có, `409` nếu trùng |
-| DELETE | `/api/departments/:id` | `department.delete` | `204`, hoặc `409` nếu còn user tham chiếu |
+| PATCH | `/api/departments/:id/status` | `department.manage_status` | Bật/tắt `isActive`; `404` nếu không có |
 
 Department có các rule riêng:
 
 - `name` bắt buộc, được trim, dài từ 1 đến 30 ký tự.
 - Tên là unique.
-- Không xóa department nếu `users.department_id` còn tham chiếu tới nó.
+- `PATCH /api/departments/:id` chỉ sửa `name`; gửi `isActive` bị từ chối.
+- Department inactive vẫn giữ quan hệ và lịch sử, nhưng không được chọn cho
+  assignment mới. Không có route DELETE hoặc permission `department.delete`.
 
 ## 5. Cách triển khai một resource CRUD mới
 
@@ -117,6 +119,6 @@ Không dùng CRUD chung cho bảng trung gian hoặc bảng lịch sử như `us
 đổi qua action nghiệp vụ như `assignRole`, `rotate`, `approveBorrowRequest` hoặc
 `returnAsset`.
 
-Tương tự, `DELETE` không mặc định là SQL delete: user dùng `is_active=false`, asset
-chuyển sang `retired`, còn department mới được hard-delete khi không có user tham
-chiếu.
+Tương tự, `DELETE` không mặc định là SQL delete: user, vendor và department dùng
+endpoint status riêng để đổi `isActive`, còn asset chuyển sang `retired` bằng
+nghiệp vụ cần `asset.delete`.

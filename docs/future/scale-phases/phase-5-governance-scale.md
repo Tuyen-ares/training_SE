@@ -5,8 +5,8 @@
 
 ## Mục tiêu
 
-Làm cho evidence, custody và repair đủ an toàn, có thể audit, kiểm soát chi phí
-và vận hành lâu dài khi volume tăng.
+Làm cho image evidence và repair đủ an toàn, có thể audit, kiểm soát chi phí và
+vận hành lâu dài khi volume tăng.
 
 ## Phạm vi
 
@@ -22,13 +22,15 @@ và vận hành lâu dài khi volume tăng.
 - Review lại actor/employee access theo dữ liệu thực tế.
 - Quy tắc xem, chia sẻ, ẩn hoặc xóa evidence.
 - Audit việc đọc/xóa evidence nếu policy yêu cầu.
-- Không mở public URL để đơn giản hóa vận hành.
+- Nếu sau này cần evidence confidential/private, mở scope riêng để đổi storage
+  access model; không phủ nhận public URL của roadmap hiện tại.
 
 ### Media operations
 
 - Orphan object cleanup định kỳ.
 - Retry/reconciliation giữa object storage và metadata DB.
-- Monitoring upload failure, storage usage, latency và signed URL errors.
+- Monitoring public media availability, broken URL detection, object health,
+  storage usage, latency và storage reconciliation.
 - Cân nhắc video chỉ khi có use case, budget và retention policy rõ ràng.
 
 ### Receipt và reporting
@@ -65,10 +67,13 @@ và vận hành lâu dài khi volume tăng.
 - Audit event không thể bị sửa qua API thông thường.
 - Retention job không xóa nhầm object còn được tham chiếu.
 - Orphan cleanup không xóa evidence hợp lệ.
-- User không có quyền không xem/xóa/download được evidence hoặc receipt.
+- User không có permission không được upload, link, delete hoặc thao tác qua
+  BigIn API; public object GET vẫn không có BigIn authorization theo architecture
+  hiện tại.
 - Snapshot/receipt tái hiện đúng dữ liệu tại thời điểm giao dịch.
 - Permission migration giữ đúng effective access trước và sau migration.
-- Monitoring phát hiện upload/storage/reconciliation failure.
+- Monitoring phát hiện public media availability, broken URL, object health,
+  upload/storage/reconciliation failure.
 
 ## Gate acceptance
 

@@ -15,7 +15,7 @@ export const ESSENTIAL_ADMIN_PERMISSIONS = [
   'user.view',
   'user.create',
   'user.update',
-  'user.delete',
+  'user.manage_status',
   'role.view',
   'role.create',
   'role.update',

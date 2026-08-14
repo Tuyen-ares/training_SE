@@ -15,7 +15,7 @@ dashboard.view
 department.view
 department.create
 department.update
-department.delete
+department.manage_status
 
 ## Brands
 
@@ -60,6 +60,7 @@ asset_issue.close
 vendor.view
 vendor.create
 vendor.update
+vendor.manage_status
 
 ## Borrow requests
 
@@ -81,7 +82,7 @@ borrow_history.view_all
 user.view
 user.create
 user.update
-user.delete
+user.manage_status
 
 ## Roles and role assignment
 
@@ -90,9 +91,7 @@ role.create
 role.update
 role.assign
 
-`role.delete` is intentionally not implemented in this version.
-
-role.delete
+`role.delete` is not implemented and is not part of the runtime catalogue.
 
 ## Permission catalogue
 
@@ -116,4 +115,8 @@ user_registration.review
 
 The lockout guard uses the explicit set below and never a role name:
 
-`user.view`, `user.create`, `user.update`, `user.delete`, `role.view`, `role.create`, `role.update`, `role.assign`, `permission.view`, `user_registration.review`.
+`user.view`, `user.create`, `user.update`, `user.manage_status`, `role.view`, `role.create`, `role.update`, `role.assign`, `permission.view`, `user_registration.review`.
+
+`*.update` changes resource information only. `*.manage_status` is the
+dedicated capability for activating/deactivating User, Vendor and Department.
+Asset lifecycle remains separate: `asset.delete` is the permission for Retire.

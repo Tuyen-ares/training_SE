@@ -57,12 +57,14 @@ const administrationOpen = ref([
   'users', 'user-detail', 'user-create', 'user-edit',
   'registration-requests', 'registration-request-detail',
   'roles', 'role-create', 'role-detail',
+  'departments',
 ].includes(route.name))
 
 const administrationItems = computed(() => [
   { key: 'administration-users', label: 'Users', routeName: 'users', visible: authStore.hasPermission('user.view') },
   { key: 'administration-registration', label: 'Registration Requests', routeName: 'registration-requests', visible: authStore.hasPermission('user_registration.review') },
   { key: 'administration-roles', label: 'Roles', routeName: 'roles', visible: hasAnyPermission('role.view', 'role.assign', 'user_registration.review') },
+  { key: 'administration-departments', label: 'Departments', routeName: 'departments', visible: hasAnyPermission('department.view', 'user_registration.review') },
 ].filter((item) => item.visible))
 
 const navigationItems = computed(() => [
@@ -91,6 +93,7 @@ const selectedKeys = computed(() => [
       : ['users', 'user-detail', 'user-create', 'user-edit'].includes(route.name) ? 'administration-users'
         : ['registration-requests', 'registration-request-detail'].includes(route.name) ? 'administration-registration'
           : ['roles', 'role-create', 'role-detail'].includes(route.name) ? 'administration-roles'
+            : route.name === 'departments' ? 'administration-departments'
             : route.name === 'administration' ? 'administration'
         : ['borrow-request-create', 'borrow-request-detail'].includes(route.name) ? 'my-requests'
       : route.name === 'approval-detail' ? 'approval-queue'

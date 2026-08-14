@@ -22,7 +22,7 @@ User đang đăng nhập và có từng capability cần thiết.
 2. User search/filter user theo user code và các thông tin được hỗ trợ; danh sách luôn hiển thị user code.
 3. User mở User Form ở create hoặc edit mode.
 4. User nhập thông tin/department/avatar URL hợp lệ và lưu; user code do hệ thống cấp và chỉ hiển thị, không có ô chỉnh sửa.
-5. Từ User List/Form, user thực hiện activate/deactivate khi có permission; UI yêu cầu xác nhận trạng thái có tác động truy cập và giữ nguyên user code.
+5. Từ User List/Form, user thực hiện activate/deactivate khi có `user.manage_status`; UI yêu cầu xác nhận trạng thái có tác động truy cập và giữ nguyên user code.
 
 ## Alternative Flows
 
@@ -31,7 +31,7 @@ User đang đăng nhập và có từng capability cần thiết.
 ## Error / Invalid States
 
 - Email/phone trùng hoặc department không tồn tại: validation, không lưu.
-- Thiếu permission: action không hiển thị hoặc backend từ chối.
+- Thiếu permission: action không hiển thị hoặc backend từ chối. `user.update` chỉ mở phần thông tin; status action cần `user.manage_status`.
 - Password/hash không xuất hiện trong list/form result.
 
 ## Result
@@ -96,3 +96,34 @@ Related screens: `SCR-F08-03`, `SCR-F08-04`.
 Admin mở Administration > Roles để xem system/custom type, permission/user count và detail. Create yêu cầu name + ít nhất một permission. Detail nhóm permission theo domain, luôn hiển thị code và English description. System name disabled; custom name editable. Save permission là replace-set và báo conflict nếu vi phạm essential-admin invariant. Không có delete action hoặc Permission Catalog route.
 
 Related screens: `SCR-F08-05`, `SCR-F08-06`.
+
+# FLOW-24 – Quản lý department
+
+## Goal
+
+Xem và duy trì department dùng cho tổ chức, user và asset mà không làm mất
+liên kết/history.
+
+## Actor
+
+User có `department.view` cho read, hoặc capability mutation tương ứng.
+
+## Main Flow
+
+1. User mở Administration > Departments và xem cả department active/inactive.
+2. User có `department.create` tạo department active hoặc `department.update`
+   sửa tên department.
+3. User có `department.manage_status` bật/tắt status trong edit modal; UI
+   không hiển thị delete action.
+4. Các selector user/registration/asset chỉ cho chọn department active, ngoại
+   lệ bản ghi đang sửa có thể giữ department hiện tại để không làm mất liên kết.
+
+## Error / Invalid States
+
+- Department inactive vẫn hiển thị trong danh sách quản trị nhưng bị từ chối
+  khi dùng cho assignment mới.
+- Gửi status trong endpoint update thông tin hoặc thiếu permission bị từ chối.
+
+## Related Screens
+
+`SCR-F08-07`, `SCR-F08-03`, `SCR-F08-04`, `SCR-F02-03`, `SCR-F08-02`.

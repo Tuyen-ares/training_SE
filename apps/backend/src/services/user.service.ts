@@ -79,7 +79,7 @@ export class UserService {
       input.phone
         ? this.repository.phoneExists(input.phone, id)
         : Promise.resolve(false),
-      input.departmentId
+      input.departmentId && input.departmentId !== currentUser.departmentId
         ? this.repository.departmentExists(input.departmentId)
         : Promise.resolve(true),
     ]);

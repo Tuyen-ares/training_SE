@@ -28,9 +28,7 @@ const roleOptions = computed(() => roles.value.map((role) => ({
   value: role.id,
   label: role.name.replaceAll('_', ' '),
 })))
-const canToggleStatus = computed(() => form.isActive
-  ? authStore.hasPermission('user.delete')
-  : authStore.hasPermission('user.update'))
+const canToggleStatus = computed(() => authStore.hasPermission('user.manage_status'))
 
 async function loadPage() {
   loading.value = true
@@ -41,7 +39,7 @@ async function loadPage() {
       authStore.hasPermission('role.assign') ? authStore.api('/rbac/roles') : Promise.resolve([]),
       isEdit.value ? authStore.api(`/users/${route.params.id}`) : Promise.resolve(null),
     ])
-    departments.value = departmentData
+    departments.value = departmentData.filter((department) => department.isActive || department.id === userData?.departmentId)
     roles.value = roleData
     if (userData) Object.assign(form, { name: userData.name, email: userData.email, phone: userData.phone, departmentId: userData.departmentId, avatarUrl: userData.avatarUrl || '', password: '', confirmPassword: '', roleIds: userData.roles.map((role) => role.id), isActive: userData.isActive })
   } catch {

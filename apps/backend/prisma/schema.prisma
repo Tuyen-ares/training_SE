@@ -101,10 +101,11 @@ model borrow_histories {
 }
 
 model departments {
-  id     Int      @id @default(autoincrement())
-  name   String   @unique(map: "name") @db.VarChar(30)
-  users  users[]
-  assets assets[]
+  id        Int      @id @default(autoincrement())
+  name      String   @unique(map: "name") @db.VarChar(30)
+  is_active Boolean  @default(true)
+  users     users[]
+  assets    assets[]
 }
 
 model vendors {
