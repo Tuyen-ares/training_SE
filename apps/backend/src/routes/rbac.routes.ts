@@ -7,7 +7,7 @@ import { PrismaRbacRepository } from '@/repositories/rbac.prisma.repository.js';
 import { RbacService } from '@/services/rbac.service.js';
 
 const repository = new PrismaRbacRepository(prisma);
-const service = new RbacService(repository);
+const service = new RbacService(repository, prisma);
 const controller = new RbacController(service);
 const router = Router();
 

@@ -10,7 +10,7 @@ import { RbacService } from '@/services/rbac.service.js';
 import { RegistrationService } from '@/services/registration.service.js';
 
 const router = Router();
-const rbacService = new RbacService(new PrismaRbacRepository(prisma));
+const rbacService = new RbacService(new PrismaRbacRepository(prisma), prisma);
 const service = new RegistrationService(
   new PrismaRegistrationRepository(prisma),
   new PrismaUserRepository(prisma),

@@ -179,6 +179,7 @@ test('database constraints and conditional updates resolve races in User, Auth, 
           refreshRepository,
           tokenService,
           sessionService,
+          prisma,
         );
         const issued = tokenService.createRefreshToken(user.id);
         await refreshRepository.create({
@@ -255,6 +256,7 @@ test('database constraints and conditional updates resolve races in User, Auth, 
 
         const service = new AssetService(
           new PrismaAssetRepository(prisma),
+          prisma,
         );
         const duplicateSerial = `DUP-${suffix}`;
         const duplicateRepository = new PrismaAssetRepository(prisma);
@@ -347,6 +349,7 @@ test('database constraints and conditional updates resolve races in User, Auth, 
         createdUserIds.push(user.id);
         const service = new RbacService(
           new PrismaRbacRepository(prisma),
+          prisma,
         );
         const submittedSets = [
           [employeeRole.id],

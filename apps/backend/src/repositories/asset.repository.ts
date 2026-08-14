@@ -19,6 +19,10 @@ export interface CreateAssetData {
 }
 
 export type AssetTransaction = Pick<Prisma.TransactionClient, 'assets'>;
+export type AssetCreateTransaction = Pick<
+  Prisma.TransactionClient,
+  'asset_models' | 'assets' | '$executeRaw' | '$queryRaw'
+>;
 
 export interface IAssetRepository {
   findAll(): Promise<Asset[]>;
@@ -26,7 +30,10 @@ export interface IAssetRepository {
   findReadPage(query: AssetListQuery): Promise<AssetListDto>;
   findReadDetail(id: number): Promise<AssetDetailRecordDto | null>;
   create(data: CreateAssetData): Promise<Asset>;
-  createWithAllocatedCode(data: Omit<CreateAssetData, 'asset_code'>): Promise<Asset>;
+  createWithAllocatedCode(
+    data: Omit<CreateAssetData, 'asset_code'>,
+    transaction: AssetCreateTransaction,
+  ): Promise<Asset>;
   update(id: number, data: UpdateAssetDto): Promise<Asset>;
   findBySerialNumber(serialNumber: string): Promise<Asset | null>;
   findByQrCode(qrCode: string): Promise<Asset | null>;

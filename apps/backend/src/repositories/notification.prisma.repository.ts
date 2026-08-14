@@ -6,6 +6,7 @@ import type {
 } from '@/models/notification.model.js';
 import type {
   INotificationRepository,
+  NotificationLookupTransaction,
   NotificationTransaction,
 } from '@/repositories/notification.repository.js';
 import type { PrismaClient } from '../../generated/prisma/index.js';
@@ -85,10 +86,9 @@ export class PrismaNotificationRepository implements INotificationRepository {
 
   async create(
     input: CreateNotificationInput,
-    transaction?: NotificationTransaction,
+    transaction: NotificationTransaction,
   ): Promise<NotificationDto> {
-    const database = transaction ?? this.prisma;
-    const notification = await database.notifications.create({
+    const notification = await transaction.notifications.create({
       data: {
         recipient_user_id: input.recipientUserId,
         notification_type: input.notificationType,
@@ -101,8 +101,12 @@ export class PrismaNotificationRepository implements INotificationRepository {
     return mapNotification(notification);
   }
 
-  async findActiveUserIdsByPermissions(permissionCodes: string[]): Promise<number[]> {
-    const users = await this.prisma.users.findMany({
+  async findActiveUserIdsByPermissions(
+    permissionCodes: string[],
+    transaction?: NotificationLookupTransaction,
+  ): Promise<number[]> {
+    const database = transaction ?? this.prisma;
+    const users = await database.users.findMany({
       where: {
         is_active: true,
         user_roles: {

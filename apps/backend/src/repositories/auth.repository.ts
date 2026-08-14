@@ -1,3 +1,5 @@
+import type { PrismaTransaction } from '@/shared/prisma-transaction.js';
+
 export interface AuthRoleRecord {
   id: number;
   name: string;
@@ -18,6 +20,6 @@ export interface AuthUserRecord {
 }
 
 export interface IAuthRepository {
-  findUserByEmail(email: string): Promise<AuthUserRecord | null>;
-  findUserById(id: number): Promise<AuthUserRecord | null>;
+  findUserByEmail(email: string, transaction?: PrismaTransaction): Promise<AuthUserRecord | null>;
+  findUserById(id: number, transaction?: PrismaTransaction): Promise<AuthUserRecord | null>;
 }

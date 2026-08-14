@@ -11,7 +11,6 @@ import type {
   IAssetIssueRepository,
 } from '@/repositories/asset-issue.repository.js';
 import type { PrismaClient } from '../../generated/prisma/index.js';
-import { Prisma } from '../../generated/prisma/index.js';
 
 const issueSelect = {
   id: true,
@@ -74,13 +73,8 @@ function mapIssue(issue: any): AssetIssue {
 export class PrismaAssetIssueRepository implements IAssetIssueRepository {
   constructor(private readonly prisma: PrismaClient) {}
 
-  transaction<T>(work: (transaction: AssetIssueTransaction) => Promise<T>): Promise<T> {
-    return this.prisma.$transaction(work);
-  }
-
-  async createReport(data: CreateAssetIssueReport, transaction?: AssetIssueTransaction): Promise<AssetIssue> {
-    const database = transaction ?? this.prisma;
-    const issue = await database.asset_issues.create({
+  async createReport(data: CreateAssetIssueReport, transaction: AssetIssueTransaction): Promise<AssetIssue> {
+    const issue = await transaction.asset_issues.create({
       data: {
         asset_id: data.assetId,
         reported_by: data.reportedBy,
@@ -135,19 +129,6 @@ export class PrismaAssetIssueRepository implements IAssetIssueRepository {
     return issue ? mapIssue(issue) : null;
   }
 
-  async lockVendor(
-    id: number,
-    transaction: AssetIssueTransaction,
-  ): Promise<{ id: number; name: string; isActive: boolean } | null> {
-    const rows = await transaction.$queryRaw<Array<{ id: number; name: string; is_active: number | boolean }>>(
-      Prisma.sql`SELECT id, name, is_active FROM vendors WHERE id = ${id} FOR UPDATE`,
-    );
-    const vendor = rows[0];
-    return vendor
-      ? { id: vendor.id, name: vendor.name, isActive: Boolean(vendor.is_active) }
-      : null;
-  }
-
   async transition(
     id: number,
     expectedStatus: AssetIssueStatus,
@@ -188,6 +169,24 @@ export class PrismaAssetIssueRepository implements IAssetIssueRepository {
     return mapIssue(issue);
   }
 
+  async createConfirmed(
+    data: CreateAssetIssueReport,
+    handledBy: number,
+    transaction: AssetIssueTransaction,
+  ): Promise<AssetIssue> {
+    const issue = await transaction.asset_issues.create({
+      data: {
+        asset_id: data.assetId,
+        reported_by: data.reportedBy,
+        handled_by: handledBy,
+        description: data.description,
+        status: 'CONFIRMED',
+      },
+      select: issueSelect,
+    });
+    return mapIssue(issue);
+  }
+
   async completeRepair(
     id: number,
     status: 'COMPLETED' | 'FAILED',
@@ -213,16 +212,4 @@ export class PrismaAssetIssueRepository implements IAssetIssueRepository {
     return mapIssue(issue);
   }
 
-  async transitionAsset(
-    assetId: number,
-    expectedStatus: 'available' | 'borrowed' | 'damaged' | 'in_repair',
-    nextStatus: 'available' | 'damaged' | 'in_repair',
-    transaction: AssetIssueTransaction,
-  ): Promise<boolean> {
-    const result = await transaction.assets.updateMany({
-      where: { id: assetId, status: expectedStatus },
-      data: { status: nextStatus },
-    });
-    return result.count === 1;
-  }
 }

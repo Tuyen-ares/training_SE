@@ -16,7 +16,7 @@ import { createRestRouter } from '@/shared/rest-router.js';
 const userRepository = new PrismaUserRepository(prisma);
 const rbacRepository = new PrismaRbacRepository(prisma);
 const refreshTokenRepository = new PrismaRefreshTokenRepository(prisma);
-const rbacService = new RbacService(rbacRepository);
+const rbacService = new RbacService(rbacRepository, prisma);
 const sessionService = new SessionService(refreshTokenRepository);
 const service = new UserService(
   userRepository,

@@ -41,9 +41,7 @@ export class PrismaAssetTypeRepository
 
   override async update(id: number, dto: UpdateAssetTypeDto): Promise<AssetType> {
     try {
-      return await this.prisma.$transaction((transaction) =>
-        transaction.asset_types.update({ where: { id }, data: dto }),
-      );
+      return await this.prisma.asset_types.update({ where: { id }, data: dto });
     } catch (error) {
       throw mapAssetTypeWriteError(error);
     }

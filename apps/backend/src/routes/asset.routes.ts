@@ -4,18 +4,29 @@ import { requireAuth } from '@/middleware/auth.middleware.js';
 import { requirePermission } from '@/middleware/rbac.middleware.js';
 import { PrismaAssetRepository } from '@/repositories/asset.prisma.repository.js';
 import { PrismaAssetIssueRepository } from '@/repositories/asset-issue.prisma.repository.js';
+import { PrismaVendorRepository } from '@/repositories/vendor.prisma.repository.js';
 import { PrismaNotificationRepository } from '@/repositories/notification.prisma.repository.js';
 import { AssetIssueService } from '@/services/asset-issue.service.js';
 import { AssetService } from '@/services/assets.service.js';
+import { NotificationService } from '@/services/notification.service.js';
+import { VendorService } from '@/services/vendor.service.js';
 import { ApiResponse } from '@/shared/api-response.js';
 import { createRestRouter } from '@/shared/rest-router.js';
 import type { RequestHandler } from 'express';
 
 const repository = new PrismaAssetRepository(prisma);
 const issueRepository = new PrismaAssetIssueRepository(prisma);
+const vendorRepository = new PrismaVendorRepository(prisma);
 const notificationRepository = new PrismaNotificationRepository(prisma);
-const service = new AssetService(repository);
-const issueService = new AssetIssueService(repository, issueRepository, notificationRepository);
+const notificationService = new NotificationService(notificationRepository);
+const service = new AssetService(repository, prisma);
+const issueService = new AssetIssueService(
+  service,
+  issueRepository,
+  new VendorService(vendorRepository, prisma),
+  notificationService,
+  prisma,
+);
 const controller = new AssetController(service, issueService);
 const requirePositiveAssetId: RequestHandler = (req, res, next): void => {
   const id = Number(req.params.id);

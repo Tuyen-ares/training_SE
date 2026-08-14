@@ -110,9 +110,8 @@ export class PrismaRbacRepository implements IRbacRepository {
     return user !== null;
   }
 
-  async replaceUserRoles(userId: number, roleIds: number[], transaction?: PrismaTransaction): Promise<void> {
-    if (transaction) return this.replaceUserRoleSet(transaction, userId, roleIds);
-    await this.prisma.$transaction((tx) => this.replaceUserRoleSet(tx, userId, roleIds));
+  async replaceUserRoles(userId: number, roleIds: number[], transaction: PrismaTransaction): Promise<void> {
+    await this.replaceUserRoleSet(transaction, userId, roleIds);
   }
 
   private async replaceUserRoleSet(database: PrismaTransaction, userId: number, roleIds: number[]): Promise<void> {
@@ -187,7 +186,4 @@ export class PrismaRbacRepository implements IRbacRepository {
     return rows.length > 0;
   }
 
-  runInTransaction<T>(work: (transaction: PrismaTransaction) => Promise<T>): Promise<T> {
-    return this.prisma.$transaction(work);
-  }
 }

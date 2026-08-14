@@ -262,31 +262,33 @@ function mapListItem(request: any): BorrowRequestListItemDto {
 export class PrismaBorrowRequestRepository implements IBorrowRequestRepository {
   constructor(private readonly prisma: PrismaClient) {}
 
-  async createForRequester(requesterId: number, dto: CreateBorrowRequestDto): Promise<BorrowRequestDto> {
+  async createForRequester(
+    requesterId: number,
+    dto: CreateBorrowRequestDto,
+    transaction: BorrowTransaction,
+  ): Promise<BorrowRequestDto> {
     const assetIds = dto.items.map((item) => item.assetId);
     if (new Set(assetIds).size !== assetIds.length) throw new BorrowError('INVALID_ASSET_SELECTION');
 
-    return this.prisma.$transaction(async (transaction) => {
-      const availableCount = await transaction.assets.count({
-        where: { id: { in: assetIds }, status: 'available' },
-      });
-      if (availableCount !== assetIds.length) throw new BorrowError('INVALID_ASSET_SELECTION');
-
-      const request = await transaction.borrow_requests.create({
-        data: {
-          user_id: requesterId,
-          note: dto.note,
-          borrow_request_details: {
-            create: dto.items.map((item) => ({
-              asset_id: item.assetId,
-              expected_return_date: item.expectedReturnDate,
-            })),
-          },
-        },
-        include: requestInclude,
-      });
-      return mapRequest(request);
+    const availableCount = await transaction.assets.count({
+      where: { id: { in: assetIds }, status: 'available' },
     });
+    if (availableCount !== assetIds.length) throw new BorrowError('INVALID_ASSET_SELECTION');
+
+    const request = await transaction.borrow_requests.create({
+      data: {
+        user_id: requesterId,
+        note: dto.note,
+        borrow_request_details: {
+          create: dto.items.map((item) => ({
+            asset_id: item.assetId,
+            expected_return_date: item.expectedReturnDate,
+          })),
+        },
+      },
+      include: requestInclude,
+    });
+    return mapRequest(request);
   }
 
   async findPageForRequester(requesterId: number, query: BorrowRequestListQuery): Promise<BorrowRequestPageDto> {
@@ -319,8 +321,6 @@ export class PrismaBorrowRequestRepository implements IBorrowRequestRepository {
     });
     return request ? mapRequest(request) : null;
   }
-
-  transaction<T>(work: (transaction: BorrowTransaction) => Promise<T>): Promise<T> { return this.prisma.$transaction(work); }
 
   async findActionDetail(detailId: number, transaction: BorrowTransaction): Promise<BorrowActionDetail | null> {
     const detail = await transaction.borrow_request_details.findUnique({ where: { id: detailId }, include: { borrow_requests: true, assets: true, borrow_histories: true } });
@@ -364,27 +364,6 @@ export class PrismaBorrowRequestRepository implements IBorrowRequestRepository {
 
   async completeReturn(historyId: number, receiverId: number, condition: string, transaction: BorrowTransaction): Promise<void> {
     await transaction.borrow_histories.update({ where: { id: historyId }, data: { received_by: receiverId, return_date: new Date(), return_condition: condition } });
-  }
-
-  async createConfirmedIssueForDamagedReturn(
-    assetId: number,
-    actorId: number,
-    description: string,
-    transaction: BorrowTransaction,
-  ): Promise<number> {
-    const issue = await transaction.asset_issues.create({
-      data: {
-        asset_id: assetId,
-        reported_by: actorId,
-        handled_by: actorId,
-        description,
-        status: 'CONFIRMED',
-        created_at: new Date(),
-        updated_at: new Date(),
-      },
-      select: { id: true },
-    });
-    return issue.id;
   }
 
   async refreshRequestStatus(requestId: number, transaction: BorrowTransaction): Promise<void> {

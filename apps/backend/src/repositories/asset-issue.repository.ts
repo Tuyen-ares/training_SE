@@ -10,16 +10,19 @@ import type { Prisma } from '../../generated/prisma/index.js';
 
 export type AssetIssueTransaction = Pick<
   Prisma.TransactionClient,
-  'asset_issues' | 'assets' | 'notifications' | 'vendors' | '$queryRaw'
+  'asset_issues'
 >;
 
 export interface IAssetIssueRepository {
-  transaction<T>(work: (transaction: AssetIssueTransaction) => Promise<T>): Promise<T>;
-  createReport(data: CreateAssetIssueReport, transaction?: AssetIssueTransaction): Promise<AssetIssue>;
+  createReport(data: CreateAssetIssueReport, transaction: AssetIssueTransaction): Promise<AssetIssue>;
+  createConfirmed(
+    data: CreateAssetIssueReport,
+    handledBy: number,
+    transaction: AssetIssueTransaction,
+  ): Promise<AssetIssue>;
   isCurrentBorrower(assetId: number, userId: number): Promise<boolean>;
   findPage(query: AssetIssueListQuery): Promise<AssetIssuePage>;
   findById(id: number, transaction?: AssetIssueTransaction): Promise<AssetIssue | null>;
-  lockVendor(id: number, transaction: AssetIssueTransaction): Promise<{ id: number; name: string; isActive: boolean } | null>;
   transition(
     id: number,
     expectedStatus: AssetIssueStatus,
@@ -39,10 +42,4 @@ export interface IAssetIssueRepository {
     data: AssetIssueRepairUpdate,
     transaction: AssetIssueTransaction,
   ): Promise<AssetIssue>;
-  transitionAsset(
-    assetId: number,
-    expectedStatus: 'available' | 'borrowed' | 'damaged' | 'in_repair',
-    nextStatus: 'available' | 'damaged' | 'in_repair',
-    transaction: AssetIssueTransaction,
-  ): Promise<boolean>;
 }

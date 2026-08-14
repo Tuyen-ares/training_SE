@@ -60,9 +60,15 @@ class MemoryRbacRepository implements IRbacRepository {
   }
 }
 
+const prisma = {
+  async $transaction<T>(work: (transaction: PrismaTransaction) => Promise<T>): Promise<T> {
+    return work({} as PrismaTransaction);
+  },
+} as never;
+
 test('listRoles returns role options and missing input resolves to employee', async () => {
   const repository = new MemoryRbacRepository();
-  const service = new RbacService(repository);
+  const service = new RbacService(repository, prisma);
 
   assert.deepEqual(await service.listRoles(), repository.roles);
   assert.deepEqual(await service.resolveInitialRoleIds(), [2]);
@@ -70,7 +76,7 @@ test('listRoles returns role options and missing input resolves to employee', as
 });
 
 test('role validation removes duplicate IDs and rejects an invalid or empty set', async () => {
-  const service = new RbacService(new MemoryRbacRepository());
+  const service = new RbacService(new MemoryRbacRepository(), prisma);
 
   assert.deepEqual(await service.validateRoleIds([3, 2, 3]), [3, 2]);
   await assert.rejects(
@@ -91,7 +97,7 @@ test('missing configured default role is reported explicitly', async () => {
   repository.roles.findIndex((role) => role.name === 'employee'),
     1,
   );
-  const service = new RbacService(repository);
+  const service = new RbacService(repository, prisma);
 
   await assert.rejects(
     service.resolveInitialRoleIds(),
@@ -102,7 +108,7 @@ test('missing configured default role is reported explicitly', async () => {
 
 test('assignRoles validates and replaces roles using the caller transaction', async () => {
   const repository = new MemoryRbacRepository();
-  const service = new RbacService(repository);
+  const service = new RbacService(repository, prisma);
   const transaction = {} as PrismaTransaction;
 
   await service.assignRoles(10, [2, 3, 2], transaction);
@@ -111,7 +117,7 @@ test('assignRoles validates and replaces roles using the caller transaction', as
 
 test('replaceUserRoles rejects a missing user and replaces an existing user set', async () => {
   const repository = new MemoryRbacRepository();
-  const service = new RbacService(repository);
+  const service = new RbacService(repository, prisma);
 
   await assert.rejects(
     service.replaceUserRoles(999, [2]),

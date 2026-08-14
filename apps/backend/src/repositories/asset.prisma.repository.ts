@@ -1,5 +1,6 @@
 import type {
   AssetTransaction,
+  AssetCreateTransaction,
   CreateAssetData,
   IAssetRepository,
 } from '@/repositories/asset.repository.js';
@@ -215,39 +216,38 @@ export class PrismaAssetRepository implements IAssetRepository {
 
   async createWithAllocatedCode(
     data: Omit<CreateAssetData, 'asset_code'>,
+    transaction: AssetCreateTransaction,
   ): Promise<Asset> {
     try {
-      return await this.prisma.$transaction(async (transaction) => {
-        const assetModel = await transaction.asset_models.findUnique({
-          where: { id: data.asset_model_id },
-          select: {
-            asset_types: { select: { normalized_prefix: true } },
-          },
-        });
-        if (!assetModel) throw new ConflictError('Asset model does not exist');
+      const assetModel = await transaction.asset_models.findUnique({
+        where: { id: data.asset_model_id },
+        select: {
+          asset_types: { select: { normalized_prefix: true } },
+        },
+      });
+      if (!assetModel) throw new ConflictError('Asset model does not exist');
 
-        const prefix = assetModel.asset_types.normalized_prefix;
-        await transaction.$executeRaw(Prisma.sql`
-          INSERT INTO asset_code_sequences (prefix, last_sequence)
-          VALUES (${prefix}, 1)
-          ON DUPLICATE KEY UPDATE last_sequence = last_sequence + 1
-        `);
-        const rows = await transaction.$queryRaw<Array<{ last_sequence: number }>>(
-          Prisma.sql`
-            SELECT last_sequence
-            FROM asset_code_sequences
-            WHERE prefix = ${prefix}
-            FOR UPDATE
-          `,
-        );
-        const sequence = rows[0]?.last_sequence;
-        if (!Number.isInteger(sequence) || sequence < 1) {
-          throw new Error('Asset code sequence allocation failed');
-        }
+      const prefix = assetModel.asset_types.normalized_prefix;
+      await transaction.$executeRaw(Prisma.sql`
+        INSERT INTO asset_code_sequences (prefix, last_sequence)
+        VALUES (${prefix}, 1)
+        ON DUPLICATE KEY UPDATE last_sequence = last_sequence + 1
+      `);
+      const rows = await transaction.$queryRaw<Array<{ last_sequence: number }>>(
+        Prisma.sql`
+          SELECT last_sequence
+          FROM asset_code_sequences
+          WHERE prefix = ${prefix}
+          FOR UPDATE
+        `,
+      );
+      const sequence = rows[0]?.last_sequence;
+      if (!Number.isInteger(sequence) || sequence < 1) {
+        throw new Error('Asset code sequence allocation failed');
+      }
 
-        return transaction.assets.create({
-          data: { ...data, asset_code: formatAssetCode(prefix, sequence) },
-        });
+      return await transaction.assets.create({
+        data: { ...data, asset_code: formatAssetCode(prefix, sequence) },
       });
     } catch (error) {
       throw toAssetPersistenceError(error);

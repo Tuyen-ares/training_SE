@@ -3,17 +3,22 @@ import type { IBorrowRequestRepository } from '@/repositories/borrow-request.rep
 import { BorrowError } from '@/shared/app-error.js';
 import type { ApproveAllResultDto, BorrowHistoryQuery, PageQuery, ReviewQueueQuery } from '@/models/borrow-lifecycle.model.js';
 import { ConflictError } from '@/shared/app-error.js';
-import type { INotificationRepository } from '@/repositories/notification.repository.js';
+import type { AssetIssueService } from '@/services/asset-issue.service.js';
+import type { NotificationService } from '@/services/notification.service.js';
+import type { PrismaClient } from '../../generated/prisma/index.js';
+import type { PrismaTransaction } from '@/shared/prisma-transaction.js';
 
 export class BorrowWorkflowService {
   constructor(
     private readonly repository: IBorrowRequestRepository,
     private readonly assets: AssetService,
-    private readonly notifications?: INotificationRepository,
+    private readonly assetIssues: AssetIssueService,
+    private readonly notifications: NotificationService,
+    private readonly prisma: PrismaClient,
   ) {}
 
   async approve(detailId: number, reviewerId: number): Promise<void> {
-    await this.repository.transaction(async (transaction) => {
+    await this.prisma.$transaction(async (transaction) => {
       const detail = await this.repository.findActionDetail(detailId, transaction);
       if (!detail) throw new BorrowError('REQUEST_NOT_FOUND');
       if (detail.approvalStatus !== 'PENDING' || detail.assetStatus !== 'available') {
@@ -57,7 +62,7 @@ export class BorrowWorkflowService {
   }
 
   async reject(detailId: number, reviewerId: number, reason: string): Promise<void> {
-    await this.repository.transaction(async (transaction) => {
+    await this.prisma.$transaction(async (transaction) => {
       const detail = await this.repository.findActionDetail(detailId, transaction);
       if (!detail) throw new BorrowError('REQUEST_NOT_FOUND');
       if (detail.approvalStatus !== 'PENDING') {
@@ -78,7 +83,7 @@ export class BorrowWorkflowService {
   }
 
   async handover(detailId: number, actorId: number): Promise<number> {
-    return this.repository.transaction(async (transaction) => {
+    return this.prisma.$transaction(async (transaction) => {
       const detail = await this.repository.findActionDetail(detailId, transaction);
       if (!detail) throw new BorrowError('REQUEST_NOT_FOUND');
       if (
@@ -107,7 +112,7 @@ export class BorrowWorkflowService {
     historyId: number,
     actorId: number,
   ): Promise<void> {
-    await this.repository.transaction(async (transaction) => {
+    await this.prisma.$transaction(async (transaction) => {
       const history = await this.repository.findHistoryForAction(historyId, transaction);
       if (!history) throw new BorrowError('REQUEST_NOT_FOUND');
       if (history.returnedAt || history.assetStatus !== 'borrowed') {
@@ -136,7 +141,7 @@ export class BorrowWorkflowService {
     actorId: number,
     description: string,
   ): Promise<number> {
-    return this.repository.transaction(async (transaction) => {
+    return this.prisma.$transaction(async (transaction) => {
       const history = await this.repository.findHistoryForAction(historyId, transaction);
       if (!history) throw new BorrowError('REQUEST_NOT_FOUND');
       if (history.returnedAt || history.assetStatus !== 'borrowed') {
@@ -145,7 +150,7 @@ export class BorrowWorkflowService {
 
       await this.repository.completeReturn(historyId, actorId, 'DAMAGED', transaction);
       await this.assets.returnAsset(history.assetId, 'damaged', transaction);
-      const issueId = await this.repository.createConfirmedIssueForDamagedReturn(
+      const issue = await this.assetIssues.createConfirmedInTransaction(
         history.assetId,
         actorId,
         description,
@@ -164,13 +169,13 @@ export class BorrowWorkflowService {
           transaction,
         );
       }
-      await this.notifyIssueHandlers(issueId, actorId, transaction);
-      return issueId;
+      await this.notifyIssueHandlers(issue.id, actorId, transaction);
+      return issue.id;
     });
   }
 
   async withdraw(requestId: number, actorId: number): Promise<void> {
-    await this.repository.transaction(async (transaction) => {
+    await this.prisma.$transaction(async (transaction) => {
       const assetIds = await this.repository.withdraw(requestId, actorId, transaction);
       if (assetIds.length) {
         await this.assets.cancelApprovedRequest(assetIds, transaction);
@@ -212,10 +217,9 @@ export class BorrowWorkflowService {
     title: string,
     message: string,
     requestId: number,
-    transaction: Parameters<IBorrowRequestRepository['findActionDetail']>[1],
+    transaction: PrismaTransaction,
   ): Promise<void> {
-    if (!this.notifications) return;
-    await this.notifications.create({
+    await this.notifications.createInTransaction({
       recipientUserId,
       notificationType,
       title,
@@ -228,22 +232,17 @@ export class BorrowWorkflowService {
   private async notifyIssueHandlers(
     issueId: number,
     excludedUserId: number,
-    transaction: Parameters<IBorrowRequestRepository['findActionDetail']>[1],
+    transaction: PrismaTransaction,
   ): Promise<void> {
-    if (!this.notifications) return;
-    const recipients = await this.notifications.findActiveUserIdsByPermissions([
+    await this.notifications.notifyPermissionHoldersInTransaction([
       'asset_issue.view',
       'asset_issue.update',
-    ]);
-    await Promise.all(recipients
-      .filter((recipientUserId) => recipientUserId !== excludedUserId)
-      .map((recipientUserId) => this.notifications!.create({
-        recipientUserId,
-        notificationType: 'ASSET_ISSUE_CONFIRMED',
-        title: 'Asset issue confirmed from damaged return',
-        message: `Asset issue #${issueId} was confirmed from a damaged return.`,
-        relatedEntityType: 'ASSET_ISSUE',
-        relatedEntityId: issueId,
-      }, transaction)));
+    ], {
+      notificationType: 'ASSET_ISSUE_CONFIRMED',
+      title: 'Asset issue confirmed from damaged return',
+      message: `Asset issue #${issueId} was confirmed from a damaged return.`,
+      relatedEntityType: 'ASSET_ISSUE',
+      relatedEntityId: issueId,
+    }, [excludedUserId], transaction);
   }
 }

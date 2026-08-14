@@ -5,9 +5,13 @@ import type {
   AssetIssueRepairUpdate,
   AssetIssueStatus,
 } from '@/models/asset-issue.model.js';
-import type { IAssetRepository } from '@/repositories/asset.repository.js';
-import type { AssetIssueTransaction, IAssetIssueRepository } from '@/repositories/asset-issue.repository.js';
-import type { INotificationRepository } from '@/repositories/notification.repository.js';
+import type { AssetService } from '@/services/assets.service.js';
+import type { IAssetIssueRepository, AssetIssueTransaction } from '@/repositories/asset-issue.repository.js';
+import type { NotificationService } from '@/services/notification.service.js';
+import type { VendorService } from '@/services/vendor.service.js';
+import type { VendorTransaction } from '@/repositories/vendor.repository.js';
+import type { PrismaClient } from '../../generated/prisma/index.js';
+import type { PrismaTransaction } from '@/shared/prisma-transaction.js';
 import { AssetIssueError } from '@/shared/app-error.js';
 
 export interface ReportAssetIssueInput {
@@ -19,59 +23,64 @@ export interface ReportAssetIssueInput {
 
 export class AssetIssueService {
   constructor(
-    private readonly assetRepository: IAssetRepository,
+    private readonly assets: AssetService,
     private readonly issueRepository: IAssetIssueRepository,
-    private readonly notificationRepository?: INotificationRepository,
+    private readonly vendors: VendorService,
+    private readonly notifications: NotificationService,
+    private readonly prisma: PrismaClient,
   ) {}
 
   canReport(
     assetId: number,
     actor: { userId: number; permissionCodes: string[] },
   ): Promise<boolean> | boolean {
-    if (actor.permissionCodes.includes('asset_issue.report')) {
-      return true;
-    }
+    if (actor.permissionCodes.includes('asset_issue.report')) return true;
     return this.issueRepository.isCurrentBorrower(assetId, actor.userId);
   }
 
   async report(input: ReportAssetIssueInput): Promise<AssetIssue> {
-    const asset = await this.assetRepository.findById(input.assetId);
-    if (!asset) {
-      throw new AssetIssueError('ASSET_NOT_FOUND');
-    }
+    const asset = await this.assets.getById(input.assetId);
+    if (!asset) throw new AssetIssueError('ASSET_NOT_FOUND');
 
     const canReport = await this.canReport(input.assetId, {
       userId: input.reporterId,
       permissionCodes: input.permissionCodes,
     });
-    if (!canReport) {
-      throw new AssetIssueError('REPORT_FORBIDDEN');
-    }
+    if (!canReport) throw new AssetIssueError('REPORT_FORBIDDEN');
 
-    return this.issueRepository.transaction(async (transaction) => {
+    return this.prisma.$transaction(async (transaction) => {
       const issue = await this.issueRepository.createReport({
         assetId: input.assetId,
         reportedBy: input.reporterId,
         description: input.description,
       }, transaction);
-      if (this.notificationRepository) {
-        const recipients = await this.notificationRepository.findActiveUserIdsByPermissions([
-          'asset_issue.view',
-          'asset_issue.update',
-        ]);
-        await Promise.all(recipients
-          .filter((id) => id !== input.reporterId)
-          .map((recipientUserId) => this.notificationRepository!.create({
-            recipientUserId,
-            notificationType: 'ASSET_ISSUE_REPORTED',
-            title: 'New asset issue reported',
-            message: `Asset issue #${issue.id} requires review.`,
-            relatedEntityType: 'ASSET_ISSUE',
-            relatedEntityId: issue.id,
-          }, transaction)));
-      }
+      await this.notifications.notifyPermissionHoldersInTransaction(
+        ['asset_issue.view', 'asset_issue.update'],
+        {
+          notificationType: 'ASSET_ISSUE_REPORTED',
+          title: 'New asset issue reported',
+          message: `Asset issue #${issue.id} requires review.`,
+          relatedEntityType: 'ASSET_ISSUE',
+          relatedEntityId: issue.id,
+        },
+        [input.reporterId],
+        transaction,
+      );
       return issue;
     });
+  }
+
+  createConfirmedInTransaction(
+    assetId: number,
+    actorId: number,
+    description: string,
+    transaction: PrismaTransaction,
+  ): Promise<AssetIssue> {
+    return this.issueRepository.createConfirmed(
+      { assetId, reportedBy: actorId, description },
+      actorId,
+      transaction,
+    );
   }
 
   list(query: AssetIssueListQuery): Promise<AssetIssuePage> {
@@ -85,11 +94,13 @@ export class AssetIssueService {
   }
 
   confirm(id: number, actorId: number): Promise<AssetIssue> {
-    return this.changeStatusWithAsset(id, actorId, 'REPORTED', 'CONFIRMED', 'damaged');
+    return this.prisma.$transaction((transaction) =>
+      this.changeStatusWithAsset(id, actorId, 'REPORTED', 'CONFIRMED', transaction),
+    );
   }
 
   reject(id: number, actorId: number, note?: string): Promise<AssetIssue> {
-    return this.issueRepository.transaction(async (transaction) => {
+    return this.prisma.$transaction(async (transaction) => {
       const issue = await this.requireIssue(id, transaction, 'REPORTED');
       const changed = await this.issueRepository.transition(
         id, 'REPORTED', 'REJECTED', actorId, transaction,
@@ -108,13 +119,10 @@ export class AssetIssueService {
     data: AssetIssueRepairUpdate,
   ): Promise<AssetIssue> {
     this.assertVendorChangePermission(data, permissionCodes);
-    return this.issueRepository.transaction(async (transaction) => {
+    return this.prisma.$transaction(async (transaction) => {
       const issue = await this.requireIssue(id, transaction, 'CONFIRMED');
       await this.lockAndValidateVendorChange(issue, data, transaction);
-      const assetChanged = await this.issueRepository.transitionAsset(
-        issue.assetId, 'damaged', 'in_repair', transaction,
-      );
-      if (!assetChanged) throw new AssetIssueError('INVALID_ISSUE_STATE');
+      await this.assets.startRepair(issue.assetId, transaction);
       const changed = await this.issueRepository.transition(
         id, 'CONFIRMED', 'IN_REPAIR', actorId, transaction,
       );
@@ -131,7 +139,7 @@ export class AssetIssueService {
     permissionCodes: string[],
   ): Promise<AssetIssue> {
     this.assertVendorChangePermission(data, permissionCodes);
-    return this.issueRepository.transaction(async (transaction) => {
+    return this.prisma.$transaction(async (transaction) => {
       const issue = await this.requireIssue(id, transaction, 'IN_REPAIR');
       await this.lockAndValidateVendorChange(issue, data, transaction);
       const effectiveStart = data.startDate ?? issue.startDate;
@@ -150,16 +158,14 @@ export class AssetIssueService {
     data: AssetIssueRepairUpdate,
   ): Promise<AssetIssue> {
     this.assertVendorChangePermission(data, permissionCodes);
-    return this.issueRepository.transaction(async (transaction) => {
+    return this.prisma.$transaction(async (transaction) => {
       const issue = await this.requireIssue(id, transaction, 'IN_REPAIR');
       await this.lockAndValidateVendorChange(issue, data, transaction);
-      const assetChanged = await this.issueRepository.transitionAsset(
+      await this.assets.completeRepair(
         issue.assetId,
-        'in_repair',
-        status === 'COMPLETED' ? 'available' : 'damaged',
+        status === 'COMPLETED' ? 'repaired' : 'failed',
         transaction,
       );
-      if (!assetChanged) throw new AssetIssueError('INVALID_ISSUE_STATE');
       const updated = await this.issueRepository.completeRepair(
         id, status, actorId, data, transaction,
       );
@@ -178,28 +184,24 @@ export class AssetIssueService {
     actorId: number,
     expected: AssetIssueStatus,
     next: AssetIssueStatus,
-    assetNext: 'damaged',
+    transaction: PrismaTransaction,
   ): Promise<AssetIssue> {
-    return this.issueRepository.transaction(async (transaction) => {
-      const issue = await this.requireIssue(id, transaction, expected);
-      const asset = await this.assetRepository.findById(issue.assetId, transaction);
-      if (!asset || !['available', 'borrowed'].includes(asset.status)) {
-        throw new AssetIssueError('INVALID_ISSUE_STATE');
-      }
-      const assetChanged = await this.issueRepository.transitionAsset(
-        issue.assetId, asset.status as 'available' | 'borrowed', assetNext, transaction,
-      );
-      if (!assetChanged) throw new AssetIssueError('INVALID_ISSUE_STATE');
-      const changed = await this.issueRepository.transition(id, expected, next, actorId, transaction);
-      if (!changed) throw new AssetIssueError('INVALID_ISSUE_STATE');
-      await this.notifyReporter(issue, 'ASSET_ISSUE_CONFIRMED', 'Asset issue confirmed', transaction);
-      return (await this.issueRepository.findById(id, transaction))!;
-    });
+    const issue = await this.requireIssue(id, transaction, expected);
+    const asset = await this.assets.getByIdInTransaction(issue.assetId, transaction);
+    if (!asset || !['available', 'borrowed'].includes(asset.status)) {
+      throw new AssetIssueError('INVALID_ISSUE_STATE');
+    }
+    const expectedAssetStatus = asset.status === 'available' ? 'available' : 'borrowed';
+    await this.assets.confirmDamageInTransaction(issue.assetId, expectedAssetStatus, transaction);
+    const changed = await this.issueRepository.transition(id, expected, next, actorId, transaction);
+    if (!changed) throw new AssetIssueError('INVALID_ISSUE_STATE');
+    await this.notifyReporter(issue, 'ASSET_ISSUE_CONFIRMED', 'Asset issue confirmed', transaction);
+    return (await this.issueRepository.findById(id, transaction))!;
   }
 
   private async requireIssue(
     id: number,
-    transaction: Parameters<IAssetIssueRepository['findById']>[1],
+    transaction: AssetIssueTransaction,
     expectedStatus: AssetIssueStatus,
   ): Promise<AssetIssue> {
     const issue = await this.issueRepository.findById(id, transaction);
@@ -221,17 +223,12 @@ export class AssetIssueService {
   private async lockAndValidateVendorChange(
     issue: AssetIssue,
     data: AssetIssueRepairUpdate,
-    transaction: AssetIssueTransaction,
+    transaction: VendorTransaction,
   ): Promise<void> {
     if (!Object.prototype.hasOwnProperty.call(data, 'vendorId')) return;
-
-    // Lock the target (or current vendor when clearing) before checking
-    // is_active. Assign and deactivate therefore serialize on the same row:
-    // whichever transaction locks first wins the ordering, and an assignment
-    // never succeeds after a committed deactivation.
     const targetId = data.vendorId ?? issue.vendor?.id;
     if (targetId === undefined) return;
-    const vendor = await this.issueRepository.lockVendor(targetId, transaction);
+    const vendor = await this.vendors.lockForAssignmentInTransaction(targetId, transaction);
     if (!vendor) throw new AssetIssueError('VENDOR_NOT_FOUND');
     if (data.vendorId !== null && !vendor.isActive) {
       throw new AssetIssueError('VENDOR_INACTIVE');
@@ -242,10 +239,10 @@ export class AssetIssueService {
     issue: AssetIssue,
     notificationType: string,
     title: string,
-    transaction: Parameters<IAssetIssueRepository['findById']>[1],
+    transaction: PrismaTransaction,
   ): Promise<void> {
-    if (!issue.reportedBy || !this.notificationRepository || !transaction) return;
-    await this.notificationRepository.create({
+    if (issue.reportedBy === null) return;
+    await this.notifications.createInTransaction({
       recipientUserId: issue.reportedBy,
       notificationType,
       title,

@@ -6,7 +6,7 @@ export class SessionService {
 
   revokeAllForUser(
     userId: number,
-    transaction?: PrismaTransaction,
+    transaction: PrismaTransaction,
   ): Promise<void> {
     return this.refreshTokenRepository.revokeAllByUserId(userId, transaction);
   }

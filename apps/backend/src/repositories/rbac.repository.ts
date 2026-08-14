@@ -20,7 +20,7 @@ export interface IRbacRepository {
   replaceUserRoles(
     userId: number,
     roleIds: number[],
-    transaction?: PrismaTransaction,
+    transaction: PrismaTransaction,
   ): Promise<void>;
   findExistingPermissionIds(
     permissionIds: number[],
@@ -49,7 +49,4 @@ export interface IRbacRepository {
     permissionCodes: string[],
     transaction: PrismaTransaction,
   ): Promise<boolean>;
-  runInTransaction<T>(
-    work: (transaction: PrismaTransaction) => Promise<T>,
-  ): Promise<T>;
 }

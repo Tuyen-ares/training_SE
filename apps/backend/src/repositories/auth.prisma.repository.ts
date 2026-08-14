@@ -3,6 +3,7 @@ import type {
   AuthUserRecord,
   IAuthRepository,
 } from '@/repositories/auth.repository.js';
+import type { PrismaTransaction } from '@/shared/prisma-transaction.js';
 
 const userAuthorizationInclude = {
   user_roles: {
@@ -57,16 +58,18 @@ function toAuthUser(user: AuthUserQueryResult): AuthUserRecord {
 export class PrismaAuthRepository implements IAuthRepository {
   constructor(private readonly prisma: PrismaClient) {}
 
-  async findUserByEmail(email: string): Promise<AuthUserRecord | null> {
-    const user = await this.prisma.users.findUnique({
+  async findUserByEmail(email: string, transaction?: PrismaTransaction): Promise<AuthUserRecord | null> {
+    const database = transaction ?? this.prisma;
+    const user = await database.users.findUnique({
       where: { email },
       include: userAuthorizationInclude,
     });
     return user ? toAuthUser(user) : null;
   }
 
-  async findUserById(id: number): Promise<AuthUserRecord | null> {
-    const user = await this.prisma.users.findUnique({
+  async findUserById(id: number, transaction?: PrismaTransaction): Promise<AuthUserRecord | null> {
+    const database = transaction ?? this.prisma;
+    const user = await database.users.findUnique({
       where: { id },
       include: userAuthorizationInclude,
     });

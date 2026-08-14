@@ -12,6 +12,7 @@ import type { SessionService } from '../src/services/session.service.js';
 import { TokenService } from '../src/services/token.service.js';
 import { AuthError } from '../src/shared/app-error.js';
 import { hashPassword } from '../src/shared/security/password-hasher.js';
+import type { PrismaTransaction } from '../src/shared/prisma-transaction.js';
 
 process.env.JWT_SECRET = 'test-access-secret-that-is-long-enough';
 process.env.JWT_EXPIRES_IN = '15m';
@@ -43,6 +44,7 @@ class MemoryRefreshTokenRepository implements IRefreshTokenRepository {
   async rotate(
     current: RefreshTokenIdentity,
     replacement: CreateRefreshTokenData,
+    _transaction: PrismaTransaction,
   ): Promise<RefreshTokenRotationResult> {
     const token = this.tokens.get(current.jti);
     if (!token) return 'INVALID';
@@ -106,12 +108,18 @@ async function createAuthHarness(isActive = true) {
       await refreshRepository.revokeAllByUserId(userId);
     },
   } as unknown as SessionService;
+  const prisma = {
+    async $transaction<T>(work: (transaction: PrismaTransaction) => Promise<T>): Promise<T> {
+      return work({} as PrismaTransaction);
+    },
+  } as never;
 
   const service = new AuthService(
     authRepository,
     refreshRepository,
     tokenService,
     sessionService,
+    prisma,
   );
 
   return {

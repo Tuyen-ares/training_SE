@@ -17,6 +17,7 @@ const service = new AuthService(
   refreshTokenRepository,
   tokenService,
   sessionService,
+  prisma,
 );
 const controller = new AuthController(service);
 

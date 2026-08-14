@@ -6,6 +6,8 @@ import type {
   VendorPage,
 } from '@/models/vendor.model.js';
 import type { IVendorRepository } from '@/repositories/vendor.repository.js';
+import type { VendorTransaction } from '@/repositories/vendor.repository.js';
+import type { PrismaClient } from '../../generated/prisma/index.js';
 import { ConflictError } from '@/shared/app-error.js';
 
 function normalizeOptional(value: string | null | undefined): string | null | undefined {
@@ -35,7 +37,10 @@ function normalizeUpdate(dto: UpdateVendorDto): UpdateVendorDto {
 }
 
 export class VendorService {
-  constructor(private readonly repository: IVendorRepository) {}
+  constructor(
+    private readonly repository: IVendorRepository,
+    private readonly prisma: PrismaClient,
+  ) {}
 
   list(query: VendorListQuery): Promise<VendorPage> {
     return this.repository.findPage({ ...query, q: query.q?.trim() || undefined });
@@ -54,17 +59,26 @@ export class VendorService {
   }
 
   async update(id: number, dto: UpdateVendorDto): Promise<Vendor | null> {
-    const current = await this.repository.findById(id);
-    if (!current) return null;
     const normalized = normalizeUpdate(dto);
-    if (normalized.name !== undefined) {
-      const duplicate = await this.repository.findByName(normalized.name);
-      if (duplicate && duplicate.id !== id) throw new ConflictError('Vendor name already exists');
-    }
-    return this.repository.update(id, normalized);
+    return this.prisma.$transaction(async (transaction) => {
+      const current = await this.repository.lockById(id, transaction);
+      if (!current) return null;
+      if (normalized.name !== undefined) {
+        const duplicate = await this.repository.findByName(normalized.name, transaction);
+        if (duplicate && duplicate.id !== id) throw new ConflictError('Vendor name already exists');
+      }
+      return this.repository.update(id, normalized, transaction);
+    });
   }
 
   setStatus(id: number, isActive: boolean): Promise<Vendor | null> {
-    return this.repository.setActive(id, isActive);
+    return this.prisma.$transaction(async (transaction) => {
+      if (!(await this.repository.lockById(id, transaction))) return null;
+      return this.repository.setActive(id, isActive, transaction);
+    });
+  }
+
+  lockForAssignmentInTransaction(id: number, transaction: VendorTransaction): Promise<Vendor | null> {
+    return this.repository.lockById(id, transaction);
   }
 }

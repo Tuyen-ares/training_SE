@@ -4,8 +4,8 @@ import type {
   IRefreshTokenRepository,
   RefreshTokenIdentity,
   RefreshTokenRotationResult,
+  RefreshTokenTransaction,
 } from '@/repositories/refresh-token.repository.js';
-import type { PrismaTransaction } from '@/shared/prisma-transaction.js';
 
 export class PrismaRefreshTokenRepository implements IRefreshTokenRepository {
   constructor(private readonly prisma: PrismaClient) {}
@@ -21,8 +21,9 @@ export class PrismaRefreshTokenRepository implements IRefreshTokenRepository {
     });
   }
 
-  async findByJti(jti: string): Promise<CreateRefreshTokenData | null> {
-    const token = await this.prisma.refresh_tokens.findUnique({
+  async findByJti(jti: string, transaction?: RefreshTokenTransaction): Promise<CreateRefreshTokenData | null> {
+    const database = transaction ?? this.prisma;
+    const token = await database.refresh_tokens.findUnique({
       where: { jti },
       select: {
         jti: true,
@@ -45,62 +46,61 @@ export class PrismaRefreshTokenRepository implements IRefreshTokenRepository {
   async rotate(
     current: RefreshTokenIdentity,
     replacement: CreateRefreshTokenData,
+    transaction: RefreshTokenTransaction,
   ): Promise<RefreshTokenRotationResult> {
-    return this.prisma.$transaction(async (transaction) => {
-      const storedToken = await transaction.refresh_tokens.findUnique({
-        where: { jti: current.jti },
-      });
-
-      if (!storedToken) return 'INVALID';
-
-      const tokenBelongsToSession =
-        storedToken.user_id === current.userId &&
-        storedToken.family_id === current.familyId;
-      if (!tokenBelongsToSession) return 'INVALID';
-
-      if (storedToken.is_used) {
-        await transaction.refresh_tokens.updateMany({
-          where: { family_id: storedToken.family_id },
-          data: { is_revoked: true },
-        });
-        return 'REUSED';
-      }
-
-      const now = new Date();
-      if (storedToken.is_revoked || storedToken.expires_at <= now) {
-        return 'INVALID';
-      }
-
-      const consumed = await transaction.refresh_tokens.updateMany({
-        where: {
-          id: storedToken.id,
-          is_used: false,
-          is_revoked: false,
-          expires_at: { gt: now },
-        },
-        data: { is_used: true },
-      });
-
-      // A second request can reach this point concurrently. Treat it as reuse.
-      if (consumed.count !== 1) {
-        await transaction.refresh_tokens.updateMany({
-          where: { family_id: storedToken.family_id },
-          data: { is_revoked: true },
-        });
-        return 'REUSED';
-      }
-
-      await transaction.refresh_tokens.create({
-        data: {
-          jti: replacement.jti,
-          user_id: replacement.userId,
-          family_id: replacement.familyId,
-          expires_at: replacement.expiresAt,
-        },
-      });
-
-      return 'ROTATED';
+    const storedToken = await transaction.refresh_tokens.findUnique({
+      where: { jti: current.jti },
     });
+
+    if (!storedToken) return 'INVALID';
+
+    const tokenBelongsToSession =
+      storedToken.user_id === current.userId &&
+      storedToken.family_id === current.familyId;
+    if (!tokenBelongsToSession) return 'INVALID';
+
+    if (storedToken.is_used) {
+      await transaction.refresh_tokens.updateMany({
+        where: { family_id: storedToken.family_id },
+        data: { is_revoked: true },
+      });
+      return 'REUSED';
+    }
+
+    const now = new Date();
+    if (storedToken.is_revoked || storedToken.expires_at <= now) {
+      return 'INVALID';
+    }
+
+    const consumed = await transaction.refresh_tokens.updateMany({
+      where: {
+        id: storedToken.id,
+        is_used: false,
+        is_revoked: false,
+        expires_at: { gt: now },
+      },
+      data: { is_used: true },
+    });
+
+    // A second request can reach this point concurrently. Treat it as reuse.
+    if (consumed.count !== 1) {
+      await transaction.refresh_tokens.updateMany({
+        where: { family_id: storedToken.family_id },
+        data: { is_revoked: true },
+      });
+      return 'REUSED';
+    }
+
+    await transaction.refresh_tokens.create({
+      data: {
+        jti: replacement.jti,
+        user_id: replacement.userId,
+        family_id: replacement.familyId,
+        expires_at: replacement.expiresAt,
+      },
+    });
+
+    return 'ROTATED';
   }
 
   async revokeFamily(familyId: string): Promise<void> {
@@ -112,10 +112,9 @@ export class PrismaRefreshTokenRepository implements IRefreshTokenRepository {
 
   async revokeAllByUserId(
     userId: number,
-    transaction?: PrismaTransaction,
+    transaction: RefreshTokenTransaction,
   ): Promise<void> {
-    const database = transaction ?? this.prisma;
-    await database.refresh_tokens.updateMany({
+    await transaction.refresh_tokens.updateMany({
       where: { user_id: userId },
       data: { is_revoked: true },
     });

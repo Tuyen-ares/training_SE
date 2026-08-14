@@ -8,6 +8,7 @@ import type {
 import type { IRbacRepository } from '@/repositories/rbac.repository.js';
 import { RbacError } from '@/shared/app-error.js';
 import type { PrismaTransaction } from '@/shared/prisma-transaction.js';
+import type { PrismaClient } from '../../generated/prisma/index.js';
 
 const DEFAULT_ROLE_NAME = 'employee';
 
@@ -29,7 +30,10 @@ function uniqueIds(ids: number[]): number[] {
 }
 
 export class RbacService {
-  constructor(private readonly repository: IRbacRepository) {}
+  constructor(
+    private readonly repository: IRbacRepository,
+    private readonly prisma: PrismaClient,
+  ) {}
 
   listRoles(): Promise<RoleSummaryDto[]> {
     return this.repository.findAllRoles();
@@ -49,7 +53,7 @@ export class RbacService {
 
   async createRole(input: CreateRoleInputDto): Promise<RoleDetailDto> {
     const name = input.name.trim();
-    return this.repository.runInTransaction(async (transaction) => {
+    return this.prisma.$transaction(async (transaction) => {
       const permissionIds = await this.validatePermissionIds(input.permissionIds, transaction);
       const roleId = await this.repository.createRole(name, permissionIds, transaction);
       const role = await this.repository.findRoleById(roleId, transaction);
@@ -59,7 +63,7 @@ export class RbacService {
   }
 
   async updateRoleName(roleId: number, name: string): Promise<RoleDetailDto> {
-    return this.repository.runInTransaction(async (transaction) => {
+    return this.prisma.$transaction(async (transaction) => {
       const role = await this.repository.findRoleById(roleId, transaction);
       if (!role) throw new RbacError('ROLE_NOT_FOUND');
       if (role.isSystem) throw new RbacError('SYSTEM_ROLE_RENAME_FORBIDDEN');
@@ -71,7 +75,7 @@ export class RbacService {
   }
 
   async replaceRolePermissions(roleId: number, permissionIds: number[]): Promise<RoleDetailDto> {
-    return this.repository.runInTransaction(async (transaction) => {
+    return this.prisma.$transaction(async (transaction) => {
       await this.lockEssentialAdminGuard(transaction);
       if (!(await this.repository.findRoleById(roleId, transaction))) {
         throw new RbacError('ROLE_NOT_FOUND');
@@ -117,7 +121,7 @@ export class RbacService {
   }
 
   async replaceUserRoles(userId: number, roleIds: number[]): Promise<void> {
-    await this.repository.runInTransaction(async (transaction) => {
+    await this.prisma.$transaction(async (transaction) => {
       await this.lockEssentialAdminGuard(transaction);
       if (!(await this.repository.userExists(userId, transaction))) throw new RbacError('USER_NOT_FOUND');
       const validRoleIds = await this.validateRoleIds(roleIds, transaction);

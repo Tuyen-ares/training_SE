@@ -7,7 +7,7 @@ import { PrismaVendorRepository } from '@/repositories/vendor.prisma.repository.
 import { VendorService } from '@/services/vendor.service.js';
 
 const repository = new PrismaVendorRepository(prisma);
-const service = new VendorService(repository);
+const service = new VendorService(repository, prisma);
 const controller = new VendorController(service);
 const router = Router();
 

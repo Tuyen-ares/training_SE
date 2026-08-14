@@ -10,6 +10,7 @@ import type {
 import type { IVendorRepository } from '../src/repositories/vendor.repository.js';
 import { VendorService } from '../src/services/vendor.service.js';
 import { ConflictError } from '../src/shared/app-error.js';
+import type { PrismaTransaction } from '../src/shared/prisma-transaction.js';
 
 function vendor(overrides: Partial<Vendor> = {}): Vendor {
   return {
@@ -40,6 +41,7 @@ class MemoryVendorRepository implements IVendorRepository {
 
   async findById(id: number): Promise<Vendor | null> { return this.records.get(id) ?? null; }
   async findByName(name: string): Promise<Vendor | null> { return [...this.records.values()].find((item) => item.name === name) ?? null; }
+  async lockById(id: number): Promise<Vendor | null> { return this.findById(id); }
   async create(dto: CreateVendorDto): Promise<Vendor> {
     this.lastCreate = dto;
     const created = vendor({ id: 2, name: dto.name, contactName: dto.contactName ?? null, phone: dto.phone ?? null, email: dto.email ?? null, address: dto.address ?? null });
@@ -64,9 +66,15 @@ class MemoryVendorRepository implements IVendorRepository {
   async delete(id: number): Promise<Vendor | null> { return this.records.get(id) ?? null; }
 }
 
+const prisma = {
+  async $transaction<T>(work: (transaction: PrismaTransaction) => Promise<T>): Promise<T> {
+    return work({} as PrismaTransaction);
+  },
+} as never;
+
 test('vendor service trims names and normalizes blank optional contacts to null', async () => {
   const repository = new MemoryVendorRepository();
-  const service = new VendorService(repository);
+  const service = new VendorService(repository, prisma);
 
   await service.create({
     name: '  New Vendor  ',
@@ -87,7 +95,7 @@ test('vendor service trims names and normalizes blank optional contacts to null'
 
 test('vendor service preserves omitted update fields and normalizes changed blanks', async () => {
   const repository = new MemoryVendorRepository();
-  const service = new VendorService(repository);
+  const service = new VendorService(repository, prisma);
 
   await service.update(1, { contactName: '  ' });
 
@@ -96,7 +104,7 @@ test('vendor service preserves omitted update fields and normalizes changed blan
 
 test('vendor status is changed through the dedicated status operation', async () => {
   const repository = new MemoryVendorRepository();
-  const service = new VendorService(repository);
+  const service = new VendorService(repository, prisma);
 
   await service.setStatus(1, false);
 
@@ -104,7 +112,7 @@ test('vendor status is changed through the dedicated status operation', async ()
 });
 
 test('duplicate vendor names are rejected before persistence', async () => {
-  const service = new VendorService(new MemoryVendorRepository());
+  const service = new VendorService(new MemoryVendorRepository(), prisma);
   await assert.rejects(
     service.create({ name: ' ABC Computer ' }),
     (error) => error instanceof ConflictError && error.message === 'Vendor name already exists',

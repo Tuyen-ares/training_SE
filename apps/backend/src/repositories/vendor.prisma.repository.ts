@@ -1,4 +1,4 @@
-import type { PrismaClient } from '../../generated/prisma/index.js';
+import { Prisma, type PrismaClient } from '../../generated/prisma/index.js';
 import type {
   CreateVendorDto,
   UpdateVendorDto,
@@ -6,7 +6,7 @@ import type {
   VendorListQuery,
   VendorPage,
 } from '@/models/vendor.model.js';
-import type { IVendorRepository } from '@/repositories/vendor.repository.js';
+import type { IVendorRepository, VendorTransaction } from '@/repositories/vendor.repository.js';
 import { ConflictError } from '@/shared/app-error.js';
 
 const vendorSelect = {
@@ -67,13 +67,15 @@ export class PrismaVendorRepository implements IVendorRepository {
     };
   }
 
-  async findById(id: number): Promise<Vendor | null> {
-    const vendor = await this.prisma.vendors.findUnique({ where: { id }, select: vendorSelect });
+  async findById(id: number, transaction?: VendorTransaction): Promise<Vendor | null> {
+    const database = transaction ?? this.prisma;
+    const vendor = await database.vendors.findUnique({ where: { id }, select: vendorSelect });
     return vendor ? mapVendor(vendor) : null;
   }
 
-  async findByName(name: string): Promise<Vendor | null> {
-    const vendor = await this.prisma.vendors.findUnique({ where: { name }, select: vendorSelect });
+  async findByName(name: string, transaction?: VendorTransaction): Promise<Vendor | null> {
+    const database = transaction ?? this.prisma;
+    const vendor = await database.vendors.findUnique({ where: { name }, select: vendorSelect });
     return vendor ? mapVendor(vendor) : null;
   }
 
@@ -95,39 +97,36 @@ export class PrismaVendorRepository implements IVendorRepository {
     }
   }
 
-  async update(id: number, dto: UpdateVendorDto): Promise<Vendor | null> {
+  async lockById(id: number, transaction: VendorTransaction): Promise<Vendor | null> {
+    const rows = await transaction.$queryRaw<Array<{ id: number }>>(
+      Prisma.sql`SELECT id FROM vendors WHERE id = ${id} FOR UPDATE`,
+    );
+    if (!rows.length) return null;
+    return this.findById(id, transaction);
+  }
+
+  async update(id: number, dto: UpdateVendorDto, transaction: VendorTransaction): Promise<Vendor | null> {
     try {
-      return await this.prisma.$transaction(async (transaction) => {
-        const current = await transaction.$queryRaw<Array<{ id: number }>>`
-          SELECT id FROM vendors WHERE id = ${id} FOR UPDATE
-        `;
-        if (!current.length) return null;
-        const vendor = await transaction.vendors.update({
-          where: { id },
-          data: {
-            ...(dto.name !== undefined ? { name: dto.name } : {}),
-            ...(dto.contactName !== undefined ? { contact_name: dto.contactName } : {}),
-            ...(dto.phone !== undefined ? { phone: dto.phone } : {}),
-            ...(dto.email !== undefined ? { email: dto.email } : {}),
-            ...(dto.address !== undefined ? { address: dto.address } : {}),
-          },
-          select: vendorSelect,
-        });
-        return mapVendor(vendor);
+      const vendor = await transaction.vendors.update({
+        where: { id },
+        data: {
+          ...(dto.name !== undefined ? { name: dto.name } : {}),
+          ...(dto.contactName !== undefined ? { contact_name: dto.contactName } : {}),
+          ...(dto.phone !== undefined ? { phone: dto.phone } : {}),
+          ...(dto.email !== undefined ? { email: dto.email } : {}),
+          ...(dto.address !== undefined ? { address: dto.address } : {}),
+        },
+        select: vendorSelect,
       });
+      return mapVendor(vendor);
     } catch (error) {
       return mapWriteError(error);
     }
   }
 
-  async setActive(id: number, isActive: boolean): Promise<Vendor | null> {
+  async setActive(id: number, isActive: boolean, transaction: VendorTransaction): Promise<Vendor | null> {
     try {
-      const current = await this.prisma.vendors.findUnique({
-        where: { id },
-        select: { id: true },
-      });
-      if (!current) return null;
-      const vendor = await this.prisma.vendors.update({
+      const vendor = await transaction.vendors.update({
         where: { id },
         data: { is_active: isActive },
         select: vendorSelect,

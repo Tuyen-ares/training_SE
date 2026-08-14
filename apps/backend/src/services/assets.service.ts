@@ -1,4 +1,5 @@
 import { randomUUID } from 'node:crypto';
+import type { PrismaClient } from '../../generated/prisma/index.js';
 import type {
   Asset,
   AssetDetailRecordDto,
@@ -23,7 +24,10 @@ import {
 export class AssetService
   implements IBaseService<Asset, CreateAssetDto, UpdateAssetDto>
 {
-  constructor(private readonly repo: IAssetRepository) {}
+  constructor(
+    private readonly repo: IAssetRepository,
+    private readonly prisma: PrismaClient,
+  ) {}
 
   getAll(): Promise<Asset[]> {
     return this.repo.findAll();
@@ -31,6 +35,10 @@ export class AssetService
 
   getById(id: number): Promise<Asset | null> {
     return this.repo.findById(id);
+  }
+
+  getByIdInTransaction(id: number, transaction: AssetTransaction): Promise<Asset | null> {
+    return this.repo.findById(id, transaction);
   }
 
   getReadPage(query: AssetListQuery): Promise<AssetListDto> {
@@ -61,14 +69,16 @@ export class AssetService
     }
 
     try {
-      const data = await this.repo.createWithAllocatedCode({
-        asset_model_id: dto.asset_model_id,
-        serial_number: dto.serial_number ?? null,
-        image_url: dto.image_url ?? null,
-        department_id: dto.department_id ?? null,
-        qr_code: randomUUID(),
-        status: 'available',
-      });
+      const data = await this.prisma.$transaction((transaction) =>
+        this.repo.createWithAllocatedCode({
+          asset_model_id: dto.asset_model_id,
+          serial_number: dto.serial_number ?? null,
+          image_url: dto.image_url ?? null,
+          department_id: dto.department_id ?? null,
+          qr_code: randomUUID(),
+          status: 'available',
+        }, transaction),
+      );
       return { data };
     } catch (error) {
       if (error instanceof ConflictError) {
@@ -188,6 +198,14 @@ export class AssetService
       nextStatus,
       transaction,
     );
+  }
+
+  confirmDamageInTransaction(
+    assetId: number,
+    expectedStatus: Extract<AssetStatus, 'available' | 'borrowed'>,
+    transaction: AssetTransaction,
+  ): Promise<void> {
+    return this.transitionOne(assetId, expectedStatus, 'damaged', transaction);
   }
 
   startRepair(

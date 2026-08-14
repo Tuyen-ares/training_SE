@@ -6,12 +6,24 @@ import { requirePermission } from '@/middleware/rbac.middleware.js';
 import { PrismaAssetIssueRepository } from '@/repositories/asset-issue.prisma.repository.js';
 import { PrismaAssetRepository } from '@/repositories/asset.prisma.repository.js';
 import { PrismaNotificationRepository } from '@/repositories/notification.prisma.repository.js';
+import { PrismaVendorRepository } from '@/repositories/vendor.prisma.repository.js';
 import { AssetIssueService } from '@/services/asset-issue.service.js';
+import { AssetService } from '@/services/assets.service.js';
+import { NotificationService } from '@/services/notification.service.js';
+import { VendorService } from '@/services/vendor.service.js';
 
 const issueRepository = new PrismaAssetIssueRepository(prisma);
 const assetRepository = new PrismaAssetRepository(prisma);
 const notificationRepository = new PrismaNotificationRepository(prisma);
-const service = new AssetIssueService(assetRepository, issueRepository, notificationRepository);
+const assetService = new AssetService(assetRepository, prisma);
+const notificationService = new NotificationService(notificationRepository);
+const service = new AssetIssueService(
+  assetService,
+  issueRepository,
+  new VendorService(new PrismaVendorRepository(prisma), prisma),
+  notificationService,
+  prisma,
+);
 const controller = new AssetIssueController(service);
 const router = Router();
 

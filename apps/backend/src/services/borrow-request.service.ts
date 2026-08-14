@@ -5,18 +5,20 @@ import type {
   CreateBorrowRequestDto,
 } from '@/models/borrow-lifecycle.model.js';
 import type { IBorrowRequestRepository } from '@/repositories/borrow-request.repository.js';
+import type { PrismaClient } from '../../generated/prisma/index.js';
 import type { NotificationService } from '@/services/notification.service.js';
 
 export class BorrowRequestService {
   constructor(
     private readonly repository: IBorrowRequestRepository,
-    private readonly notifications?: NotificationService,
+    private readonly notifications: NotificationService,
+    private readonly prisma: PrismaClient,
   ) {}
 
   async create(requesterId: number, dto: CreateBorrowRequestDto): Promise<BorrowRequestDto> {
-    const request = await this.repository.createForRequester(requesterId, dto);
-    if (this.notifications) {
-      await this.notifications.notifyPermissionHolders(
+    return this.prisma.$transaction(async (transaction) => {
+      const request = await this.repository.createForRequester(requesterId, dto, transaction);
+      await this.notifications.notifyPermissionHoldersInTransaction(
         ['borrow_request.view_all', 'borrow_request.approve'],
         {
           notificationType: 'BORROW_REQUEST_CREATED',
@@ -26,9 +28,10 @@ export class BorrowRequestService {
           relatedEntityId: request.id,
         },
         [requesterId],
+        transaction,
       );
-    }
-    return request;
+      return request;
+    });
   }
 
   listMine(requesterId: number, query: BorrowRequestListQuery): Promise<BorrowRequestPageDto> {

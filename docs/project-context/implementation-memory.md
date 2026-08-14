@@ -5,6 +5,18 @@ giá trị lâu dài cho việc đọc, triển khai và debug project.
 
 ## Architecture Decisions
 
+- Transaction boundary follows one-owner/participant: each multi-write use case
+  opens exactly one Prisma transaction in its coordinating service. Called
+  services expose explicit `InTransaction` methods and pass the same client to
+  repositories; repositories never open write transactions themselves.
+  Read-only list/count batching may still use a repository-local transaction.
+- The current transaction owners are `BorrowRequestService` (create request),
+  `BorrowWorkflowService` (approval, handover, return and withdrawal),
+  `AssetIssueService` (issue/repair actions), `RbacService`, `UserService`,
+  `RegistrationService`, `AssetService` (asset code allocation), `AuthService`
+  (refresh rotation), and `VendorService` (vendor update/status). Borrow and
+  Asset Issue repositories do not write each other's tables; cross-module
+  writes go through participant services with the owner transaction.
 - Authorization dựa trên effective permission, không hard-code role name.
 - Một user có thể có nhiều role; effective permissions là union permission của các role.
 - Flat RBAC: Admin không tự động inherit Manager nếu chưa được gán permission.

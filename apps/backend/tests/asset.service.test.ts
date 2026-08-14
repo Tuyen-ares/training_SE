@@ -24,6 +24,11 @@ import {
 } from '../src/shared/asset-code.js';
 
 const transaction = {} as AssetTransaction;
+const prisma = {
+  async $transaction<T>(work: (transaction: AssetTransaction) => Promise<T>): Promise<T> {
+    return work(transaction);
+  },
+} as never;
 
 function makeAsset(id: number, status: AssetStatus = 'available'): Asset {
   return {
@@ -157,7 +162,7 @@ class MemoryAssetRepository implements IAssetRepository {
 
 test('create validates model and serial before creating an available asset', async () => {
   const repository = new MemoryAssetRepository([makeAsset(1)]);
-  const service = new AssetService(repository);
+  const service = new AssetService(repository, prisma);
 
   assert.deepEqual(
     await service.create({ asset_model_id: 999 }),
@@ -192,7 +197,7 @@ test('asset type prefixes normalize Unicode names and preserve digits', () => {
 
 test('update rejects an invalid model and another asset serial number', async () => {
   const repository = new MemoryAssetRepository([makeAsset(1), makeAsset(2)]);
-  const service = new AssetService(repository);
+  const service = new AssetService(repository, prisma);
 
   await assert.rejects(
     service.update(1, { asset_model_id: 999 }),
@@ -221,7 +226,7 @@ test('retire permits available, damaged or in-repair assets only', async () => {
     makeAsset(5, 'in_repair'),
     makeAsset(6, 'retired'),
   ]);
-  const service = new AssetService(repository);
+  const service = new AssetService(repository, prisma);
 
   assert.equal(await service.retire(1), true);
   assert.equal(await service.retire(2), true);
@@ -244,7 +249,7 @@ test('approval, handover, cancellation, and return follow the asset lifecycle', 
     makeAsset(1, 'available'),
     makeAsset(2, 'available'),
   ]);
-  const service = new AssetService(repository);
+  const service = new AssetService(repository, prisma);
 
   await service.reserveForApprovedRequest([1, 2], transaction);
   assert.equal((await repository.findById(1))?.status, 'reserved');
@@ -270,7 +275,7 @@ test('repair lifecycle supports success and failure from pre-existing damaged as
     makeAsset(1, 'damaged'),
     makeAsset(2, 'in_repair'),
   ]);
-  const service = new AssetService(repository);
+  const service = new AssetService(repository, prisma);
 
   await service.startRepair(1, transaction);
   await service.completeRepair(1, 'repaired', transaction);
@@ -285,7 +290,7 @@ test('invalid transitions and an empty asset set are rejected', async () => {
     makeAsset(1, 'borrowed'),
     makeAsset(2, 'available'),
   ]);
-  const service = new AssetService(repository);
+  const service = new AssetService(repository, prisma);
 
   await assert.rejects(
     service.reserveForApprovedRequest([], transaction),
@@ -307,7 +312,7 @@ test('invalid transitions and an empty asset set are rejected', async () => {
 
 test('two concurrent approvals of one asset allow exactly one reservation', async () => {
   const repository = new MemoryAssetRepository([makeAsset(1, 'available')]);
-  const service = new AssetService(repository);
+  const service = new AssetService(repository, prisma);
 
   const results = await Promise.allSettled([
     service.reserveForApprovedRequest([1], transaction),

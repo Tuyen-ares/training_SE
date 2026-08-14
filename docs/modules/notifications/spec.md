@@ -40,10 +40,19 @@ PrismaNotificationRepository
 notifications
 ```
 
-Một số workflow hiện tại vẫn tạo notification trực tiếp qua repository:
+Các workflow hiện tại ghi notification qua `NotificationService` như một
+participant của transaction owner:
 
-- `BorrowWorkflowService` gọi `notifications.create(...)` khi approve, reject, handover và return.
-- `AssetIssueService` gọi `notificationRepository.create(...)` khi issue/repair thay đổi trạng thái.
+- `BorrowRequestService` dùng `notifyPermissionHoldersInTransaction(...)` khi tạo request.
+- `BorrowWorkflowService` dùng `createInTransaction(...)` và
+  `notifyPermissionHoldersInTransaction(...)` khi approve, reject, handover,
+  return và damaged return.
+- `AssetIssueService` dùng cùng các participant method khi report/confirm/reject
+  và repair thay đổi trạng thái.
+
+`NotificationService` nhận và truyền tiếp cùng Prisma transaction client;
+`PrismaNotificationRepository` không tự mở write transaction. Vì vậy
+notification in-app rollback cùng business state nếu workflow thất bại.
 - Frontend dùng browser event `notifications:changed` để refresh unread badge trong cùng tab.
 
 Đây là nền tảng có thể mở rộng vì repository đã được inject qua interface. Tuy nhiên, đây chưa phải Observer Pattern hoàn chỉnh: chưa có domain event envelope, event bus, subscriber registry hoặc durable delivery queue.

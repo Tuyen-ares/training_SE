@@ -23,16 +23,39 @@ test('damaged return rolls back history and asset changes when issue creation fa
       state.history.returnedAt = new Date();
       state.returnCondition = 'DAMAGED';
     },
-    createConfirmedIssueForDamagedReturn: async () => {
-      throw new Error('simulated issue insert failure');
-    },
   };
   const assets = {
     returnAsset: async () => {
       state.assetStatus = 'damaged';
     },
   };
-  const service = new BorrowWorkflowService(repository as any, assets as any);
+  const assetIssues = {
+    createConfirmedInTransaction: async () => {
+      throw new Error('simulated issue insert failure');
+    },
+  };
+  const notifications = {
+    createInTransaction: async () => ({}),
+    notifyPermissionHoldersInTransaction: async () => 0,
+  };
+  const prisma = {
+    async $transaction<T>(work: (transaction: object) => Promise<T>): Promise<T> {
+      const snapshot = structuredClone(state);
+      try {
+        return await work({});
+      } catch (error) {
+        Object.assign(state, snapshot);
+        throw error;
+      }
+    },
+  };
+  const service = new BorrowWorkflowService(
+    repository as any,
+    assets as any,
+    assetIssues as any,
+    notifications as any,
+    prisma as any,
+  );
 
   await assert.rejects(
     service.returnDamaged(25, 9, 'Screen is cracked.'),
