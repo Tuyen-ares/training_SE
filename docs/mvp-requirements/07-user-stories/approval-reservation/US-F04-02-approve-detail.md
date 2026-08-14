@@ -1,23 +1,23 @@
-# US-F04-02 – Duyệt một detail
+# US-F04-02 – Approve a detail
 
 ## User Story
 
-Là một **Asset Manager hoặc Admin**,  
-tôi muốn **duyệt một asset đang chờ trong phiếu**,  
-để **giữ thiết bị đó cho người yêu cầu trước khi bàn giao**.
+As an **Asset Manager or Admin**,\
+I want to **approve a pending asset in a request**,\
+so that **the equipment is reserved for the requester before handover**.
 
 ## Acceptance Criteria
 
-- AC-US-F04-02-01: Given detail `PENDING` và asset `AVAILABLE`, when duyệt, then detail thành `APPROVED` và asset thành `RESERVED`.
-- AC-US-F04-02-02: Then hệ thống ghi người và thời điểm xử lý detail.
-- AC-US-F04-02-03: Given asset không còn `AVAILABLE`, when duyệt, then hệ thống báo xung đột và detail vẫn `PENDING`.
-- AC-US-F04-02-04: Given hai người đồng thời duyệt các detail giữ cùng asset, then chỉ một thao tác thành công.
-- AC-US-F04-02-05: Given bất kỳ phần nào của thao tác thất bại, then detail và asset đều giữ trạng thái trước thao tác.
+- AC-US-F04-02-01: Given the detail is `PENDING` and the asset is `AVAILABLE`, when approving it, then the detail becomes `APPROVED` and the asset becomes `RESERVED`.
+- AC-US-F04-02-02: Then the system records the person and time that processed the detail.
+- AC-US-F04-02-03: Given the asset is no longer `AVAILABLE`, when approving the detail, then the system reports a conflict and the detail remains `PENDING`.
+- AC-US-F04-02-04: Given two people concurrently approve details reserving the same asset, then only one operation succeeds.
+- AC-US-F04-02-05: Given any part of the operation fails, then both the detail and asset retain their pre-operation statuses.
 
-## Business Rules áp dụng
+## Applicable Business Rules
 
 `BR-BOR-03`, `BR-BOR-06`, `BR-BOR-07`, `BR-BOR-08`, `BR-BOR-10`.
 
-## Functional Requirements liên quan
+## Related Functional Requirements
 
 `FR-F04-02`, `FR-F04-05`, `FR-F04-06`.

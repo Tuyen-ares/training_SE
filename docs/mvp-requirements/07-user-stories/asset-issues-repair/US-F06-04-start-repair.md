@@ -1,23 +1,23 @@
-# US-F06-04 – Bắt đầu sửa chữa
+# US-F06-04 – Start a repair
 
 ## User Story
 
-Là một **Asset Manager hoặc Admin**,  
-tôi muốn **bắt đầu xử lý một issue đã xác nhận**,  
-để **theo dõi asset đang trong quá trình sửa**.
+As an **Asset Manager or Admin**,\
+I want to **start handling a confirmed issue**,\
+so that **I can track the asset while it is being repaired**.
 
 ## Acceptance Criteria
 
-- AC-US-F06-04-01: Given issue `CONFIRMED` và asset `DAMAGED`, when bắt đầu sửa, then issue và asset cùng chuyển `IN_REPAIR`.
-- AC-US-F06-04-02: Then hệ thống ghi người xử lý và ngày bắt đầu phù hợp thông tin được cung cấp.
-- AC-US-F06-04-03: Given issue hoặc asset không đúng trạng thái nguồn, then hệ thống từ chối.
-- AC-US-F06-04-04: Given một cập nhật thất bại, then issue và asset giữ trạng thái cũ.
-- AC-US-F06-04-05: `vendorId` omitted không đổi vendor; set/clear vendor cần đồng thời `asset_issue.create` và `vendor.view`, và chỉ vendor active mới được gán.
+- AC-US-F06-04-01: Given the issue is `CONFIRMED` and the asset is `DAMAGED`, when starting the repair, then both the issue and asset become `IN_REPAIR`.
+- AC-US-F06-04-02: Then the system records the processor and start date according to the provided information.
+- AC-US-F06-04-03: Given the issue or asset is not in the expected source status, then the system rejects the request.
+- AC-US-F06-04-04: Given an update fails, then the issue and asset retain their previous statuses.
+- AC-US-F06-04-05: Omitting `vendorId` leaves the vendor unchanged; setting or clearing a vendor requires both `asset_issue.create` and `vendor.view`, and only an active vendor may be assigned.
 
-## Business Rules áp dụng
+## Applicable Business Rules
 
 `BR-ISS-03`, `BR-ISS-04`.
 
-## Functional Requirements liên quan
+## Related Functional Requirements
 
 `FR-F06-05`.

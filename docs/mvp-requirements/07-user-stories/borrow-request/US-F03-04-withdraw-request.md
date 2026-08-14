@@ -1,23 +1,23 @@
-# US-F03-04 – Thu hồi phiếu
+# US-F03-04 – Withdraw a request
 
 ## User Story
 
-Là một **Employee**,  
-tôi muốn **thu hồi toàn bộ phiếu chưa có asset nào được bàn giao**,  
-để **hủy nhu cầu mượn không còn cần thiết**.
+As an **Employee**,\
+I want to **withdraw a request for which no asset has been handed over**,\
+so that **I can cancel a borrowing need that is no longer necessary**.
 
 ## Acceptance Criteria
 
-- AC-US-F03-04-01: Given phiếu thuộc user và chưa có asset nào `BORROWED`, when thu hồi, then header chuyển `CANCELLED`.
-- AC-US-F03-04-02: Then mọi asset đang `RESERVED` bởi phiếu chuyển về `AVAILABLE`.
-- AC-US-F03-04-03: Then trạng thái các detail được giữ nguyên để bảo toàn lịch sử xử lý.
-- AC-US-F03-04-04: Given có ít nhất một asset đã `BORROWED`, when thu hồi, then hệ thống từ chối và không thay đổi dữ liệu.
-- AC-US-F03-04-05: Given phiếu không thuộc user, then user không được thu hồi bằng quyền của nhân viên.
+- AC-US-F03-04-01: Given the request belongs to the user and no asset is `BORROWED`, when withdrawing it, then the header becomes `CANCELLED`.
+- AC-US-F03-04-02: Then every asset `RESERVED` by the request becomes `AVAILABLE`.
+- AC-US-F03-04-03: Then the detail statuses remain unchanged to preserve the processing history.
+- AC-US-F03-04-04: Given at least one asset is `BORROWED`, when withdrawing the request, then the system rejects it and does not change data.
+- AC-US-F03-04-05: Given the request does not belong to the user, then the user cannot withdraw it with employee permissions.
 
-## Business Rules áp dụng
+## Applicable Business Rules
 
 `BR-BOR-09`, `BR-BOR-16`, `BR-BOR-17`, `BR-RET-04`.
 
-## Functional Requirements liên quan
+## Related Functional Requirements
 
 `FR-F03-05`, `FR-F04-05`.

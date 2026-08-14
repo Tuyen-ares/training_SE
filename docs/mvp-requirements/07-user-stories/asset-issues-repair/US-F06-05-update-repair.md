@@ -1,23 +1,23 @@
-# US-F06-05 – Cập nhật quá trình sửa
+# US-F06-05 – Update repair progress
 
 ## User Story
 
-Là một **Asset Manager hoặc Admin**,  
-tôi muốn **cập nhật thông tin quá trình xử lý**,  
-để **chi phí, đơn vị sửa và tiến độ được theo dõi tập trung**.
+As an **Asset Manager or Admin**,\
+I want to **update the handling information**,\
+so that **cost, repair provider, and progress are tracked centrally**.
 
 ## Acceptance Criteria
 
-- AC-US-F06-05-01: Given issue đang ở giai đoạn cho phép, when cập nhật hợp lệ, then hệ thống lưu thông tin mới.
-- AC-US-F06-05-02: Thông tin có thể gồm vendor, ngày bắt đầu/kết thúc, chi phí, kết quả và ghi chú theo baseline.
-- AC-US-F06-05-03: Given chi phí hoặc thời gian không hợp lệ, then hệ thống từ chối và giữ dữ liệu cũ.
-- AC-US-F06-05-04: Given user thiếu permission, then hệ thống không thay đổi issue.
-- AC-US-F06-05-05: `vendorId` omitted giữ vendor và không cần `vendor.view`; number hoặc `null` cần đồng thời `asset_issue.update` và `vendor.view`.
+- AC-US-F06-05-01: Given the issue is in an allowed stage, when updating it with valid data, then the system saves the new information.
+- AC-US-F06-05-02: The information may include the vendor, start/end dates, cost, result, and notes according to the baseline.
+- AC-US-F06-05-03: Given the cost or time is invalid, then the system rejects the request and keeps the old data.
+- AC-US-F06-05-04: Given the user lacks permission, then the system does not change the issue.
+- AC-US-F06-05-05: Omitting `vendorId` preserves the vendor and does not require `vendor.view`; a number or `null` requires both `asset_issue.update` and `vendor.view`.
 
-## Business Rules áp dụng
+## Applicable Business Rules
 
 `BR-ISS-03`, `BR-RBAC-01`.
 
-## Functional Requirements liên quan
+## Related Functional Requirements
 
 `FR-F06-06`.

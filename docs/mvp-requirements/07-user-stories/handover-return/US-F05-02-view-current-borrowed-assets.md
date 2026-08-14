@@ -1,22 +1,22 @@
-# US-F05-02 – Xem tài sản đang mượn
+# US-F05-02 – View currently borrowed assets
 
 ## User Story
 
-Là một **Employee**,  
-tôi muốn **xem các asset hiện đang được bàn giao cho mình**,  
-để **biết trách nhiệm hoàn trả hiện tại**.
+As an **Employee**,\
+I want to **view the assets currently handed over to me**,\
+so that **I know my current return responsibilities**.
 
 ## Acceptance Criteria
 
-- AC-US-F05-02-01: When mở danh sách đang mượn, then hệ thống chỉ hiển thị history thuộc request của user hiện tại chưa hoàn trả.
-- AC-US-F05-02-02: Then mỗi dòng hiển thị asset, ngày bàn giao và ngày trả dự kiến.
-- AC-US-F05-02-03: Detail chỉ `APPROVED` nhưng chưa có bàn giao không được coi là đang mượn.
-- AC-US-F05-02-04: Asset đã có return date không còn xuất hiện trong danh sách đang mượn.
+- AC-US-F05-02-01: When opening the borrowed-assets list, then the system displays only unreturned history belonging to requests from the current user.
+- AC-US-F05-02-02: Then each row displays the asset, handover date, and expected return date.
+- AC-US-F05-02-03: A detail that is only `APPROVED` but has not been handed over is not considered borrowed.
+- AC-US-F05-02-04: An asset with a return date no longer appears in the borrowed-assets list.
 
-## Business Rules áp dụng
+## Applicable Business Rules
 
 `BR-HAN-03`, `BR-HAN-06`.
 
-## Functional Requirements liên quan
+## Related Functional Requirements
 
 `FR-F05-03`.

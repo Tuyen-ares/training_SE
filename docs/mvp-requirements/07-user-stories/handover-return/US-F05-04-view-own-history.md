@@ -1,23 +1,23 @@
-# US-F05-04 – Xem lịch sử mượn của tôi
+# US-F05-04 – View my borrowing history
 
 ## User Story
 
-Là một **Employee**,  
-tôi muốn **xem lịch sử các asset mình đã mượn và trả**,  
-để **đối chiếu quá trình sử dụng thiết bị của bản thân**.
+As an **Employee**,\
+I want to **view the history of assets I have borrowed and returned**,\
+so that **I can review my equipment usage**.
 
 ## Acceptance Criteria
 
-- AC-US-F05-04-01: When mở lịch sử của tôi, then chỉ các history truy về request của user hiện tại được hiển thị.
-- AC-US-F05-04-02: Then mỗi history thể hiện asset, ngày bàn giao, ngày trả và tình trạng trả khi có.
-- AC-US-F05-04-03: History chưa trả được phân biệt rõ với history đã hoàn trả.
-- AC-US-F05-04-04: User không thể đổi dữ liệu history từ chức năng xem.
-- AC-US-F05-04-05: Khi mở detail của history, user thấy lý do mượn, người/ngày duyệt, người/ngày bàn giao và thông tin trả nếu đã hoàn trả.
+- AC-US-F05-04-01: When opening my history, then only history linked to requests from the current user is displayed.
+- AC-US-F05-04-02: Then each history record shows the asset, handover date, return date, and return condition when available.
+- AC-US-F05-04-03: Unreturned history is clearly distinguished from returned history.
+- AC-US-F05-04-04: The user cannot change history data through the view function.
+- AC-US-F05-04-05: When opening a history detail, the user sees the borrowing reason, approver and approval date, handover person and date, and return information when returned.
 
-## Business Rules áp dụng
+## Applicable Business Rules
 
 `BR-HAN-03`, `BR-HAN-06`, `BR-RET-03`.
 
-## Functional Requirements liên quan
+## Related Functional Requirements
 
 `FR-F05-05`.

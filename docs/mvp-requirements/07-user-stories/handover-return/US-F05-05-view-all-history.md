@@ -1,23 +1,23 @@
-# US-F05-05 – Xem toàn bộ lịch sử mượn
+# US-F05-05 – View all borrowing history
 
 ## User Story
 
-Là một **Asset Manager hoặc Admin**,  
-tôi muốn **tra cứu lịch sử mượn/trả trong phạm vi được cấp**,  
-để **hỗ trợ quản lý và đối chiếu tài sản**.
+As an **Asset Manager or Admin**,\
+I want to **search borrowing and return history within my permitted scope**,\
+so that **I can manage and reconcile assets**.
 
 ## Acceptance Criteria
 
-- AC-US-F05-05-01: Given có permission, when mở lịch sử, then hệ thống hiển thị các bản ghi thuộc phạm vi được phép.
-- AC-US-F05-05-02: Then có thể nhận biết người mượn qua phiếu, người bàn giao và người nhận trả.
-- AC-US-F05-05-03: Given thiếu permission xem toàn bộ, then user không truy cập được lịch sử của người khác.
-- AC-US-F05-05-04: Dữ liệu hiển thị phản ánh history đã ghi, không suy ra bàn giao chỉ từ approval status.
-- AC-US-F05-05-05: Khi mở detail của history, user có quyền xem toàn bộ thấy lý do mượn, approval metadata, handover metadata và return metadata đã lưu.
+- AC-US-F05-05-01: Given the user has permission, when opening the history, then the system displays records within the permitted scope.
+- AC-US-F05-05-02: Then the borrower can be identified through the request, handover person, and return recipient.
+- AC-US-F05-05-03: Given the user lacks permission to view all history, then the user cannot access other users' history.
+- AC-US-F05-05-04: The displayed data reflects recorded history and does not infer a handover from approval status alone.
+- AC-US-F05-05-05: When opening a history detail, a user with permission to view all history sees the stored borrowing reason, approval metadata, handover metadata, and return metadata.
 
-## Business Rules áp dụng
+## Applicable Business Rules
 
 `BR-HAN-03`, `BR-HAN-05`, `BR-HAN-06`, `BR-RET-01`.
 
-## Functional Requirements liên quan
+## Related Functional Requirements
 
 `FR-F05-05`.

@@ -1,23 +1,23 @@
-# US-F05-01 – Xác nhận bàn giao
+# US-F05-01 – Confirm handover
 
 ## User Story
 
-Là một **Asset Manager hoặc Admin**,  
-tôi muốn **xác nhận đã giao asset được giữ chỗ**,  
-để **ghi nhận người mượn đã thực sự nhận thiết bị**.
+As an **Asset Manager or Admin**,\
+I want to **confirm the handover of a reserved asset**,\
+so that **the borrower is recorded as having received the equipment**.
 
 ## Acceptance Criteria
 
-- AC-US-F05-01-01: Given detail `APPROVED` và asset `RESERVED` cho đúng detail, when xác nhận, then asset chuyển `BORROWED`.
-- AC-US-F05-01-02: Then hệ thống tạo một borrow history ghi người và thời điểm bàn giao.
-- AC-US-F05-01-03: Given detail đã có borrow history, when xác nhận lại, then hệ thống từ chối tạo lịch sử thứ hai.
-- AC-US-F05-01-04: Given asset không còn `RESERVED` cho detail, then không có history hoặc status nào bị ghi một phần.
-- AC-US-F05-01-05: Người mượn được xác định từ request, không yêu cầu nhập lại.
+- AC-US-F05-01-01: Given the detail is `APPROVED` and the asset is `RESERVED` for that detail, when confirming the handover, then the asset becomes `BORROWED`.
+- AC-US-F05-01-02: Then the system creates a borrow history recording the person and handover time.
+- AC-US-F05-01-03: Given the detail already has a borrow history, when confirming it again, then the system rejects creating a second history record.
+- AC-US-F05-01-04: Given the asset is no longer `RESERVED` for the detail, then no history or status is partially recorded.
+- AC-US-F05-01-05: The borrower is identified from the request and does not need to be entered again.
 
-## Business Rules áp dụng
+## Applicable Business Rules
 
 `BR-HAN-01`, `BR-HAN-02`, `BR-HAN-03`, `BR-HAN-04`, `BR-HAN-05`, `BR-HAN-06`.
 
-## Functional Requirements liên quan
+## Related Functional Requirements
 
 `FR-F05-01`, `FR-F05-02`.

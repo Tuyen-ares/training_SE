@@ -1,24 +1,24 @@
-# US-F02-04 – Tạo asset
+# US-F02-04 – Create an asset
 
 ## User Story
 
-Là một **Asset Manager hoặc Admin**,  
-tôi muốn **tạo một tài sản với thông tin nhận diện hợp lệ**,  
-để **đưa thiết bị mới vào danh mục quản lý**.
+As an **Asset Manager or Admin**,\
+I want to **create an asset with valid identification information**,\
+so that **new equipment is added to the managed inventory**.
 
 ## Acceptance Criteria
 
-- AC-US-F02-04-01: Given model hợp lệ và dữ liệu bắt buộc đầy đủ, when tạo, then asset được ghi nhận với asset code bất biến do server cấp và status `AVAILABLE`.
-- AC-US-F02-04-02: image_url là tùy chọn; nếu cung cấp thì được lưu dưới dạng URL ảnh của asset.
-- AC-US-F02-04-03: Given QR đã tồn tại, when tạo, then hệ thống từ chối.
-- AC-US-F02-04-04: Given serial có giá trị đã tồn tại, when tạo, then hệ thống từ chối.
-- AC-US-F02-04-05: Given department không tồn tại, when tạo, then hệ thống từ chối.
-- AC-US-F02-04-06: Given user thiếu quyền, then không tạo asset.
+- AC-US-F02-04-01: Given a valid model and all required data, when creating the asset, then the system records it with a server-issued immutable asset code and status `AVAILABLE`.
+- AC-US-F02-04-02: image_url is optional; when provided, it is stored as the asset image URL.
+- AC-US-F02-04-03: Given the QR already exists, when creating the asset, then the system rejects the request.
+- AC-US-F02-04-04: Given the serial value already exists, when creating the asset, then the system rejects the request.
+- AC-US-F02-04-05: Given the department does not exist, when creating the asset, then the system rejects the request.
+- AC-US-F02-04-06: Given the user lacks permission, then the asset is not created.
 
-## Business Rules áp dụng
+## Applicable Business Rules
 
 `BR-AST-01`, `BR-AST-05`, `BR-AST-06`, `BR-AST-11`, `BR-RBAC-01`.
 
-## Functional Requirements liên quan
+## Related Functional Requirements
 
 `FR-F02-04`.

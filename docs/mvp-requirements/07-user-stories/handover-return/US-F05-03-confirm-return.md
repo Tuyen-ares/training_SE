@@ -1,28 +1,28 @@
-# US-F05-03 – Xác nhận hoàn trả
+# US-F05-03 – Confirm return
 
 ## User Story
 
-Là một **Asset Manager hoặc Admin**,  
-tôi muốn **xác nhận asset được hoàn trả**,  
-để **kết thúc lượt mượn và đưa thiết bị về khả dụng**.
+As an **Asset Manager or Admin**,\
+I want to **confirm an asset's return**,\
+so that **the borrowing period ends and the equipment becomes available again**.
 
 ## Acceptance Criteria
 
-- AC-US-F05-03-01: Given asset `BORROWED` có history chưa trả, when xác nhận trả bình thường, then ghi người nhận, thời điểm và tình trạng trả.
-- AC-US-F05-03-02: Then asset chuyển `BORROWED → AVAILABLE`.
-- AC-US-F05-03-03: Given history đã có return date, when xác nhận lại, then hệ thống từ chối.
-- AC-US-F05-03-04: Given lỗi ở bất kỳ cập nhật nào, then history và asset không bị lưu trạng thái một phần.
-- AC-US-F05-03-05: Khi mọi lượt được duyệt/bàn giao trong phiếu đã trả, header chuyển `COMPLETED`.
-- AC-US-F05-03-06: Given người nhận xác nhận tình trạng `DAMAGED`, when hoàn trả, then history ghi `return_date` và `return_condition = DAMAGED`, issue `CONFIRMED` được tạo và asset chuyển `BORROWED → DAMAGED`.
+- AC-US-F05-03-01: Given a `BORROWED` asset has unreturned history, when confirming a normal return, then the system records the recipient, time, and return condition.
+- AC-US-F05-03-02: Then the asset changes from `BORROWED → AVAILABLE`.
+- AC-US-F05-03-03: Given the history already has a return date, when confirming the return again, then the system rejects the request.
+- AC-US-F05-03-04: Given an error occurs in any update, then the history and asset are not saved in a partial state.
+- AC-US-F05-03-05: When every approved/handed-over item in the request has been returned, then the header becomes `COMPLETED`.
+- AC-US-F05-03-06: Given the recipient confirms the condition as `DAMAGED`, when returning the asset, then the history records `return_date` and `return_condition = DAMAGED`, an issue with status `CONFIRMED` is created, and the asset changes from `BORROWED → DAMAGED`.
 
-## Business Rules áp dụng
+## Applicable Business Rules
 
 `BR-RET-01`, `BR-RET-02`, `BR-RET-03`, `BR-BOR-18`, `BR-ISS-08`.
 
-## Functional Requirements liên quan
+## Related Functional Requirements
 
 `FR-F05-04`, `FR-F04-05`.
 
 ## Notes / Out of Scope
 
-Trường hợp hỏng lúc trả tạo issue `CONFIRMED`; không giữ asset ở `BORROWED` sau khi đã ghi nhận hoàn trả.
+When an asset is damaged at return, an issue with status `CONFIRMED` is created; the asset does not remain `BORROWED` after the return is recorded.

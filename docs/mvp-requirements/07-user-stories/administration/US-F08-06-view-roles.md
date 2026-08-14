@@ -1,20 +1,20 @@
-# US-F08-06 – Xem role
+# US-F08-06 – View roles
 
 ## User Story
 
-Là một **Admin có `role.view`**, tôi muốn xem danh sách và chi tiết role để hiểu role đang dùng permission nào và được gán cho bao nhiêu user.
+As an **Admin with `role.view`**, I want to view the role list and details so that I understand which permissions each role uses and how many users are assigned to it.
 
 ## Acceptance Criteria
 
-- List trả name, system/custom, permission count và user count.
-- Detail trả tập permission với code và English description.
-- UI không hiển thị delete action.
-- Authorization kiểm tra permission, không kiểm tra role name.
+- The list returns the name, system/custom classification, permission count, and user count.
+- The details return the permission set with codes and English descriptions.
+- The UI does not display a delete action.
+- Authorization checks the permission, not the role name.
 
-## Business Rules áp dụng
+## Applicable Business Rules
 
 `BR-RBAC-01..07`.
 
-## Functional Requirements liên quan
+## Related Functional Requirements
 
 `FR-F08-08`, `FR-F08-11`.

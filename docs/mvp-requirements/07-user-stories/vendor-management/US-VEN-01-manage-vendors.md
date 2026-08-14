@@ -1,18 +1,22 @@
-# US-VEN-01 – Quản lý shared vendor
+# US-VEN-01 – Manage shared vendors
 
 ## User Story
 
-Là user có permission Vendor phù hợp, tôi muốn quản lý danh mục vendor dùng
-chung để chọn vendor cho repair và giữ lịch sử khi vendor ngừng hợp tác.
+As a user with the appropriate Vendor permission, I want to manage a shared
+vendor catalog so that I can select vendors for repairs and preserve history
+when a vendor stops working with the company.
 
 ## Acceptance Criteria
 
-- Có thể search, phân trang và lọc Active/Inactive với `vendor.view`.
-- Có thể tạo vendor active với `vendor.create`; contact rỗng được lưu thành
-  `null`.
-- Có thể sửa thông tin và activate/deactivate bằng `vendor.update`.
-- Vendor inactive không xuất hiện trong repair selector mặc định nhưng vẫn hiện
-  trong Vendor Management và issue history.
-- Không có thao tác delete vendor trong MVP; vendor không còn hợp tác được
-  deactivate để giữ record và lịch sử issue.
-- Runtime chỉ kiểm tra permission code, không suy ra quyền từ tên role.
+- Vendors can be searched, paginated, and filtered by Active/Inactive with
+  `vendor.view`.
+- An active vendor can be created with `vendor.create`; an empty contact is
+  stored as `null`.
+- Vendor information can be edited and the vendor can be activated/deactivated
+  with `vendor.update`.
+- An inactive vendor does not appear in the default repair selector but remains
+  visible in Vendor Management and issue history.
+- Vendor deletion is not available in the MVP; a vendor that no longer works
+  with the company can be deactivated to preserve the record and issue history.
+- Runtime checks only the permission code and does not infer access from the
+  role name.

@@ -1,22 +1,22 @@
-# US-F04-01 – Xem phiếu cần xử lý
+# US-F04-01 – View the review queue
 
 ## User Story
 
-Là một **Asset Manager hoặc Admin**,  
-tôi muốn **xem các phiếu và detail cần xem xét**,  
-để **thực hiện duyệt hoặc từ chối đúng đối tượng**.
+As an **Asset Manager or Admin**,\
+I want to **view requests and details requiring review**,\
+so that **I can approve or reject the correct items**.
 
 ## Acceptance Criteria
 
-- AC-US-F04-01-01: Given có permission, when mở danh sách, then hệ thống hiển thị các phiếu thuộc phạm vi được phép.
-- AC-US-F04-01-02: Then hệ thống thể hiện trạng thái tổng và trạng thái từng detail.
-- AC-US-F04-01-03: Then user có thể nhận biết detail nào còn `PENDING`.
-- AC-US-F04-01-04: Given thiếu permission xem toàn bộ, then hệ thống không cung cấp dữ liệu của người khác.
+- AC-US-F04-01-01: Given the user has permission, when opening the list, then the system displays requests within the permitted scope.
+- AC-US-F04-01-02: Then the system shows the overall status and the status of each detail.
+- AC-US-F04-01-03: Then the user can identify which details remain `PENDING`.
+- AC-US-F04-01-04: Given the user lacks permission to view all requests, then the system does not provide other users' data.
 
-## Business Rules áp dụng
+## Applicable Business Rules
 
 `BR-BOR-03`, `BR-BOR-04`, `BR-RBAC-01`.
 
-## Functional Requirements liên quan
+## Related Functional Requirements
 
 `FR-F04-01`.

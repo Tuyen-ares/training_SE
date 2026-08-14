@@ -1,21 +1,21 @@
-# US-F08-08 – Cập nhật role và permission set
+# US-F08-08 – Update a role and permission set
 
 ## User Story
 
-Là một **Admin có `role.update`**, tôi muốn đổi tên custom role và tick/untick permission để cập nhật quyền theo trách nhiệm hiện tại.
+As an **Admin with `role.update`**, I want to rename a custom role and select or clear permissions so that access reflects current responsibilities.
 
 ## Acceptance Criteria
 
-- Custom role được rename; system role name bị bảo vệ.
-- Save permissions thay toàn bộ set và set mới không được rỗng.
-- Mutation rollback nếu làm mất essential admin invariant.
-- User đang mang role nhận effective permission mới ở lần login/refresh tiếp theo.
-- Không hỗ trợ delete role hoặc permission CRUD.
+- A custom role can be renamed; system role names are protected.
+- Saving permissions replaces the entire set, and the new set must not be empty.
+- The mutation rolls back if it would remove the essential Admin invariant.
+- A user with the role receives the new effective permissions at the next login/refresh.
+- Deleting roles or permission CRUD is not supported.
 
-## Business Rules áp dụng
+## Applicable Business Rules
 
 `BR-RBAC-01..07`.
 
-## Functional Requirements liên quan
+## Related Functional Requirements
 
 `FR-F08-10..12`.

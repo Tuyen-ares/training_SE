@@ -1,22 +1,22 @@
-# US-F01-06 – Xét duyệt yêu cầu đăng ký
+# US-F01-06 – Review registration requests
 
 ## User Story
 
-Là một **user có `user_registration.review`**, tôi muốn xem, duyệt hoặc từ chối registration request để chỉ applicant hợp lệ được tạo tài khoản.
+As a **user with `user_registration.review`**, I want to view, approve, or reject registration requests so that accounts are created only for valid applicants.
 
 ## Acceptance Criteria
 
-- Queue hỗ trợ status, search và pagination; pending cũ nhất hiển thị trước.
-- Approval bắt buộc department, cho phép nhiều existing role và dùng `employee` nếu bỏ qua roleIds.
-- Approval tạo user + userCode + roles, link createdUserId và clear hash trong một transaction.
-- Reject clear hash; rejectionReason optional; không tạo user.
-- Request đã review không thể xử lý lần hai.
-- User thiếu `user_registration.review` không thể xem hoặc xử lý request.
+- The queue supports status, search, and pagination; the oldest pending request is displayed first.
+- Approval requires a department, allows multiple existing roles, and uses `employee` when roleIds is omitted.
+- Approval creates the user, userCode, and roles, links createdUserId, and clears the hash in one transaction.
+- Rejection clears the hash; rejectionReason is optional; no user is created.
+- A reviewed request cannot be processed a second time.
+- A user without `user_registration.review` cannot view or process requests.
 
-## Business Rules áp dụng
+## Applicable Business Rules
 
 `BR-AUTH-05..08`, `BR-RBAC-01..03`, `BR-USR-01..02`.
 
-## Functional Requirements liên quan
+## Related Functional Requirements
 
 `FR-F01-07..09`.

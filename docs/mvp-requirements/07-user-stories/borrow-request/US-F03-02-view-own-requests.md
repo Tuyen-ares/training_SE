@@ -1,22 +1,22 @@
-# US-F03-02 – Xem danh sách phiếu của tôi
+# US-F03-02 – View my requests
 
 ## User Story
 
-Là một **Employee**,  
-tôi muốn **xem các phiếu do mình tạo**,  
-để **theo dõi tiến độ nhu cầu mượn**.
+As an **Employee**,\
+I want to **view the requests I created**,\
+so that **I can track the progress of my borrowing needs**.
 
 ## Acceptance Criteria
 
-- AC-US-F03-02-01: When mở danh sách của tôi, then chỉ các phiếu do user hiện tại tạo được hiển thị.
-- AC-US-F03-02-02: Then mỗi phiếu hiển thị tối thiểu mã, ngày tạo và trạng thái tổng.
-- AC-US-F03-02-03: Given user cố xem danh sách riêng của người khác mà không có permission, then hệ thống từ chối.
-- AC-US-F03-02-04: Danh sách phản ánh trạng thái tổng mới nhất theo các detail.
+- AC-US-F03-02-01: When opening my list, then only requests created by the current user are displayed.
+- AC-US-F03-02-02: Then each request displays at least its code, creation date, and overall status.
+- AC-US-F03-02-03: Given a user attempts to view another person's private list without permission, then the system rejects the request.
+- AC-US-F03-02-04: The list reflects the latest overall status derived from the details.
 
-## Business Rules áp dụng
+## Applicable Business Rules
 
 `BR-BOR-13`, `BR-BOR-14`, `BR-BOR-15`, `BR-BOR-18`.
 
-## Functional Requirements liên quan
+## Related Functional Requirements
 
 `FR-F03-03`, `FR-F04-05`.

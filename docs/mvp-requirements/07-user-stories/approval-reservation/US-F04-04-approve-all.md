@@ -1,24 +1,24 @@
-# US-F04-04 – Duyệt tất cả theo partial success
+# US-F04-04 – Approve all with partial success
 
 ## User Story
 
-Là một **Asset Manager hoặc Admin**,  
-tôi muốn **duyệt hàng loạt các detail đang chờ đủ điều kiện**,  
-để **xử lý phiếu nhanh nhưng không cấp trùng tài sản**.
+As an **Asset Manager or Admin**,\
+I want to **bulk-approve eligible pending details**,\
+so that **requests are processed quickly without assigning the same asset twice**.
 
 ## Acceptance Criteria
 
-- AC-US-F04-04-01: Given phiếu có nhiều detail `PENDING`, when Approve All, then hệ thống kiểm tra và xử lý từng detail.
-- AC-US-F04-04-02: Detail có asset `AVAILABLE` được chuyển `APPROVED` và asset chuyển `RESERVED`.
-- AC-US-F04-04-03: Detail có asset không còn đủ điều kiện vẫn `PENDING` và trả về lý do không duyệt được.
-- AC-US-F04-04-04: Thất bại của một detail không rollback các detail khác đã duyệt thành công trong bulk action.
-- AC-US-F04-04-05: Given có detail thành công và còn detail khác trạng thái, then header là `PARTIALLY_APPROVED`.
-- AC-US-F04-04-06: Mỗi detail thành công vẫn phải thỏa ràng buộc nguyên tử và chống double approval.
+- AC-US-F04-04-01: Given a request has multiple `PENDING` details, when selecting Approve All, then the system checks and processes each detail.
+- AC-US-F04-04-02: A detail whose asset is `AVAILABLE` becomes `APPROVED`, and the asset becomes `RESERVED`.
+- AC-US-F04-04-03: A detail whose asset is no longer eligible remains `PENDING` and returns the reason it could not be approved.
+- AC-US-F04-04-04: Failure of one detail does not roll back other details that were successfully approved in the bulk action.
+- AC-US-F04-04-05: Given at least one detail succeeds and other details remain in another status, then the header is `PARTIALLY_APPROVED`.
+- AC-US-F04-04-06: Each successful detail must still satisfy atomicity and double-approval prevention constraints.
 
-## Business Rules áp dụng
+## Applicable Business Rules
 
 `BR-BOR-06`, `BR-BOR-10`, `BR-BOR-11`, `BR-BOR-12`, `BR-BOR-15`.
 
-## Functional Requirements liên quan
+## Related Functional Requirements
 
 `FR-F04-04`, `FR-F04-05`, `FR-F04-06`.

@@ -1,22 +1,22 @@
-# US-F07-03 – Mở đối tượng liên quan
+# US-F07-03 – Open the related entity
 
 ## User Story
 
-Là một **Employee, Asset Manager hoặc Admin**,  
-tôi muốn **mở đối tượng nghiệp vụ liên quan**,  
-để **xem ngữ cảnh đầy đủ của thông báo**.
+As an **Employee, Asset Manager, or Admin**,\
+I want to **open the related business entity**,\
+so that **I can view the notification's full context**.
 
 ## Acceptance Criteria
 
-- AC-US-F07-03-01: Given logical reference hợp lệ và user có quyền xem entity, when mở, then hệ thống điều hướng tới nội dung tương ứng.
-- AC-US-F07-03-02: Given notification không có reference, then hệ thống vẫn cho xem nội dung nhưng không cung cấp điều hướng sai.
-- AC-US-F07-03-03: Given entity không còn tồn tại, then hệ thống báo không tìm thấy mà không làm lỗi danh sách notification.
-- AC-US-F07-03-04: Given user thiếu quyền xem entity, then hệ thống từ chối truy cập dù user sở hữu notification.
+- AC-US-F07-03-01: Given a valid logical reference and a user with permission to view the entity, when opening it, then the system navigates to the corresponding content.
+- AC-US-F07-03-02: Given a notification has no reference, then the system still allows its content to be viewed but does not provide incorrect navigation.
+- AC-US-F07-03-03: Given the entity no longer exists, then the system reports that it was not found without breaking the notification list.
+- AC-US-F07-03-04: Given the user lacks permission to view the entity, then the system rejects access even though the user owns the notification.
 
-## Business Rules áp dụng
+## Applicable Business Rules
 
 `BR-NOT-01`, `BR-NOT-02`, `BR-RBAC-01`.
 
-## Functional Requirements liên quan
+## Related Functional Requirements
 
 `FR-F07-04`.

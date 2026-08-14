@@ -1,22 +1,22 @@
-# US-F01-02 – Làm mới phiên
+# US-F01-02 – Refresh session
 
 ## User Story
 
-Là một **Employee, Asset Manager hoặc Admin**,  
-tôi muốn **làm mới phiên hợp lệ**,  
-để **tiếp tục làm việc mà không phải đăng nhập lại liên tục**.
+As an **Employee, Asset Manager, or Admin**,\
+I want to **refresh a valid session**,\
+so that **I can continue working without repeatedly logging in**.
 
 ## Acceptance Criteria
 
-- AC-US-F01-02-01: Given refresh token còn hợp lệ, when yêu cầu làm mới, then hệ thống cấp phiên truy cập mới.
-- AC-US-F01-02-02: Given refresh token đã dùng, bị thu hồi hoặc hết hạn, when làm mới, then hệ thống từ chối.
-- AC-US-F01-02-03: Given user đã inactive, when làm mới, then hệ thống từ chối cấp phiên mới.
-- AC-US-F01-02-04: Then phiên mới phản ánh permission hiện hành tại thời điểm cấp.
+- AC-US-F01-02-01: Given a valid refresh token, when a refresh is requested, then the system issues a new access session.
+- AC-US-F01-02-02: Given a refresh token that has been used, revoked, or expired, when refreshing, then the system rejects the request.
+- AC-US-F01-02-03: Given an inactive user, when refreshing, then the system rejects issuing a new session.
+- AC-US-F01-02-04: Then the new session reflects the permissions in effect at the time it is issued.
 
-## Business Rules áp dụng
+## Applicable Business Rules
 
 `BR-AUTH-01`, `BR-AUTH-03`, `BR-RBAC-01`.
 
-## Functional Requirements liên quan
+## Related Functional Requirements
 
 `FR-F01-02`, `FR-F01-03`.

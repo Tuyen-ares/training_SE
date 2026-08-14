@@ -1,22 +1,22 @@
-# US-F02-02 – Xem chi tiết asset
+# US-F02-02 – View asset details
 
 ## User Story
 
-Là một **Employee, Asset Manager hoặc Admin**,  
-tôi muốn **xem chi tiết một tài sản**,  
-để **biết chính xác định danh, phân loại, department và trạng thái của nó**.
+As an **Employee, Asset Manager, or Admin**,\
+I want to **view an asset's details**,\
+so that **I know its exact identity, classification, department, and status**.
 
 ## Acceptance Criteria
 
-- AC-US-F02-02-01: Given asset tồn tại và user có quyền, when mở chi tiết, then hệ thống hiển thị thông tin asset.
-- AC-US-F02-02-02: Then thông tin gồm asset code read-only, model, brand, type, serial, QR, department và status hiện tại khi có dữ liệu.
-- AC-US-F02-02-03: Given asset không tồn tại, when yêu cầu xem, then hệ thống báo không tìm thấy.
-- AC-US-F02-02-04: Given user thiếu quyền, then hệ thống không tiết lộ chi tiết asset.
+- AC-US-F02-02-01: Given the asset exists and the user has permission, when opening the details, then the system displays the asset information.
+- AC-US-F02-02-02: Then the information includes the read-only asset code, model, brand, type, serial, QR, department, and current status when available.
+- AC-US-F02-02-03: Given the asset does not exist, when requesting its details, then the system reports that it was not found.
+- AC-US-F02-02-04: Given the user lacks permission, then the system does not disclose the asset details.
 
-## Business Rules áp dụng
+## Applicable Business Rules
 
 `BR-AST-01`, `BR-RBAC-01`.
 
-## Functional Requirements liên quan
+## Related Functional Requirements
 
 `FR-F02-02`.

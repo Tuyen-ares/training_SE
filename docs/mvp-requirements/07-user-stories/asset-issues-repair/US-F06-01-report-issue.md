@@ -1,23 +1,23 @@
-# US-F06-01 – Báo sự cố
+# US-F06-01 – Report an issue
 
 ## User Story
 
-Là một **Employee, Asset Manager hoặc Admin**,  
-tôi muốn **ghi nhận vấn đề của một asset**,  
-để **người phụ trách có thể xác minh và xử lý**.
+As an **Employee, Asset Manager, or Admin**,\
+I want to **record a problem with an asset**,\
+so that **the responsible person can verify and handle it**.
 
 ## Acceptance Criteria
 
-- AC-US-F06-01-01: Given asset hợp lệ và mô tả có giá trị, when gửi báo cáo, then issue được tạo ở `REPORTED`.
-- AC-US-F06-01-02: Then hệ thống ghi người báo và thời điểm tạo.
-- AC-US-F06-01-03: Then asset chưa tự chuyển sang `DAMAGED`.
-- AC-US-F06-01-04: Given asset không tồn tại, when báo, then hệ thống từ chối.
-- AC-US-F06-01-05: Người đang mượn chỉ được báo issue cho asset mình đang mượn; user có permission issue được báo theo phạm vi được cấp.
+- AC-US-F06-01-01: Given a valid asset and a non-empty description, when submitting the report, then the system creates the issue with status `REPORTED`.
+- AC-US-F06-01-02: Then the system records the reporter and creation time.
+- AC-US-F06-01-03: Then the asset does not automatically become `DAMAGED`.
+- AC-US-F06-01-04: Given the asset does not exist, when reporting the issue, then the system rejects the request.
+- AC-US-F06-01-05: A borrower may report an issue only for an asset they currently borrow; a user with issue permission may report according to the permitted scope.
 
-## Business Rules áp dụng
+## Applicable Business Rules
 
 `BR-ISS-01`, `BR-AST-04`.
 
-## Functional Requirements liên quan
+## Related Functional Requirements
 
 `FR-F06-01`.

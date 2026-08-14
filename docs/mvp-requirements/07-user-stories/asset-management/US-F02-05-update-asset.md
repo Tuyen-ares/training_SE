@@ -1,24 +1,24 @@
-# US-F02-05 – Cập nhật asset
+# US-F02-05 – Update an asset
 
 ## User Story
 
-Là một **Asset Manager hoặc Admin**,  
-tôi muốn **cập nhật thông tin và department quản lý tài sản**,  
-để **dữ liệu phản ánh đúng hiện trạng quản lý**.
+As an **Asset Manager or Admin**,\
+I want to **update the asset information and managing department**,\
+so that **the data accurately reflects the current management state**.
 
 ## Acceptance Criteria
 
-- AC-US-F02-05-01: Given asset và dữ liệu tham chiếu hợp lệ, when cập nhật, then hệ thống lưu và hiển thị thông tin mới, gồm image_url nếu có.
-- AC-US-F02-05-02: Given serial mới trùng asset khác, when cập nhật, then hệ thống từ chối.
-- AC-US-F02-05-03: Given department/model không tồn tại, when cập nhật, then hệ thống từ chối.
-- AC-US-F02-05-04: Thay đổi status nghiệp vụ không được thực hiện như một cập nhật thông tin thông thường.
-- AC-US-F02-05-05: Given user thiếu quyền, then dữ liệu không thay đổi.
-- AC-US-F02-05-06: Asset code chỉ hiển thị read-only và không thể được thay đổi qua API hay form cập nhật.
+- AC-US-F02-05-01: Given a valid asset and valid reference data, when updating, then the system saves and displays the new information, including image_url when provided.
+- AC-US-F02-05-02: Given the new serial matches another asset, when updating, then the system rejects the request.
+- AC-US-F02-05-03: Given the department or model does not exist, when updating, then the system rejects the request.
+- AC-US-F02-05-04: A business status change must not be performed as an ordinary information update.
+- AC-US-F02-05-05: Given the user lacks permission, then the data does not change.
+- AC-US-F02-05-06: The asset code is displayed as read-only and cannot be changed through the API or update form.
 
-## Business Rules áp dụng
+## Applicable Business Rules
 
 `BR-AST-01`, `BR-AST-06`, `BR-AST-11`, `BR-RBAC-01`.
 
-## Functional Requirements liên quan
+## Related Functional Requirements
 
 `FR-F02-05`.

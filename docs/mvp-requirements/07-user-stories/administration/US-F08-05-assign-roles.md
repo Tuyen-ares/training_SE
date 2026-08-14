@@ -1,26 +1,26 @@
-# US-F08-05 – Gán hoặc gỡ role có sẵn
+# US-F08-05 – Assign or remove existing roles
 
 ## User Story
 
-Là một **Admin**,  
-tôi muốn **gán hoặc gỡ các role đã có cho user**,  
-để **quyền truy cập phản ánh đúng trách nhiệm công việc**.
+As an **Admin**,\
+I want to **assign or remove existing roles for a user**,\
+so that **access reflects the user's work responsibilities**.
 
 ## Acceptance Criteria
 
-- AC-US-F08-05-01: Given có permission, when mở phân vai trò, then hệ thống hiển thị các role có sẵn.
-- AC-US-F08-05-02: Given user và role hợp lệ, when lưu, then tập role của user phản ánh lựa chọn.
-- AC-US-F08-05-03: Given role không tồn tại, then hệ thống từ chối và không lưu tập role dở dang.
-- AC-US-F08-05-04: Gán lại cùng role không tạo quan hệ trùng.
-- AC-US-F08-05-05: Thay đổi role không tạo role hoặc permission code mới.
-- AC-US-F08-05-06: Admin không tự nhận quyền nghiệp vụ ngoài permission của các role được gán.
-- AC-US-F08-05-07: Replace-set phải giữ ít nhất một role và rollback nếu role không hợp lệ hoặc làm mất essential admin invariant.
-- AC-US-F08-05-08: Effective permissions mới được phản ánh ở lần login hoặc refresh tiếp theo.
+- AC-US-F08-05-01: Given the user has permission, when opening role assignment, then the system displays the available roles.
+- AC-US-F08-05-02: Given a valid user and role, when saving, then the user's role set reflects the selection.
+- AC-US-F08-05-03: Given a role does not exist, then the system rejects the request and does not save a partial role set.
+- AC-US-F08-05-04: Assigning the same role again does not create a duplicate relationship.
+- AC-US-F08-05-05: Changing roles does not create a new role or permission code.
+- AC-US-F08-05-06: An Admin does not gain business permissions beyond the permissions of the assigned roles.
+- AC-US-F08-05-07: The replace-set must retain at least one role and roll back if a role is invalid or would remove the essential Admin invariant.
+- AC-US-F08-05-08: New effective permissions are reflected at the next login or refresh.
 
-## Business Rules áp dụng
+## Applicable Business Rules
 
 `BR-RBAC-01..07`.
 
-## Functional Requirements liên quan
+## Related Functional Requirements
 
 `FR-F08-05`, `FR-F08-06`, `FR-F08-07`.

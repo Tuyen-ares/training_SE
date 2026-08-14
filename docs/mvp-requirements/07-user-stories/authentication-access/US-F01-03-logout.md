@@ -1,21 +1,21 @@
-# US-F01-03 – Đăng xuất
+# US-F01-03 – Log out
 
 ## User Story
 
-Là một **Employee, Asset Manager hoặc Admin**,  
-tôi muốn **đăng xuất khỏi phiên hiện tại**,  
-để **ngăn phiên đó tiếp tục truy cập tài khoản của tôi**.
+As an **Employee, Asset Manager, or Admin**,\
+I want to **log out of the current session**,\
+so that **the session can no longer access my account**.
 
 ## Acceptance Criteria
 
-- AC-US-F01-03-01: Given phiên hợp lệ, when logout, then hệ thống xác nhận đăng xuất.
-- AC-US-F01-03-02: When refresh lại bằng thông tin phiên đã logout, then hệ thống từ chối.
-- AC-US-F01-03-03: Given phiên đã hết hạn hoặc đã logout, when logout lại, then không tạo phiên mới và không làm thay đổi dữ liệu nghiệp vụ.
+- AC-US-F01-03-01: Given a valid session, when logging out, then the system confirms the logout.
+- AC-US-F01-03-02: When refreshing with information from a logged-out session, then the system rejects the request.
+- AC-US-F01-03-03: Given an expired or logged-out session, when logging out again, then the system does not create a new session or change business data.
 
-## Business Rules áp dụng
+## Applicable Business Rules
 
 `BR-AUTH-04`.
 
-## Functional Requirements liên quan
+## Related Functional Requirements
 
 `FR-F01-04`.

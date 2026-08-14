@@ -1,22 +1,22 @@
-# US-F01-01 – Đăng nhập
+# US-F01-01 – Log in
 
 ## User Story
 
-Là một **Employee, Asset Manager hoặc Admin**,  
-tôi muốn **đăng nhập bằng thông tin xác thực của mình**,  
-để **truy cập các chức năng được cấp quyền**.
+As an **Employee, Asset Manager, or Admin**,\
+I want to **log in using my credentials**,\
+so that **I can access the functions I am authorized to use**.
 
 ## Acceptance Criteria
 
-- AC-US-F01-01-01: Given tài khoản active và thông tin đúng, when đăng nhập, then hệ thống xác thực thành công và tạo phiên.
-- AC-US-F01-01-02: Given email hoặc mật khẩu sai, when đăng nhập, then hệ thống từ chối bằng thông báo xác thực chung.
-- AC-US-F01-01-03: Given tài khoản inactive, when đăng nhập, then hệ thống không tạo phiên.
-- AC-US-F01-01-04: Then dữ liệu trả về không chứa mật khẩu hoặc hash mật khẩu.
+- AC-US-F01-01-01: Given an active account and correct credentials, when logging in, then the system authenticates successfully and creates a session.
+- AC-US-F01-01-02: Given an incorrect email or password, when logging in, then the system rejects the attempt with a generic authentication message.
+- AC-US-F01-01-03: Given an inactive account, when logging in, then the system does not create a session.
+- AC-US-F01-01-04: Then the response data does not contain the password or password hash.
 
-## Business Rules áp dụng
+## Applicable Business Rules
 
 `BR-AUTH-01`, `BR-AUTH-02`, `BR-USR-02`.
 
-## Functional Requirements liên quan
+## Related Functional Requirements
 
 `FR-F01-01`, `FR-F01-02`.

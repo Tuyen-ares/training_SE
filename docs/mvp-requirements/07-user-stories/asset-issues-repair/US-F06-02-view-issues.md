@@ -1,22 +1,22 @@
-# US-F06-02 – Xem danh sách và chi tiết issue
+# US-F06-02 – View the issue list and details
 
 ## User Story
 
-Là một **Asset Manager hoặc Admin**,  
-tôi muốn **xem các báo cáo và thông tin xử lý**,  
-để **ưu tiên và theo dõi công việc sửa chữa**.
+As an **Asset Manager or Admin**,\
+I want to **view reports and handling information**,\
+so that **I can prioritize and track repair work**.
 
 ## Acceptance Criteria
 
-- AC-US-F06-02-01: Given có permission, when mở danh sách, then hệ thống hiển thị issue thuộc phạm vi được phép.
-- AC-US-F06-02-02: Then mỗi issue thể hiện asset, người báo, mô tả và status hiện tại khi có dữ liệu.
-- AC-US-F06-02-03: When mở chi tiết, then hệ thống hiển thị thông tin xử lý/sửa chữa đã ghi.
-- AC-US-F06-02-04: Given thiếu permission, then hệ thống không cung cấp dữ liệu issue.
+- AC-US-F06-02-01: Given the user has permission, when opening the list, then the system displays issues within the permitted scope.
+- AC-US-F06-02-02: Then each issue shows the asset, reporter, description, and current status when available.
+- AC-US-F06-02-03: When opening the details, then the system displays recorded handling and repair information.
+- AC-US-F06-02-04: Given the user lacks permission, then the system does not provide issue data.
 
-## Business Rules áp dụng
+## Applicable Business Rules
 
 `BR-ISS-03`, `BR-RBAC-01`.
 
-## Functional Requirements liên quan
+## Related Functional Requirements
 
 `FR-F06-02`.

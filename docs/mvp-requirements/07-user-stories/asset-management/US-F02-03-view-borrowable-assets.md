@@ -1,22 +1,22 @@
-# US-F02-03 – Xem asset có thể yêu cầu mượn
+# US-F02-03 – View borrowable assets
 
 ## User Story
 
-Là một **Employee**,  
-tôi muốn **xem các asset đang đủ điều kiện yêu cầu mượn**,  
-để **chọn thiết bị phù hợp cho phiếu của mình**.
+As an **Employee**,\
+I want to **view assets currently eligible for borrowing**,\
+so that **I can choose suitable equipment for my request**.
 
 ## Acceptance Criteria
 
-- AC-US-F02-03-01: When mở danh sách có thể yêu cầu, then chỉ asset có status `AVAILABLE` được hiển thị.
-- AC-US-F02-03-02: Then asset `RESERVED`, `BORROWED`, `DAMAGED`, `IN_REPAIR`, `RETIRED` không được chọn.
-- AC-US-F02-03-03: Given nhiều request khác đang `PENDING` cho một asset còn `AVAILABLE`, then asset đó vẫn có thể được chọn.
-- AC-US-F02-03-04: Nhân viên được xem asset đủ điều kiện mượn trên toàn công ty; department chỉ thể hiện đơn vị quản lý.
+- AC-US-F02-03-01: When opening the borrowable list, then only assets with status `AVAILABLE` are displayed.
+- AC-US-F02-03-02: Then assets with status `RESERVED`, `BORROWED`, `DAMAGED`, `IN_REPAIR`, or `RETIRED` cannot be selected.
+- AC-US-F02-03-03: Given multiple other requests are `PENDING` for an asset that remains `AVAILABLE`, then that asset can still be selected.
+- AC-US-F02-03-04: Employees can view borrowable assets across the company; the department only identifies the managing unit.
 
-## Business Rules áp dụng
+## Applicable Business Rules
 
 `BR-AST-01`, `BR-AST-02`, `BR-AST-08`, `BR-BOR-05`.
 
-## Functional Requirements liên quan
+## Related Functional Requirements
 
 `FR-F02-03`.

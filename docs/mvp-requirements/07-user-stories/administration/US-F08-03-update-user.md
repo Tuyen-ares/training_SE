@@ -1,23 +1,23 @@
-# US-F08-03 – Cập nhật user
+# US-F08-03 – Update a user
 
 ## User Story
 
-Là một **Admin**,  
-tôi muốn **chỉnh sửa thông tin tài khoản nội bộ**,  
-để **dữ liệu nhân sự luôn chính xác**.
+As an **Admin**,\
+I want to **edit internal account information**,\
+so that **staff data remains accurate**.
 
 ## Acceptance Criteria
 
-- AC-US-F08-03-01: Given user và department hợp lệ, when cập nhật, then hệ thống lưu thông tin mới, gồm avatar_url nếu có.
-- AC-US-F08-03-02: Given email hoặc phone trùng user khác, then hệ thống từ chối.
-- AC-US-F08-03-03: Given department không tồn tại, then hệ thống từ chối.
-- AC-US-F08-03-04: Then kết quả không chứa mật khẩu.
-- AC-US-F08-03-05: User không có chức năng tự cập nhật hồ sơ riêng trong MVP; thông tin user do Admin quản lý.
+- AC-US-F08-03-01: Given a valid user and department, when updating, then the system saves the new information, including avatar_url when provided.
+- AC-US-F08-03-02: Given the email or phone matches another user, then the system rejects the request.
+- AC-US-F08-03-03: Given the department does not exist, then the system rejects the request.
+- AC-US-F08-03-04: Then the result does not contain the password.
+- AC-US-F08-03-05: Users do not have a separate self-service profile update function in the MVP; user information is managed by an Admin.
 
-## Business Rules áp dụng
+## Applicable Business Rules
 
 `BR-USR-01`, `BR-USR-02`.
 
-## Functional Requirements liên quan
+## Related Functional Requirements
 
 `FR-F08-03`.

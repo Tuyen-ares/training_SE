@@ -1,24 +1,24 @@
-# US-F06-03 – Xác minh issue
+# US-F06-03 – Review an issue
 
 ## User Story
 
-Là một **Asset Manager hoặc Admin**,  
-tôi muốn **xác nhận hoặc từ chối báo cáo đang chờ**,  
-để **chỉ sự cố có thật mới ảnh hưởng trạng thái asset**.
+As an **Asset Manager or Admin**,\
+I want to **confirm or reject a pending report**,\
+so that **only genuine issues affect the asset status**.
 
 ## Acceptance Criteria
 
-- AC-US-F06-03-01: Given issue `REPORTED`, when xác nhận, then issue thành `CONFIRMED` và asset thành `DAMAGED`.
-- AC-US-F06-03-02: Given issue `REPORTED`, when từ chối, then issue thành `REJECTED` và asset không chuyển sang `DAMAGED` do issue đó.
-- AC-US-F06-03-03: Then hệ thống ghi người xử lý và thời điểm cập nhật phù hợp dữ liệu baseline.
-- AC-US-F06-03-04: Given issue không còn `REPORTED`, when xác minh lại, then hệ thống từ chối.
-- AC-US-F06-03-05: Given cập nhật issue hoặc asset thất bại, then không lưu trạng thái một phần.
-- AC-US-F06-03-06: Given asset được xác nhận hỏng ngay lúc trả, then history đã ghi return, issue là `CONFIRMED` và asset là `DAMAGED`.
+- AC-US-F06-03-01: Given the issue is `REPORTED`, when confirming it, then the issue becomes `CONFIRMED` and the asset becomes `DAMAGED`.
+- AC-US-F06-03-02: Given the issue is `REPORTED`, when rejecting it, then the issue becomes `REJECTED` and the asset does not become `DAMAGED` because of that issue.
+- AC-US-F06-03-03: Then the system records the processor and update time according to the baseline data.
+- AC-US-F06-03-04: Given the issue is no longer `REPORTED`, when reviewing it again, then the system rejects the request.
+- AC-US-F06-03-05: Given updating the issue or asset fails, then no partial status is saved.
+- AC-US-F06-03-06: Given the asset is confirmed damaged at return, then the history records the return, the issue is `CONFIRMED`, and the asset is `DAMAGED`.
 
-## Business Rules áp dụng
+## Applicable Business Rules
 
 `BR-ISS-01`, `BR-ISS-02`, `BR-ISS-03`, `BR-ISS-08`.
 
-## Functional Requirements liên quan
+## Related Functional Requirements
 
 `FR-F06-03`, `FR-F06-04`.

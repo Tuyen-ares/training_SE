@@ -1,23 +1,23 @@
-# US-F08-04 – Kích hoạt hoặc vô hiệu hóa user
+# US-F08-04 – Activate or deactivate a user
 
 ## User Story
 
-Là một **Admin**,  
-tôi muốn **kích hoạt hoặc vô hiệu hóa tài khoản**,  
-để **kiểm soát quyền truy cập mà vẫn giữ lịch sử nghiệp vụ**.
+As an **Admin**,\
+I want to **activate or deactivate an account**,\
+so that **I can control access while preserving business history**.
 
 ## Acceptance Criteria
 
-- AC-US-F08-04-01: Given user active, when vô hiệu hóa hợp lệ, then user thành inactive.
-- AC-US-F08-04-02: Then user inactive không thể đăng nhập hoặc refresh phiên mới.
-- AC-US-F08-04-03: Then request, history, issue và dữ liệu liên quan của user vẫn được giữ.
-- AC-US-F08-04-04: Given user inactive, when kích hoạt lại hợp lệ, then user có thể đăng nhập bằng thông tin hợp lệ.
-- AC-US-F08-04-05: Given thiếu permission, then trạng thái user không thay đổi.
+- AC-US-F08-04-01: Given the user is active, when valid deactivation is performed, then the user becomes inactive.
+- AC-US-F08-04-02: Then an inactive user cannot log in or refresh a new session.
+- AC-US-F08-04-03: Then the user's requests, history, issues, and related data are retained.
+- AC-US-F08-04-04: Given the user is inactive, when valid reactivation is performed, then the user can log in with valid credentials.
+- AC-US-F08-04-05: Given the user lacks permission, then the user's status does not change.
 
-## Business Rules áp dụng
+## Applicable Business Rules
 
 `BR-USR-03`, `BR-AUTH-01`, `BR-RBAC-01`.
 
-## Functional Requirements liên quan
+## Related Functional Requirements
 
 `FR-F08-04`, `FR-F08-07`.

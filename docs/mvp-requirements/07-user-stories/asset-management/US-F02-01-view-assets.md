@@ -1,22 +1,22 @@
-# US-F02-01 – Xem danh sách asset
+# US-F02-01 – View the asset list
 
 ## User Story
 
-Là một **Employee, Asset Manager hoặc Admin**,  
-tôi muốn **xem và lọc danh sách tài sản**,  
-để **tìm được thiết bị cần theo dõi hoặc xử lý**.
+As an **Employee, Asset Manager, or Admin**,\
+I want to **view and filter the asset list**,\
+so that **I can find equipment to monitor or process**.
 
 ## Acceptance Criteria
 
-- AC-US-F02-01-01: Given user có quyền, when mở danh sách, then hệ thống hiển thị các asset thuộc phạm vi được phép.
-- AC-US-F02-01-02: Then mỗi dòng thể hiện tối thiểu asset code bất biến, model và trạng thái hiện tại; search hỗ trợ asset code.
-- AC-US-F02-01-03: When áp dụng bộ lọc được hỗ trợ, then kết quả chỉ chứa asset phù hợp.
-- AC-US-F02-01-04: Given user thiếu quyền xem, when truy cập, then hệ thống từ chối.
+- AC-US-F02-01-01: Given the user has permission, when opening the list, then the system displays assets within the permitted scope.
+- AC-US-F02-01-02: Then each row shows at least the immutable asset code, model, and current status; search supports the asset code.
+- AC-US-F02-01-03: When applying a supported filter, then the results contain only matching assets.
+- AC-US-F02-01-04: Given the user lacks view permission, when accessing the list, then the system rejects the request.
 
-## Business Rules áp dụng
+## Applicable Business Rules
 
 `BR-AST-08`, `BR-RBAC-01`.
 
-## Functional Requirements liên quan
+## Related Functional Requirements
 
 `FR-F02-01`, `FR-F02-07`.

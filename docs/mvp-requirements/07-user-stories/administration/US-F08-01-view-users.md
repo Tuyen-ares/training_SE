@@ -1,22 +1,22 @@
-# US-F08-01 – Xem danh sách user
+# US-F08-01 – View the user list
 
 ## User Story
 
-Là một **Admin**,  
-tôi muốn **xem và tìm tài khoản trong công ty**,  
-để **thực hiện quản trị đúng người dùng**.
+As an **Admin**,\
+I want to **view and search company accounts**,\
+so that **I can administer the correct users**.
 
 ## Acceptance Criteria
 
-- AC-US-F08-01-01: Given có permission, when mở danh sách, then hệ thống hiển thị user code cùng user và trạng thái active.
-- AC-US-F08-01-02: Then có thể tìm theo user code và các thông tin được hỗ trợ.
-- AC-US-F08-01-03: Then dữ liệu không chứa mật khẩu hoặc hash mật khẩu.
-- AC-US-F08-01-04: Given thiếu permission, then hệ thống từ chối truy cập.
+- AC-US-F08-01-01: Given the user has permission, when opening the list, then the system displays the user code, user, and active status.
+- AC-US-F08-01-02: Then users can be searched by user code and supported information.
+- AC-US-F08-01-03: Then the data does not contain passwords or password hashes.
+- AC-US-F08-01-04: Given the user lacks permission, then the system rejects access.
 
-## Business Rules áp dụng
+## Applicable Business Rules
 
 `BR-USR-02`, `BR-RBAC-01`.
 
-## Functional Requirements liên quan
+## Related Functional Requirements
 
 `FR-F08-01`, `FR-F08-07`.

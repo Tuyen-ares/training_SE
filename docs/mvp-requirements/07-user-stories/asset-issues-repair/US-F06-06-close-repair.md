@@ -1,23 +1,23 @@
-# US-F06-06 – Kết thúc sửa chữa
+# US-F06-06 – Close a repair
 
 ## User Story
 
-Là một **Asset Manager hoặc Admin**,  
-tôi muốn **ghi nhận kết quả cuối của việc sửa**,  
-để **asset có trạng thái vận hành phù hợp với kết quả**.
+As an **Asset Manager or Admin**,\
+I want to **record the final repair result**,\
+so that **the asset has an operating status appropriate to the result**.
 
 ## Acceptance Criteria
 
-- AC-US-F06-06-01: Given issue và asset `IN_REPAIR`, when sửa thành công, then issue thành `COMPLETED` và asset thành `AVAILABLE`.
-- AC-US-F06-06-02: Then hệ thống ghi thời điểm kết thúc và kết quả sửa.
-- AC-US-F06-06-03: Given issue không ở `IN_REPAIR`, when kết thúc, then hệ thống từ chối.
-- AC-US-F06-06-04: Given cập nhật issue hoặc asset thất bại, then không lưu trạng thái một phần.
-- AC-US-F06-06-05: Khi sửa thất bại, issue thành `FAILED` và asset chuyển `IN_REPAIR → DAMAGED`; không tự chuyển `RETIRED`.
+- AC-US-F06-06-01: Given the issue and asset are `IN_REPAIR`, when the repair succeeds, then the issue becomes `COMPLETED` and the asset becomes `AVAILABLE`.
+- AC-US-F06-06-02: Then the system records the completion time and repair result.
+- AC-US-F06-06-03: Given the issue is not `IN_REPAIR`, when closing the repair, then the system rejects the request.
+- AC-US-F06-06-04: Given updating the issue or asset fails, then no partial status is saved.
+- AC-US-F06-06-05: When the repair fails, the issue becomes `FAILED` and the asset changes from `IN_REPAIR → DAMAGED`; it does not automatically become `RETIRED`.
 
-## Business Rules áp dụng
+## Applicable Business Rules
 
 `BR-ISS-03`, `BR-ISS-05`, `BR-ISS-06`, `BR-ISS-07`.
 
-## Functional Requirements liên quan
+## Related Functional Requirements
 
 `FR-F06-07`, `FR-F06-08`.

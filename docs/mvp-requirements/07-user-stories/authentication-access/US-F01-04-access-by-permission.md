@@ -1,22 +1,22 @@
-# US-F01-04 – Truy cập theo permission
+# US-F01-04 – Access by permission
 
 ## User Story
 
-Là một **Employee, Asset Manager hoặc Admin**,  
-tôi muốn **chỉ sử dụng các hành vi mà mình được cấp quyền**,  
-để **dữ liệu và nghiệp vụ được bảo vệ đúng trách nhiệm**.
+As an **Employee, Asset Manager, or Admin**,\
+I want to **use only the actions I have permission to perform**,\
+so that **data and business operations are protected according to responsibility**.
 
 ## Acceptance Criteria
 
-- AC-US-F01-04-01: Given user có permission yêu cầu, when thực hiện hành vi, then hệ thống cho phép tiếp tục nếu các điều kiện nghiệp vụ khác hợp lệ.
-- AC-US-F01-04-02: Given user thiếu permission, when thực hiện hành vi, then hệ thống từ chối và không thay đổi dữ liệu.
-- AC-US-F01-04-03: Given Admin thiếu permission nghiệp vụ Manager, when thực hiện nghiệp vụ đó, then hệ thống vẫn từ chối.
-- AC-US-F01-04-04: Given một user có nhiều role, then quyền thực tế là hợp của các permission được gán trực tiếp qua các role đó.
+- AC-US-F01-04-01: Given the user has the required permission, when performing the action, then the system allows it to continue if the other business conditions are valid.
+- AC-US-F01-04-02: Given the user lacks the permission, when performing the action, then the system rejects it and does not change data.
+- AC-US-F01-04-03: Given an Admin lacks a Manager business permission, when performing that business operation, then the system still rejects it.
+- AC-US-F01-04-04: Given a user has multiple roles, then the effective permissions are the union of the permissions directly assigned through those roles.
 
-## Business Rules áp dụng
+## Applicable Business Rules
 
 `BR-RBAC-01`, `BR-RBAC-02`, `BR-RBAC-03`.
 
-## Functional Requirements liên quan
+## Related Functional Requirements
 
 `FR-F01-05`.

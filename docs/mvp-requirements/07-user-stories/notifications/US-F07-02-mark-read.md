@@ -1,22 +1,22 @@
-# US-F07-02 – Đánh dấu đã đọc
+# US-F07-02 – Mark as read
 
 ## User Story
 
-Là một **Employee, Asset Manager hoặc Admin**,  
-tôi muốn **đánh dấu notification của mình đã đọc**,  
-để **phân biệt nội dung đã xem và chưa xem**.
+As an **Employee, Asset Manager, or Admin**,\
+I want to **mark my notifications as read**,\
+so that **I can distinguish viewed content from unviewed content**.
 
 ## Acceptance Criteria
 
-- AC-US-F07-02-01: Given notification chưa đọc thuộc user, when đánh dấu, then status thành đã đọc và ghi thời điểm đọc.
-- AC-US-F07-02-02: Then số lượng chưa đọc giảm tương ứng.
-- AC-US-F07-02-03: Given notification đã đọc, when đánh dấu lại, then hệ thống không tạo trạng thái mâu thuẫn.
-- AC-US-F07-02-04: Given notification thuộc user khác, then hệ thống từ chối và không thay đổi dữ liệu.
+- AC-US-F07-02-01: Given an unread notification belongs to the user, when marking it as read, then its status becomes read and the read time is recorded.
+- AC-US-F07-02-02: Then the unread count decreases accordingly.
+- AC-US-F07-02-03: Given a notification is already read, when marking it again, then the system does not create an inconsistent state.
+- AC-US-F07-02-04: Given the notification belongs to another user, then the system rejects the request and does not change data.
 
-## Business Rules áp dụng
+## Applicable Business Rules
 
 `BR-NOT-02`, `BR-NOT-03`.
 
-## Functional Requirements liên quan
+## Related Functional Requirements
 
 `FR-F07-02`, `FR-F07-03`.
