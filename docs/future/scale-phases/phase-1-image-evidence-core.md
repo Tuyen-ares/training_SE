@@ -105,9 +105,10 @@ Chỉ thêm checksum nếu technical design chứng minh cần.
 
 Phase 1 phải thiết kế và verify:
 
-- Actual provider, bucket/container, SDK, credentials/env variables và
-  `PUBLIC_MEDIA_BASE_URL`.
-- Upload endpoint, delete endpoint, public URL construction và CORS.
+- AWS SDK S3, AWS region, private bucket, CloudFront distribution/OAC,
+  credentials/env variables và `PUBLIC_MEDIA_BASE_URL`.
+- BigIn upload/delete/verify endpoints, presigned PUT generation, public URL
+  construction và S3 CORS.
 - MIME whitelist, max image size/count.
 - UUID hoặc random filename strategy và safe `storage_path` format.
 - Checksum nếu chọn, retry, orphan cleanup và missing-object reconciliation.
@@ -119,11 +120,16 @@ Database ưu tiên chỉ lưu `storage_path`; API derive URL:
 PUBLIC_MEDIA_BASE_URL + storage_path
 ```
 
-Binary nằm ở public object storage. Public/stable read URL không có BigIn
-authorization; upload/delete vẫn permission-controlled qua authenticated BigIn
-API/backend-controlled storage access. Không dùng presigned GET, temporary access
-URL hoặc signed URL lưu trong database. Không expose storage credentials cho
-frontend.
+Binary nằm ở private S3. CloudFront public/stable `GET`/`HEAD` URL không có
+BigIn authorization; upload, object verification và delete vẫn
+permission-controlled qua authenticated BigIn API/backend-controlled storage
+access. Không dùng presigned GET, CloudFront signed URL, temporary access URL
+hoặc signed URL lưu trong database. Không expose AWS credentials cho frontend.
+
+S3 phải giữ Block Public Access, Bucket owner enforced và không dùng public ACL.
+Bucket policy chỉ cho CloudFront OAC đọc object; IAM backend chỉ được cấp quyền
+cần cho upload/delete/verify. Backend cấp presigned PUT có thời hạn, giới hạn
+MIME và kích thước theo upload policy; Vue upload trực tiếp lên S3.
 
 `storage_path` phải dùng UUID hoặc random identifier, ví dụ:
 
@@ -176,8 +182,14 @@ không kế thừa authorization của BigIn API.
 - Post-repair image link đúng `asset_issue`.
 - Không có polymorphic owner fields hoặc nullable business FK trong
   `media_files`.
-- Public URL đọc trực tiếp được; BigIn API upload/delete vẫn
-  permission-controlled.
+- CloudFront URL đọc trực tiếp được; direct S3 URL bị từ chối; BigIn API
+  upload/delete vẫn permission-controlled.
+- Presigned PUT hết hạn đúng thời gian; PUT sai MIME hoặc vượt kích thước bị từ
+  chối.
+- Frontend không thấy AWS secret; delete không thể thực hiện trực tiếp từ
+  frontend.
+- Upload thành công nhưng ghi database lỗi được xử lý orphan; reconciliation
+  phát hiện lỗi CloudFront/S3 và missing object.
 - Path không chứa business-sensitive identifiers.
 - Upload/DB failure không tạo trạng thái nửa thành công.
 - Orphan cleanup và missing-object reconciliation hoạt động.

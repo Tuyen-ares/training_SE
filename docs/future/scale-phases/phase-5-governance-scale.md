@@ -23,14 +23,17 @@ vận hành lâu dài khi volume tăng.
 - Quy tắc xem, chia sẻ, ẩn hoặc xóa evidence.
 - Audit việc đọc/xóa evidence nếu policy yêu cầu.
 - Nếu sau này cần evidence confidential/private, mở scope riêng để đổi storage
-  access model; không phủ nhận public URL của roadmap hiện tại.
+  access model sang CloudFront signed URL hoặc private access; không phủ nhận
+  public CloudFront GET của roadmap hiện tại.
 
 ### Media operations
 
 - Orphan object cleanup định kỳ.
-- Retry/reconciliation giữa object storage và metadata DB.
-- Monitoring public media availability, broken URL detection, object health,
-  storage usage, latency và storage reconciliation.
+- Retry/reconciliation giữa S3 object và metadata DB.
+- Monitoring CloudFront public availability, 4xx/5xx, origin error, broken URL,
+  S3 object health và S3/metadata reconciliation.
+- Theo dõi AWS storage, request, CloudFront transfer cost cùng budget và usage
+  alert; dọn orphan object an toàn.
 - Cân nhắc video chỉ khi có use case, budget và retention policy rõ ràng.
 
 ### Receipt và reporting
@@ -50,7 +53,7 @@ vận hành lâu dài khi volume tăng.
 
 1. Chốt retention/privacy policy cùng business/legal owner.
 2. Thêm audit event và cleanup worker theo policy đã duyệt.
-3. Thêm reconciliation/monitoring cho metadata và object storage.
+3. Thêm reconciliation/monitoring cho metadata, S3 object và CloudFront.
 4. Thêm snapshot/receipt/report API nếu có acceptance criteria.
 5. Chạy permission normalization như migration độc lập, có compatibility/rollback
    plan.
@@ -72,8 +75,8 @@ vận hành lâu dài khi volume tăng.
   hiện tại.
 - Snapshot/receipt tái hiện đúng dữ liệu tại thời điểm giao dịch.
 - Permission migration giữ đúng effective access trước và sau migration.
-- Monitoring phát hiện public media availability, broken URL, object health,
-  upload/storage/reconciliation failure.
+- Monitoring phát hiện CloudFront public availability, 4xx/5xx, origin error,
+  S3 object health, upload/storage/reconciliation failure và cost/usage alert.
 
 ## Gate acceptance
 

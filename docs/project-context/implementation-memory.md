@@ -112,6 +112,27 @@ Các ghi chú deployment trên chỉ là context; khi sửa phải kiểm tra lo
 
 ## Important Recent Decisions
 
+### 2026-08-16 — Future image evidence dùng private AWS S3 và CloudFront
+
+**Feature:** Future Phase 1 Image Evidence Core.
+
+**Decision:** Binary evidence sẽ nằm trong private AWS S3 bucket; CloudFront với
+Origin Access Control (OAC) cung cấp public `GET`/`HEAD` URL. Vue chỉ nhận
+presigned PUT từ BigIn API để upload trực tiếp lên S3; xác nhận object, link
+metadata và delete vẫn qua backend. Không dùng presigned GET, CloudFront signed
+URL hoặc storage credential ở frontend. Deployment ưu tiên IAM role/task role;
+AWS access key env chỉ dành cho local development.
+
+**Reason:** Giữ S3 private và không mở public bucket/ACL, đồng thời đáp ứng
+roadmap cần stable public media URL cho evidence và kiểm soát mutation qua API.
+
+**Affected areas:** `docs/future/scale-phases/`, `apps/backend/.env.example`,
+future storage implementation contract.
+
+**Verification:** Đối chiếu README, Phase 0/1/3/5, roadmap index và env mẫu;
+`git diff --check`; không triển khai code, Prisma, API hoặc AWS resource trong
+task này.
+
 ### 2026-08-14 — Tách permission quản lý status cho User, Vendor và Department
 
 **Feature:** F08 Administration và Shared Vendor/Department master data.

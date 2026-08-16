@@ -96,8 +96,9 @@ Fail          → FAILED + asset DAMAGED
 - Parts không bị mất khi cập nhật repair record.
 - Complete/fail giữ nguyên asset state và issue status hiện hành.
 - Concurrent complete không tạo kết quả hoàn tất thứ hai.
-- `repair_evidence → media_files` chịu cùng public media availability, API
-  permission, cleanup và reconciliation rule của Phase 1.
+- `repair_evidence → media_files` chịu cùng AWS S3 object health, CloudFront
+  public availability, API permission, cleanup và reconciliation rule của
+  Phase 1.
 - Read API cũ không bị phá bởi repair record mới.
 - Cost, warranty và test result validate đúng boundary.
 

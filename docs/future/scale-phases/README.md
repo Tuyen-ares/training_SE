@@ -24,7 +24,7 @@ dùng để tự động thay đổi code, database, API, permission hoặc giao
 |---|---|
 | Kiến trúc | Phase 1 chốt bốn conceptual entity: `media_files`, `handover_evidence`, `return_evidence`, `repair_evidence`; schema vẫn phải lean. |
 | Evidence | Optional; Phase 1 chỉ hỗ trợ image cho handover, return và post-repair. |
-| Storage | Binary ở public object storage; MariaDB giữ metadata và typed relations; đọc bằng public/stable URL. Provider và chi tiết kỹ thuật chốt trong Phase 1. |
+| Storage | Binary ở private AWS S3; CloudFront + OAC là public read layer; MariaDB giữ metadata và typed relations; đọc bằng public/stable CloudFront URL. |
 | Quyền xem | Dùng permission hiện có kết hợp quan hệ nghiệp vụ; chưa thêm `evidence.view`. |
 | Accessories | Checklist trước, chưa quản lý accessory như asset độc lập. |
 | Discrepancy | Thiếu/hỏng phụ kiện không chặn return; lưu discrepancy để xử lý tiếp. |
@@ -68,8 +68,11 @@ policy tối giản, không thêm workflow `WAITING_HANDBACK`.
 - Approval không đồng nghĩa với handover.
 - Authorization kiểm tra effective permission, không hard-code tên role.
 - Không lưu binary trong MariaDB.
-- Binary nằm ở public object storage và đọc bằng public/stable URL; public URL
-  không có BigIn authorization, còn upload/delete vẫn qua API/backend được xác thực.
+- Binary nằm ở private AWS S3 và đọc bằng public/stable CloudFront URL qua OAC;
+  public URL không có BigIn authorization, còn upload/delete vẫn qua
+  API/backend được xác thực.
+- S3 giữ Bucket owner enforced, Block Public Access và không dùng public ACL;
+  backend dùng IAM để upload/delete/verify, còn frontend chỉ nhận presigned PUT.
 - Ưu tiên lưu `storage_path` và derive URL từ `PUBLIC_MEDIA_BASE_URL + storage_path`;
   không lưu signed URL.
 - `storage_path` dùng UUID hoặc random filename, không chứa employee name, asset

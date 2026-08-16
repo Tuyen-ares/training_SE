@@ -62,20 +62,36 @@ không.
 
 Phase 0 lock các boundary sau:
 
-- Binary nằm ở public object storage; MariaDB chỉ chứa metadata và typed
+- Binary nằm ở private AWS S3 bucket; MariaDB chỉ chứa metadata và typed
   relations.
-- Read dùng public/stable URL; không dùng presigned GET hoặc temporary access
-  URL.
-- Public URL không có BigIn authorization. Upload và delete vẫn qua
+- Read dùng public/stable CloudFront URL với `GET`/`HEAD`; không dùng presigned
+  GET, CloudFront signed URL hoặc temporary access URL.
+- Vue xin presigned PUT từ authenticated BigIn API rồi upload trực tiếp lên S3.
+  Backend xác nhận object tồn tại trước khi tạo/link metadata; delete vẫn qua
   authenticated BigIn API/backend-controlled storage access.
 - Không expose storage secret cho frontend.
 - `storage_path` phải dùng UUID hoặc random identifier, ví dụ
   `evidence/2026/08/<uuid>.jpg`.
 - `storage_path` không chứa employee name, asset serial, issue description,
   email, request detail nhạy cảm hoặc business text khác.
+- S3 dùng Object Ownership `Bucket owner enforced`, không dùng public ACL và
+  không tắt S3 Block Public Access. Chỉ IAM backend được upload/delete/verify;
+  chỉ CloudFront Origin Access Control (OAC) được đọc object từ S3.
 - UUID chỉ giảm khả năng đoán URL; không biến public object thành private.
 
-Architecture preference:
+Architecture lock:
+
+```text
+S3 private bucket
+       ↑
+CloudFront + OAC
+       ↑
+public stable media URL
+
+Vue → BigIn API → presigned PUT → S3
+```
+
+Public URL được derive bằng:
 
 ```text
 PUBLIC_MEDIA_BASE_URL + storage_path
@@ -130,13 +146,13 @@ vào phải có lý do về truy vấn, audit, ownership và lifecycle.
 
 ### 3. Chốt interface storage
 
-Phase 0 chốt architecture; Phase 1 quyết định technical HOW. Phase 1 phải
-thiết kế:
+Phase 0 chốt architecture; Phase 1 quyết định technical HOW trên AWS. Phase 1
+phải thiết kế:
 
-- Provider object storage và cách cấu hình môi trường.
-- Bucket/container, SDK, credentials/env variables và
-  `PUBLIC_MEDIA_BASE_URL`.
-- Upload/delete endpoint, public URL construction và CORS.
+- AWS region, S3 bucket private, CloudFront distribution, OAC, SDK, IAM
+  credentials/env variables và `PUBLIC_MEDIA_BASE_URL`.
+- Presigned PUT/upload, object verification, delete endpoint, public URL
+  construction và S3 CORS.
 - MIME, kích thước tối đa, tên file và key naming.
 - Cách xử lý upload thành công nhưng ghi metadata/lifecycle thất bại.
 - Cách retry và dọn orphan object.
@@ -174,6 +190,18 @@ Phase 0 đạt khi:
 - Có test matrix cho permission, concurrency, upload failure và legacy API.
 - Người review xác nhận Phase 1 có thể bắt đầu mà không cần đoán thêm quyết định
   WHAT/WHY; exact technical HOW vẫn thuộc Phase 1.
+
+### AWS activation gate
+
+Trước khi mở Phase 1 phải xác nhận:
+
+- AWS account và billing owner đã xác định; có budget alert hoặc cost
+  monitoring.
+- S3 bucket private đã tạo với Block Public Access và Bucket owner enforced.
+- CloudFront distribution và OAC đã liên kết với bucket.
+- Bucket policy chỉ cho CloudFront OAC đọc; IAM backend có đúng quyền
+  upload/delete/verify.
+- S3 CORS cho phép frontend thực hiện presigned PUT.
 
 ## Không làm trong phase này
 
