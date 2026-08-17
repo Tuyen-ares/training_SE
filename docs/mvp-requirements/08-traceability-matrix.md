@@ -11,7 +11,7 @@ Ma trận truy vết ở mức Business Requirement → Functional Requirement �
 | BREQ-05 | FR-F05-01..05 | F05 | US-F05-01..05 |
 | BREQ-06 | FR-F06-01..08 | F06 | US-F06-01..06 |
 | BREQ-07 | FR-F07-01..05 | F07 | US-F07-01..03 |
-| BREQ-08 | FR-F08-01..12 | F08 | US-F08-01..08 |
+| BREQ-08 | FR-F08-01..17 | F08 | US-F08-01..09 |
 
 ## Functional Requirement có điều kiện
 

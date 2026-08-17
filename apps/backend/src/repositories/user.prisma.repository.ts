@@ -122,6 +122,17 @@ export class PrismaUserRepository implements IUserRepository {
     return user ? toUserResponseDto(user) : null;
   }
 
+  async findPasswordHash(
+    id: number,
+    transaction?: PrismaTransaction,
+  ): Promise<string | null> {
+    const user = await this.database(transaction).users.findUnique({
+      where: { id },
+      select: { password: true },
+    });
+    return user?.password ?? null;
+  }
+
   async emailExists(email: string, excludeUserId?: number, transaction?: PrismaTransaction): Promise<boolean> {
     const user = await this.database(transaction).users.findFirst({
       where: {

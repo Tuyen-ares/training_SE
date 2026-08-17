@@ -1988,6 +1988,105 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/Error'
+  /users/me:
+    get:
+      tags:
+        - F08 - Administration
+      summary: Xem profile của tôi
+      description: >-
+        Trả về profile an toàn của user hiện tại. User được xác định từ access
+        token và không thể chọn user khác.
+      operationId: getMyProfile
+      responses:
+        '200':
+          description: Profile của user hiện tại
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data:
+                    $ref: '#/components/schemas/User'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '404':
+          description: Không tìm thấy user hiện tại
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+    patch:
+      tags:
+        - F08 - Administration
+      summary: Cập nhật profile của tôi
+      description: >-
+        Chỉ cập nhật name, phone và avatarUrl của user hiện tại. Email,
+        department, user code, role và isActive là read-only.
+      operationId: updateMyProfile
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/UpdateSelfProfileInput'
+      responses:
+        '200':
+          description: Profile sau khi cập nhật
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data:
+                    $ref: '#/components/schemas/User'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '404':
+          description: Không tìm thấy user hiện tại
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '409':
+          description: Số điện thoại đã được sử dụng
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+  /users/me/password:
+    patch:
+      tags:
+        - F08 - Administration
+      summary: Đổi mật khẩu của tôi
+      description: >-
+        Xác minh mật khẩu hiện tại, lưu hash mật khẩu mới và thu hồi toàn bộ
+        refresh-token session. Endpoint không trả credential hoặc token.
+      operationId: changeMyPassword
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ChangeMyPasswordInput'
+      responses:
+        '204':
+          description: Đổi mật khẩu thành công; user cần đăng nhập lại
+        '400':
+          description: Input không hợp lệ hoặc mật khẩu hiện tại không đúng
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '404':
+          description: Không tìm thấy user hiện tại
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
   /users:
     get:
       tags:
@@ -4025,6 +4124,38 @@ components:
           items:
             type: integer
             minimum: 1
+      additionalProperties: false
+    UpdateSelfProfileInput:
+      type: object
+      properties:
+        name:
+          type: string
+          minLength: 1
+          maxLength: 30
+        avatarUrl:
+          type: string
+          format: uri
+          maxLength: 500
+          nullable: true
+        phone:
+          type: string
+          pattern: '^\d{10}$'
+      minProperties: 1
+      additionalProperties: false
+    ChangeMyPasswordInput:
+      type: object
+      properties:
+        currentPassword:
+          type: string
+          minLength: 1
+          maxLength: 72
+        newPassword:
+          type: string
+          minLength: 6
+          maxLength: 72
+      required:
+        - currentPassword
+        - newPassword
       additionalProperties: false
     UpdateUserStatusInput:
       type: object

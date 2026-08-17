@@ -18,6 +18,7 @@ Admin có permission tương ứng.
 - US-F08-06 – Xem danh sách và chi tiết role.
 - US-F08-07 – Tạo role.
 - US-F08-08 – Cập nhật role và tập permission.
+- US-F08-09 – User tự quản lý profile và mật khẩu.
 
 ## Business Rules áp dụng
 
@@ -25,7 +26,7 @@ Admin có permission tương ứng.
 
 ## Functional Requirements liên quan
 
-`FR-F08-01..12`.
+`FR-F08-01..17`.
 
 ## Dependencies
 

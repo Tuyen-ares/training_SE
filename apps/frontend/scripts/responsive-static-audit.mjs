@@ -33,6 +33,7 @@ const activeViews = [
   'views/administration/roles/RoleListView.vue',
   'views/administration/roles/RoleFormView.vue',
   'views/notifications/NotificationCenterView.vue',
+  'views/profile/ProfileView.vue',
   'views/auth/LoginView.vue',
   'views/auth/RegistrationRequestCreateView.vue',
 ]

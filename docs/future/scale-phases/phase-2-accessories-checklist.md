@@ -26,6 +26,26 @@ không, nhưng chưa biến phụ kiện thành asset có lifecycle riêng.
 - Chỉ tách bảng nếu Phase 0 của phase này chứng minh cần query, audit hoặc
   lifecycle độc lập.
 
+## Boundary với Media/Image Evidence Core
+
+Accessory checklist và evidence là hai concern song song, cùng dùng
+`borrow_histories` làm business parent:
+
+```text
+borrow_histories
+├── handover accessory snapshot/checklist
+├── return accessory checklist/discrepancy
+├── handover_evidence → media_files
+└── return_evidence   → media_files
+```
+
+- Không tạo FK trực tiếp từ checklist/discrepancy sang evidence row.
+- Ảnh optional lúc giao tiếp tục dùng purpose `HANDOVER`; ảnh optional lúc trả
+  dùng `RETURN` theo Phase 1.
+- Phase 2 không tự thêm purpose `ACCESSORY`, storage table, upload endpoint hoặc
+  S3/CloudFront contract mới nếu chưa có requirement riêng.
+- Checklist vẫn hoạt động đầy đủ khi không có media evidence.
+
 ## Rule khi return
 
 ```text
@@ -42,8 +62,8 @@ riêng. Nếu cần xử lý như hư hỏng, actor phải đi qua flow issue hi
 
 1. Chốt model template, snapshot và discrepancy trong design phase.
 2. Thêm repository/service cho create/read checklist và compare giao-trả.
-3. Gắn checklist với `borrow_histories` và các handover/return evidence relation
-   của Phase 1.
+3. Gắn checklist/snapshot/discrepancy với `borrow_histories`; giữ evidence là
+   typed relation song song theo Phase 1, không tạo FK trực tiếp giữa hai loại.
 4. Bảo đảm retry/idempotency không tạo snapshot trùng.
 5. Expose API contract cho template, handover checklist, return checklist và
    discrepancy.
@@ -66,6 +86,9 @@ riêng. Nếu cần xử lý như hư hỏng, actor phải đi qua flow issue hi
 - Retry không tạo checklist hoặc discrepancy trùng.
 - User chỉ được sửa checklist ở đúng bước và đúng permission.
 - Accessory không bị coi là managed asset ngoài phạm vi phase.
+- Checklist không có evidence vẫn create/read/compare được.
+- Evidence accessory-context vẫn tuân theo `HANDOVER`/`RETURN` purpose, max count,
+  atomic claim và cleanup rule của Phase 1.
 
 ## Gate acceptance
 
@@ -83,3 +106,5 @@ Phase 2 đạt khi:
 - Không theo dõi từng accessory như asset độc lập.
 - Không tự động tạo charge/penalty.
 - Không chặn return vì discrepancy.
+- Không tạo purpose `ACCESSORY` hoặc media relation riêng chỉ để liên kết ảnh với
+  từng checklist item.

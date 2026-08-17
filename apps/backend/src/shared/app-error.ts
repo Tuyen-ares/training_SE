@@ -45,7 +45,8 @@ export type UserErrorCode =
   | 'PHONE_IN_USE'
   | 'INVALID_DEPARTMENT'
   | 'INVALID_ROLE_SET'
-  | 'USER_NOT_FOUND';
+  | 'USER_NOT_FOUND'
+  | 'INVALID_CURRENT_PASSWORD';
 
 export class UserError extends Error {
   constructor(public readonly code: UserErrorCode) {

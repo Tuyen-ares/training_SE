@@ -111,3 +111,5 @@
 - **BR-USR-02:** Mật khẩu không được hiển thị trong dữ liệu trả cho người dùng.
 - **BR-USR-03:** Vô hiệu hóa user không được xóa các quan hệ và lịch sử nghiệp vụ đã có.
 - **BR-USR-04:** `user.update` chỉ sửa thông tin; bật/tắt `is_active` cho cả hai chiều cần `user.manage_status`.
+- **BR-USR-05:** Self-service profile chỉ được sửa `name`, `phone` và `avatar_url`; email, department, user code, roles và `is_active` là read-only với user hiện tại.
+- **BR-USR-06:** Đổi mật khẩu self-service phải xác minh mật khẩu hiện tại, lưu hash mới và thu hồi toàn bộ refresh-token session; không trả credential hoặc token trong response.

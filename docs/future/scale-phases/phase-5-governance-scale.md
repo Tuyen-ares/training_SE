@@ -5,8 +5,13 @@
 
 ## Mục tiêu
 
-Làm cho image evidence và repair đủ an toàn, có thể audit, kiểm soát chi phí và
-vận hành lâu dài khi volume tăng.
+Làm cho media foundation, image evidence và repair đủ an toàn, có thể audit,
+kiểm soát chi phí và vận hành lâu dài khi volume tăng.
+
+Phase 5 kế thừa contract Phase 1: private S3, public CloudFront + OAC, immutable
+UUID key, `media_files`, typed business relations/FKs và manual DB-driven
+cleanup/audit. Phase này harden/automate theo dữ liệu vận hành; không redesign
+upload lifecycle nếu chưa có requirement mới.
 
 ## Phạm vi
 
@@ -28,12 +33,22 @@ vận hành lâu dài khi volume tăng.
 
 ### Media operations
 
-- Orphan object cleanup định kỳ.
-- Retry/reconciliation giữa S3 object và metadata DB.
-- Monitoring CloudFront public availability, 4xx/5xx, origin error, broken URL,
-  S3 object health và S3/metadata reconciliation.
-- Theo dõi AWS storage, request, CloudFront transfer cost cùng budget và usage
-  alert; dọn orphan object an toàn.
+- Đánh giá kết quả các command manual `media:cleanup --dry-run`,
+  `media:cleanup --execute` và `media:audit` của Phase 1 trước khi tự động hóa.
+- Chỉ thêm scheduled cleanup/reconciliation worker khi volume, failure rate và
+  vận hành thực tế chứng minh cần; chọn runtime/cron phù hợp thay vì mặc định
+  Render Free hỗ trợ background job.
+- Monitoring CloudFront public availability, cache behavior, 4xx/5xx, origin
+  error và broken URL.
+- Monitoring S3 object health, missing referenced object, metadata mismatch,
+  stale `PENDING`, unlinked `READY`, detached replacement và cleanup failure.
+- Cleanup/reconciliation phải dùng typed evidence relations và asset/user media
+  FKs làm source of truth cho current reference. `linked_at IS NOT NULL` chỉ cho
+  biết media từng được claim, không chứng minh media vẫn đang được dùng.
+- Reconciliation giữa S3 object và metadata DB vẫn ưu tiên DB `storage_path`;
+  chỉ thêm `ListBucket` nếu một use case đã review thực sự cần.
+- Theo dõi S3 storage/request, CloudFront request/data transfer, budget alert và
+  usage/cost anomaly; dọn orphan object an toàn.
 - Cân nhắc video chỉ khi có use case, budget và retention policy rõ ràng.
 
 ### Receipt và reporting
@@ -52,8 +67,10 @@ vận hành lâu dài khi volume tăng.
 ## Backend implementation slices
 
 1. Chốt retention/privacy policy cùng business/legal owner.
-2. Thêm audit event và cleanup worker theo policy đã duyệt.
-3. Thêm reconciliation/monitoring cho metadata, S3 object và CloudFront.
+2. Thêm audit event; chỉ thêm cleanup/reconciliation worker nếu policy, runtime
+   và operational evidence đã được duyệt.
+3. Thêm monitoring/alert cho metadata lifecycle, S3 object, CloudFront
+   availability/errors/cache và AWS cost/usage.
 4. Thêm snapshot/receipt/report API nếu có acceptance criteria.
 5. Chạy permission normalization như migration độc lập, có compatibility/rollback
    plan.
@@ -70,13 +87,17 @@ vận hành lâu dài khi volume tăng.
 - Audit event không thể bị sửa qua API thông thường.
 - Retention job không xóa nhầm object còn được tham chiếu.
 - Orphan cleanup không xóa evidence hợp lệ.
+- Scheduled cleanup, nếu được bật, phải phân biệt stale `PENDING`, never-linked
+  `READY` và detached replacement; trước `DeleteObject` phải lock/recheck toàn bộ
+  typed evidence relations và asset/user media FKs như manual cleanup Phase 1.
 - User không có permission không được upload, link, delete hoặc thao tác qua
   BigIn API; public object GET vẫn không có BigIn authorization theo architecture
   hiện tại.
 - Snapshot/receipt tái hiện đúng dữ liệu tại thời điểm giao dịch.
 - Permission migration giữ đúng effective access trước và sau migration.
 - Monitoring phát hiện CloudFront public availability, 4xx/5xx, origin error,
-  S3 object health, upload/storage/reconciliation failure và cost/usage alert.
+  cache bất thường, S3 object health, upload/storage/reconciliation failure,
+  stale/orphan growth và cost/usage anomaly.
 
 ## Gate acceptance
 
@@ -84,6 +105,8 @@ Phase 5 đạt khi:
 
 - Có owner và policy rõ cho retention, privacy, deletion và audit.
 - Có reconciliation và cleanup an toàn, có thể quan sát.
+- Có owner, threshold và runbook rõ trước khi thay manual cleanup bằng scheduled
+  automation.
 - Có báo cáo/receipt đúng scope đã duyệt.
 - Permission normalization không làm mất quyền hợp lệ.
 - Security, data-integrity, migration và operational tests đã verified.
@@ -94,3 +117,5 @@ Phase 5 đạt khi:
 - Không thêm role IT Support nếu chưa có nhu cầu vận hành.
 - Không biến event log thành event sourcing toàn hệ thống.
 - Không ép mọi evidence phải immutable nếu policy chưa yêu cầu.
+- Không thêm `ListBucket`, worker/cron hoặc private delivery model chỉ vì hạ tầng
+  AWS cho phép; mỗi thay đổi cần operational/business evidence.

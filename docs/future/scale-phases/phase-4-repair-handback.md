@@ -15,6 +15,18 @@ Repair Complete
 → employee tự tạo Borrow Request mới
 ```
 
+## Boundary với media/evidence
+
+- Phase 4 không sở hữu media upload, purpose, storage model hoặc endpoint mới.
+- Repair evidence tiếp tục thuộc `asset_issues` hoặc `repair_records` theo
+  ownership decision của Phase 3.
+- Khi employee tạo Borrow Request mới, không move/copy repair evidence sang
+  request/history mới và không reuse repair media làm `HANDOVER` evidence.
+- Nếu handover mới cần ảnh, user upload media `HANDOVER` mới qua lifecycle Phase
+  1; không overwrite hoặc đổi purpose của object cũ.
+- Public CloudFront URL và metadata/history cũ không thay đổi chỉ vì asset trở
+  lại `AVAILABLE`.
+
 ## Hành vi phải bảo đảm
 
 - Không tự giao lại cho borrower cũ.
@@ -30,6 +42,8 @@ Repair Complete
 2. Thêm regression/concurrency tests để ngăn auto-reassign hoặc reuse history.
 3. Nếu cần thêm API/documentation, chỉ mô tả policy; không tạo mutation mới cho
    handback.
+4. Không thêm media relink/copy logic vào complete-repair hoặc borrow-request
+   flow.
 
 ## Frontend implementation slices
 
@@ -45,6 +59,8 @@ Phase 4 đạt khi:
 - Repair complete luôn kết thúc ở `AVAILABLE`.
 - Request mới đi qua approval, reservation và handover như bình thường.
 - Borrow history cũ vẫn chỉ phản ánh lần mượn cũ.
+- Repair evidence vẫn thuộc repair context cũ; request/handover mới chỉ nhận
+  media mới đúng purpose nếu user upload.
 - Không có status, queue, notification hoặc mutation handback mới.
 - Regression tests chứng minh không có auto-reassignment.
 

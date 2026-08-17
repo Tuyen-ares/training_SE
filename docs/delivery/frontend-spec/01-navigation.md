@@ -4,6 +4,8 @@
 
 Authenticated app dùng AppShell theo `DESIGN_SYSTEM.md`: sidebar trắng, header trắng, breadcrumb/page context ở trái và identity/avatar/account action ở phải. Dashboard là điểm vào sau login; nếu user không có capability cho một khu vực thì menu và action khu vực đó không hiển thị.
 
+Profile là route authenticated nhưng không phải sidebar item. User mở Profile bằng cách click avatar ở header; dropdown đặt `Profile` phía trên `Sign out`.
+
 Backend vẫn là nơi quyết định authorization. Việc ẩn menu/action chỉ hỗ trợ trải nghiệm; mọi truy cập bị từ chối phải dùng `SCR-SYS-02` mà không làm lộ dữ liệu.
 
 ## Dashboard chung theo permission

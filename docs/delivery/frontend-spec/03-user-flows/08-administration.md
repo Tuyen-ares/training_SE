@@ -127,3 +127,27 @@ User có `department.view` cho read, hoặc capability mutation tương ứng.
 ## Related Screens
 
 `SCR-F08-07`, `SCR-F08-03`, `SCR-F08-04`, `SCR-F02-03`, `SCR-F08-02`.
+
+# FLOW-25 – Self-service profile
+
+## Goal
+
+Cho phép user cập nhật thông tin cá nhân và mật khẩu của chính mình.
+
+## Main Flow
+
+1. User click avatar ở header và chọn `Profile`; không có Profile item trong sidebar.
+2. Hệ thống hiển thị user code, email, department, roles và status ở chế độ chỉ đọc.
+3. User cập nhật name, phone hoặc avatar URL rồi lưu qua self-service API.
+4. User nhập mật khẩu hiện tại và mật khẩu mới để đổi mật khẩu.
+5. Sau khi đổi mật khẩu thành công, refresh sessions bị thu hồi và user đăng nhập lại.
+
+## Error / Invalid States
+
+- Phone trùng hoặc profile field sai: không lưu thay đổi.
+- Mật khẩu hiện tại sai: không đổi mật khẩu.
+- Self-service request không thể thay đổi role, department, status hoặc user code.
+
+## Related Screens
+
+`SCR-F08-09`, `SCR-SYS-01`.

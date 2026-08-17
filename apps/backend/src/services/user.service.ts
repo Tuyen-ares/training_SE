@@ -1,8 +1,10 @@
 import type { PrismaClient } from '../../generated/prisma/index.js';
 import type {
   CreateUserInputDto,
+  ChangePasswordInputDto,
   UpdateUserData,
   UpdateUserInputDto,
+  UpdateSelfProfileInputDto,
   UserResponseDto,
   UserStatusFilter,
 } from '@/models/user.model.js';
@@ -10,7 +12,7 @@ import type { IUserRepository } from '@/repositories/user.repository.js';
 import type { RbacService } from '@/services/rbac.service.js';
 import type { SessionService } from '@/services/session.service.js';
 import { RbacError, UserError } from '@/shared/app-error.js';
-import { hashPassword } from '@/shared/security/password-hasher.js';
+import { hashPassword, verifyPassword } from '@/shared/security/password-hasher.js';
 
 export class UserService {
   constructor(
@@ -28,6 +30,52 @@ export class UserService {
 
   getById(id: number): Promise<UserResponseDto | null> {
     return this.repository.findById(id);
+  }
+
+  getMe(id: number): Promise<UserResponseDto | null> {
+    return this.repository.findById(id);
+  }
+
+  async updateMe(
+    id: number,
+    input: UpdateSelfProfileInputDto,
+  ): Promise<UserResponseDto | null> {
+    const currentUser = await this.repository.findById(id);
+    if (!currentUser) return null;
+
+    const phoneExists = input.phone
+      ? await this.repository.phoneExists(input.phone, id)
+      : false;
+    if (phoneExists) throw new UserError('PHONE_IN_USE');
+
+    const updateData: UpdateUserData = {
+      ...(input.name !== undefined ? { name: input.name } : {}),
+      ...(input.avatarUrl !== undefined ? { avatarUrl: input.avatarUrl } : {}),
+      ...(input.phone !== undefined ? { phone: input.phone } : {}),
+    };
+
+    return this.prisma.$transaction(async (transaction) => {
+      await this.repository.update(id, updateData, transaction);
+      return this.repository.findById(id, transaction);
+    });
+  }
+
+  async changePassword(
+    id: number,
+    input: ChangePasswordInputDto,
+  ): Promise<void> {
+    const passwordHash = await this.repository.findPasswordHash(id);
+    if (!passwordHash) throw new UserError('USER_NOT_FOUND');
+
+    if (!(await verifyPassword(input.currentPassword, passwordHash))) {
+      throw new UserError('INVALID_CURRENT_PASSWORD');
+    }
+
+    const nextPasswordHash = await hashPassword(input.newPassword);
+    await this.prisma.$transaction(async (transaction) => {
+      await this.repository.update(id, { passwordHash: nextPasswordHash }, transaction);
+      await this.sessionService.revokeAllForUser(id, transaction);
+    });
   }
 
   async create(input: CreateUserInputDto): Promise<UserResponseDto> {

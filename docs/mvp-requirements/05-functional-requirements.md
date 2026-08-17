@@ -112,3 +112,5 @@
 | FR-F08-13 | Hệ thống phải cho phép user có `department.view` xem danh sách department active/inactive và user có `department.create` tạo department active. |
 | FR-F08-14 | Hệ thống phải cho phép user có `department.update` sửa tên department; không cho phép đổi status trong endpoint update thông tin. |
 | FR-F08-15 | Hệ thống phải cho phép user có `department.manage_status` bật/tắt department; department inactive vẫn giữ lịch sử nhưng không dùng cho assignment mới. |
+| FR-F08-16 | Hệ thống phải cho phép user đã đăng nhập xem profile của chính mình và cập nhật name, phone, avatar_url; email, department, user code, roles và status chỉ đọc. |
+| FR-F08-17 | Hệ thống phải cho phép user đã đăng nhập đổi mật khẩu sau khi xác minh mật khẩu hiện tại; sau khi thành công phải thu hồi refresh-token sessions. |

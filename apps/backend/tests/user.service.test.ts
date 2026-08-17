@@ -34,6 +34,9 @@ function createHarness(options: HarnessOptions = {}) {
     async findById() {
       return user ? structuredClone(user) : null;
     },
+    async findPasswordHash() {
+      return storedPasswordHash || null;
+    },
     async emailExists() {
       return options.emailExists ?? false;
     },
@@ -266,6 +269,58 @@ test('partial update changes only supplied fields, rehashes password and replace
     await verifyPassword('new-password', harness.getStoredPasswordHash()),
     true,
   );
+});
+
+test('self profile update changes only allowed personal fields', async () => {
+  const harness = createHarness();
+  const original = await harness.service.create({
+    departmentId: 1,
+    name: 'Nguyen Van A',
+    email: 'vana@example.com',
+    phone: '0912345678',
+    password: '123456',
+  });
+
+  const updated = await harness.service.updateMe(original.id, {
+    name: 'Nguyen Van A Updated',
+    phone: '0987654321',
+    avatarUrl: 'https://images.example.com/new-avatar.jpg',
+  });
+
+  assert.equal(updated?.name, 'Nguyen Van A Updated');
+  assert.equal(updated?.phone, '0987654321');
+  assert.equal(updated?.avatarUrl, 'https://images.example.com/new-avatar.jpg');
+  assert.equal(updated?.email, original.email);
+  assert.equal(updated?.departmentId, original.departmentId);
+  assert.deepEqual(updated?.roles, original.roles);
+});
+
+test('self password change verifies the current password and revokes sessions', async () => {
+  const harness = createHarness();
+  const user = await harness.service.create({
+    departmentId: 1,
+    name: 'Nguyen Van A',
+    email: 'vana@example.com',
+    phone: '0912345678',
+    password: '123456',
+  });
+
+  await assert.rejects(
+    harness.service.changePassword(user.id, {
+      currentPassword: 'wrong-password',
+      newPassword: 'new-password',
+    }),
+    (error) => error instanceof UserError && error.code === 'INVALID_CURRENT_PASSWORD',
+  );
+  assert.equal(harness.getRevokedUserId(), null);
+
+  await harness.service.changePassword(user.id, {
+    currentPassword: '123456',
+    newPassword: 'new-password',
+  });
+
+  assert.equal(harness.getRevokedUserId(), user.id);
+  assert.equal(await verifyPassword('new-password', harness.getStoredPasswordHash()), true);
 });
 
 test('setStatus and status filters expose active/inactive state without deleting the user', async () => {

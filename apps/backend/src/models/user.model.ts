@@ -41,6 +41,17 @@ export interface UpdateUserInputDto {
   roleIds?: number[];
 }
 
+export interface UpdateSelfProfileInputDto {
+  name?: string;
+  avatarUrl?: string | null;
+  phone?: string;
+}
+
+export interface ChangePasswordInputDto {
+  currentPassword: string;
+  newPassword: string;
+}
+
 export interface CreateUserData {
   departmentId: number;
   name: string;

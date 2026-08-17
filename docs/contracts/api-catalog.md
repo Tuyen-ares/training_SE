@@ -114,6 +114,9 @@
 
 | API | English name | Tên tiếng Việt | Purpose / Mục đích | Status |
 | --- | --- | --- | --- | --- |
+| `GET /api/users/me` | Get my profile | Xem profile của tôi | Read the authenticated user's safe profile. / Xem profile an toàn của user hiện tại. | Existing |
+| `PATCH /api/users/me` | Update my profile | Cập nhật profile của tôi | Update name, phone and avatar URL only. / Chỉ cập nhật name, phone và avatar URL. | Existing |
+| `PATCH /api/users/me/password` | Change my password | Đổi mật khẩu của tôi | Verify the current password, save a new hash and revoke refresh sessions. / Xác minh mật khẩu cũ, lưu hash mới và thu hồi refresh session. | Existing |
 | `GET /api/users` | List users | Xem danh sách người dùng | Search and list users for administration. / Tìm kiếm và liệt kê user phục vụ quản trị. | Existing |
 | `GET /api/users/:userId` | Get user | Xem chi tiết người dùng | Read one user's profile and assigned roles. / Xem hồ sơ và role của một user. | Existing |
 | `POST /api/users` | Create user | Tạo người dùng | Create an administrative user account. / Tạo user từ màn quản trị. | Existing |

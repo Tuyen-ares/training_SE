@@ -27,6 +27,7 @@ Stitch là visual reference. Screen chỉ được tái sử dụng khi sau khi 
 | SCR-F07-01 Notification Center | `c30e1b9426b04704ae2bec0aa666a935` | NEEDS_UPDATE | All/Unread, notification content, relative time, mark-all and related action. | Runtime giữ AppShell trắng/Ant Design; không dùng dark sidebar, nền cam toàn dòng hoặc copy tiếng Việt của mockup. |
 | SCR-F08-01 User List | USR-01 | NEEDS_UPDATE | User table/search. | Avatar URL/state and permission-only actions. |
 | SCR-F08-02 User Form & Roles | USR-02..04 | NEEDS_UPDATE | Form/profile/role selection patterns. | Hợp nhất create/edit/role assignment; không CRUD role/permission. |
+| SCR-F08-09 Self-service Profile | New | NEEDS_UPDATE | Reuse authenticated AppShell, avatar identity and form surface. | Profile mở từ avatar dropdown, không thêm sidebar item; password change là khu vực security riêng. |
 
 ## Stitch screen không thuộc MVP mới
 

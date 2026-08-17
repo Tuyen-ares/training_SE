@@ -43,6 +43,10 @@ export const useAuthStore = defineStore('auth', () => {
     user.value = null
   }
 
+  const setCurrentUser = (nextUser) => {
+    user.value = { ...user.value, ...nextUser }
+  }
+
   const login = async ({ email, password }) => {
     const data = await unwrap(http.post('/auth/login', { email, password }))
     accessToken.value = data.accessToken
@@ -115,6 +119,7 @@ export const useAuthStore = defineStore('auth', () => {
     initialized,
     isAuthenticated,
     hasPermission,
+    setCurrentUser,
     login,
     logout,
     restoreSession,

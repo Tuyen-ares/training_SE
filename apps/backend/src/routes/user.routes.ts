@@ -1,3 +1,4 @@
+import { Router } from 'express';
 import prisma from '@/prisma.js';
 import UserController from '@/controllers/user.controller.js';
 import { requireAuth } from '@/middleware/auth.middleware.js';
@@ -26,7 +27,13 @@ const service = new UserService(
 );
 const controller = new UserController(service);
 
-const router = createRestRouter(controller, {
+const router = Router();
+
+router.get('/me', requireAuth, controller.getMe);
+router.patch('/me', requireAuth, controller.updateMe);
+router.patch('/me/password', requireAuth, controller.changePassword);
+
+router.use(createRestRouter(controller, {
   global: [requireAuth],
   getAll: [requirePermission('user.view')],
   getById: [requirePermission('user.view')],
@@ -39,7 +46,7 @@ const router = createRestRouter(controller, {
     requireRoleAssignWhenRoleIdsProvided(),
   ],
   delete: false,
-});
+}));
 
 router.patch(
   '/:id/status',

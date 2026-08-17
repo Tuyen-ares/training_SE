@@ -1,7 +1,9 @@
 import type { Request, Response } from 'express';
 import { z } from 'zod';
 import type {
+  ChangePasswordInputDto,
   CreateUserInputDto,
+  UpdateSelfProfileInputDto,
   UpdateUserInputDto,
   UserStatusFilter,
 } from '@/models/user.model.js';
@@ -50,6 +52,25 @@ const updateUserSchema: z.ZodType<UpdateUserInputDto> = z
     message: 'At least one field is required',
   });
 
+const updateSelfProfileSchema: z.ZodType<UpdateSelfProfileInputDto> = z
+  .strictObject({
+    name: z.string().trim().min(1).max(30).optional(),
+    avatarUrl: avatarUrlSchema.optional(),
+    phone: z
+      .string()
+      .trim()
+      .regex(/^\d{10}$/, 'Phone must contain exactly 10 digits')
+      .optional(),
+  })
+  .refine((input) => Object.keys(input).length > 0, {
+    message: 'At least one field is required',
+  });
+
+const changePasswordSchema: z.ZodType<ChangePasswordInputDto> = z.strictObject({
+  currentPassword: z.string().min(1).max(72),
+  newPassword: z.string().min(6).max(72),
+});
+
 const statusSchema = z.enum(['active', 'inactive', 'all']);
 
 const updateStatusSchema = z.strictObject({
@@ -89,12 +110,62 @@ function handleUserError(error: unknown, res: Response): void {
   if (error.code === 'USER_NOT_FOUND') {
     return ApiResponse.notFound(res, 'User not found');
   }
+  if (error.code === 'INVALID_CURRENT_PASSWORD') {
+    return ApiResponse.badRequest(res, {
+      currentPassword: ['Current password is incorrect'],
+    });
+  }
 
   return ApiResponse.internalError(res);
 }
 
 export default class UserController {
   constructor(private readonly service: UserService) {}
+
+  getMe = async (req: Request, res: Response): Promise<void> => {
+    if (!req.auth) return ApiResponse.unauthorized(res);
+
+    try {
+      const user = await this.service.getMe(req.auth.sub);
+      if (!user) return ApiResponse.notFound(res, 'User not found');
+      return ApiResponse.ok(res, user);
+    } catch {
+      return ApiResponse.internalError(res);
+    }
+  };
+
+  updateMe = async (req: Request, res: Response): Promise<void> => {
+    if (!req.auth) return ApiResponse.unauthorized(res);
+
+    const parsed = parseRequestBody(updateSelfProfileSchema, req.body);
+    if (parsed.success === false) {
+      return ApiResponse.badRequest(res, parsed.errors);
+    }
+
+    try {
+      const user = await this.service.updateMe(req.auth.sub, parsed.data);
+      if (!user) return ApiResponse.notFound(res, 'User not found');
+      return ApiResponse.ok(res, user);
+    } catch (error) {
+      return handleUserError(error, res);
+    }
+  };
+
+  changePassword = async (req: Request, res: Response): Promise<void> => {
+    if (!req.auth) return ApiResponse.unauthorized(res);
+
+    const parsed = parseRequestBody(changePasswordSchema, req.body);
+    if (parsed.success === false) {
+      return ApiResponse.badRequest(res, parsed.errors);
+    }
+
+    try {
+      await this.service.changePassword(req.auth.sub, parsed.data);
+      return ApiResponse.noContent(res);
+    } catch (error) {
+      return handleUserError(error, res);
+    }
+  };
 
   getAll = async (req: Request, res: Response): Promise<void> => {
     const parsedStatus = statusSchema.safeParse(req.query.status ?? 'active');

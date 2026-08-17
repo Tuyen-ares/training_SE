@@ -94,6 +94,51 @@ test('User API creates safe responses, enforces role.assign and deactivates inst
   assert.equal('password' in explicitRoleResponse.body.data, false);
   assert.equal('passwordHash' in explicitRoleResponse.body.data, false);
 
+  const selfToken = tokenService.createAccessToken(
+    explicitRoleResponse.body.data.id,
+    [],
+  );
+  const selfReadResponse = await request('/users/me', selfToken);
+  assert.equal(selfReadResponse.status, 200);
+  assert.equal(selfReadResponse.body.data.id, explicitRoleResponse.body.data.id);
+  assert.equal('password' in selfReadResponse.body.data, false);
+
+  const selfAdminReadResponse = await request(
+    `/users/${explicitRoleResponse.body.data.id}`,
+    selfToken,
+  );
+  assert.equal(selfAdminReadResponse.status, 403);
+
+  const forbiddenSelfUpdateResponse = await request('/users/me', selfToken, {
+    method: 'PATCH',
+    body: JSON.stringify({ departmentId: department.id, roleIds: [managerRole.id] }),
+  });
+  assert.equal(forbiddenSelfUpdateResponse.status, 400);
+
+  const selfUpdateResponse = await request('/users/me', selfToken, {
+    method: 'PATCH',
+    body: JSON.stringify({
+      name: 'Codex Manager Profile',
+      phone: `05${suffix}`,
+      avatarUrl: 'https://images.example.com/profile.jpg',
+    }),
+  });
+  assert.equal(selfUpdateResponse.status, 200);
+  assert.equal(selfUpdateResponse.body.data.name, 'Codex Manager Profile');
+  assert.equal(selfUpdateResponse.body.data.email, explicitRoleResponse.body.data.email);
+
+  const wrongPasswordResponse = await request('/users/me/password', selfToken, {
+    method: 'PATCH',
+    body: JSON.stringify({ currentPassword: 'wrong-password', newPassword: 'new-password' }),
+  });
+  assert.equal(wrongPasswordResponse.status, 400);
+
+  const passwordResponse = await request('/users/me/password', selfToken, {
+    method: 'PATCH',
+    body: JSON.stringify({ currentPassword: '123456', newPassword: 'new-password' }),
+  });
+  assert.equal(passwordResponse.status, 204);
+
   const persistedCredentials = await prisma.users.findUnique({
     where: { id: explicitRoleResponse.body.data.id },
     select: { password: true },
@@ -101,7 +146,7 @@ test('User API creates safe responses, enforces role.assign and deactivates inst
   assert.ok(persistedCredentials);
   assert.notEqual(persistedCredentials.password, '123456');
   assert.equal(
-    await verifyPassword('123456', persistedCredentials.password),
+    await verifyPassword('new-password', persistedCredentials.password),
     true,
   );
 

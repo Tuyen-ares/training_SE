@@ -14,6 +14,7 @@ import {
   ShopOutlined,
   TeamOutlined,
   ToolOutlined,
+  UserOutlined,
 } from '@ant-design/icons-vue'
 import { computed, onMounted, onUnmounted, ref, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
@@ -141,6 +142,10 @@ function openNotifications() {
   if (route.name !== 'notifications') router.push({ name: 'notifications' })
 }
 
+function openProfile() {
+  if (route.name !== 'profile') router.push({ name: 'profile' })
+}
+
 onMounted(() => {
   updateViewport()
   window.addEventListener('resize', updateViewport)
@@ -258,6 +263,10 @@ watch(() => route.name, closeMobileNav)
             </a-button>
             <template #overlay>
               <a-menu>
+                <a-menu-item key="profile" @click="openProfile">
+                  <UserOutlined /> Profile
+                </a-menu-item>
+                <a-menu-divider />
                 <a-menu-item key="logout" @click="logout">
                   <LogoutOutlined /> Sign out
                 </a-menu-item>
