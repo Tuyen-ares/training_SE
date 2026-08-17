@@ -184,96 +184,143 @@ onMounted(() => {
           <a-tab-pane v-if="canReturn" key="return" tab="Pending Return" />
         </a-tabs>
 
-        <div class="queue-body">
-          <a-alert v-if="errorMessage" type="error" show-icon :message="errorMessage">
-            <template #action><a-button size="small" @click="load">Retry</a-button></template>
-          </a-alert>
-          <a-skeleton v-else-if="loading" active :paragraph="{ rows: 6 }" />
-          <a-empty
-            v-else-if="!items.length"
-            :description="activeTab === 'handover' ? 'No assets are pending handover.' : 'No assets are awaiting return.'"
-          />
+        <a-alert v-if="errorMessage" type="error" show-icon :message="errorMessage">
+          <template #action><a-button size="small" @click="load">Retry</a-button></template>
+        </a-alert>
+        <a-skeleton v-else-if="loading" class="queue-loading" active :paragraph="{ rows: 6 }" />
 
-          <div v-else-if="activeTab === 'handover'" class="queue-list">
-            <article v-for="item in items" :key="item.detailId" class="queue-row handover-row">
-              <div class="asset-identity">
-                <a-avatar shape="square" :size="52" :src="item.asset.imageUrl || DEFAULT_ASSET_IMAGE">
-                  {{ item.asset.model.name.slice(0, 1) }}
-                </a-avatar>
-                <div>
-                  <strong>{{ item.asset.model.name }}</strong>
-                  <span>{{ item.asset.serialNumber || item.asset.qrCode }}</span>
-                  <small>QR {{ item.asset.qrCode }}</small>
+        <div v-else class="bigin-table-scroll-wrapper">
+          <a-table
+            v-if="activeTab === 'handover'"
+            class="queue-table"
+            :data-source="items"
+            row-key="detailId"
+            :pagination="false"
+            :scroll="{ x: 'max-content' }"
+          >
+            <a-table-column title="Asset" key="asset" :width="270">
+              <template #default="{ record }">
+                <div class="asset-cell">
+                  <a-avatar shape="square" size="small" :src="record.asset.imageUrl || DEFAULT_ASSET_IMAGE">
+                    {{ record.asset.model.name.slice(0, 1) }}
+                  </a-avatar>
+                  <div>
+                    <strong>{{ record.asset.model.name }}</strong>
+                    <span>{{ record.asset.serialNumber || record.asset.qrCode }}</span>
+                    <small>QR {{ record.asset.qrCode }}</small>
+                  </div>
                 </div>
-              </div>
-              <dl class="queue-fields">
-                <div><dt>Request</dt><dd>REQ-{{ String(item.requestId).padStart(4, '0') }}</dd></div>
-                <div><dt>Requester</dt><dd>{{ item.requester.name }}</dd><small>{{ item.requester.department?.name || 'No department' }}</small></div>
-                <div><dt>Expected return</dt><dd>{{ formatDate(item.expectedReturnDate) }}</dd></div>
-                <div><dt>Approved by</dt><dd>{{ item.approvedBy?.name || '—' }}</dd><small>{{ formatDateTime(item.approvedAt) }}</small></div>
-              </dl>
-              <div class="row-action">
-                  <a-button
-                    class="bigin-touch-target"
+              </template>
+            </a-table-column>
+            <a-table-column title="Request" key="request" :width="150">
+              <template #default="{ record }">REQ-{{ String(record.requestId).padStart(4, '0') }}</template>
+            </a-table-column>
+            <a-table-column title="Requester" key="requester" :width="210">
+              <template #default="{ record }">
+                <div class="person-cell">
+                  <strong>{{ record.requester.name }}</strong>
+                  <span>{{ record.requester.department?.name || 'No department' }}</span>
+                </div>
+              </template>
+            </a-table-column>
+            <a-table-column title="Expected return" key="expected-return" :width="170">
+              <template #default="{ record }">{{ formatDate(record.expectedReturnDate) }}</template>
+            </a-table-column>
+            <a-table-column title="Approved by" key="approved-by" :width="210">
+              <template #default="{ record }">
+                <div class="person-cell">
+                  <strong>{{ record.approvedBy?.name || '—' }}</strong>
+                  <span>{{ formatDateTime(record.approvedAt) }}</span>
+                </div>
+              </template>
+            </a-table-column>
+            <a-table-column title="" key="action" :width="180" align="right">
+              <template #default="{ record }">
+                <a-button
+                  class="action-button bigin-touch-target"
                   type="primary"
-                  :loading="busy === busyKey('handover', item.detailId)"
+                  :loading="busy === busyKey('handover', record.detailId)"
                   :disabled="busy !== null"
                   :icon="h(SwapOutlined)"
-                  @click="confirmHandover(item)"
+                  @click="confirmHandover(record)"
                 >Confirm handover</a-button>
-              </div>
-            </article>
-          </div>
+              </template>
+            </a-table-column>
+            <template #emptyText><a-empty description="No assets are pending handover." /></template>
+          </a-table>
 
-          <div v-else class="queue-list">
-            <article v-for="history in items" :key="history.id" class="queue-row return-row">
-              <div class="asset-identity">
-                <a-avatar shape="square" :size="52" :src="history.asset.imageUrl || DEFAULT_ASSET_IMAGE">
-                  {{ history.asset.model.name.slice(0, 1) }}
-                </a-avatar>
-                <div>
-                  <strong>{{ history.asset.model.name }}</strong>
-                  <span>{{ history.asset.serialNumber || history.asset.qrCode }}</span>
-                  <small>QR {{ history.asset.qrCode }}</small>
+          <a-table
+            v-else
+            class="queue-table"
+            :data-source="items"
+            row-key="id"
+            :pagination="false"
+            :scroll="{ x: 'max-content' }"
+          >
+            <a-table-column title="Asset" key="asset" :width="270">
+              <template #default="{ record }">
+                <div class="asset-cell">
+                  <a-avatar shape="square" size="small" :src="record.asset.imageUrl || DEFAULT_ASSET_IMAGE">
+                    {{ record.asset.model.name.slice(0, 1) }}
+                  </a-avatar>
+                  <div>
+                    <strong>{{ record.asset.model.name }}</strong>
+                    <span>{{ record.asset.serialNumber || record.asset.qrCode }}</span>
+                    <small>QR {{ record.asset.qrCode }}</small>
+                  </div>
                 </div>
-              </div>
-              <dl class="queue-fields">
-                <div><dt>Borrower</dt><dd>{{ history.borrower.name }}</dd><small>{{ history.borrower.userCode }}</small></div>
-                <div><dt>Borrowed at</dt><dd>{{ formatDateTime(history.borrowedAt) }}</dd></div>
-                <div><dt>Expected return</dt><dd>{{ formatDate(history.expectedReturnDate) }}</dd></div>
-                <div><dt>History</dt><dd>#{{ history.id }}</dd></div>
-              </dl>
-              <div class="row-action return-actions">
-                <a-button
-                  class="bigin-touch-target"
-                  type="primary"
-                  :loading="busy === busyKey('return', history.id)"
-                  :disabled="busy !== null"
-                  :icon="h(CheckCircleOutlined)"
-                  @click="confirmNormalReturn(history)"
-                >Confirm Normal Return</a-button>
-                <a-button
-                  class="bigin-touch-target"
-                  danger
-                  :disabled="busy !== null"
-                  :icon="h(WarningOutlined)"
-                  @click="openDamagedReturn(history)"
-                >Confirm Damaged Return</a-button>
-              </div>
-            </article>
-          </div>
-
-          <footer v-if="!loading && !errorMessage" class="queue-footer">
-            <span>Showing {{ items.length }} of {{ total }} records</span>
-            <a-pagination
-              :current="page"
-              :page-size="pageSize"
-              :total="total"
-              :show-size-changer="false"
-              @change="pageChange"
-            />
-          </footer>
+              </template>
+            </a-table-column>
+            <a-table-column title="Borrower" key="borrower" :width="210">
+              <template #default="{ record }">
+                <div class="person-cell">
+                  <strong>{{ record.borrower.name }}</strong>
+                  <span>{{ record.borrower.userCode }}</span>
+                </div>
+              </template>
+            </a-table-column>
+            <a-table-column title="Borrowed at" key="borrowed-at" :width="180">
+              <template #default="{ record }">{{ formatDateTime(record.borrowedAt) }}</template>
+            </a-table-column>
+            <a-table-column title="Expected return" key="expected-return" :width="170">
+              <template #default="{ record }">{{ formatDate(record.expectedReturnDate) }}</template>
+            </a-table-column>
+            <a-table-column title="" key="action" :width="240" align="right">
+              <template #default="{ record }">
+                <div class="return-actions">
+                  <a-button
+                    class="action-button bigin-touch-target"
+                    type="primary"
+                    :loading="busy === busyKey('return', record.id)"
+                    :disabled="busy !== null"
+                    :icon="h(CheckCircleOutlined)"
+                    @click="confirmNormalReturn(record)"
+                  >Confirm Normal Return</a-button>
+                  <a-button
+                    class="action-button bigin-touch-target"
+                    danger
+                    :disabled="busy !== null"
+                    :icon="h(WarningOutlined)"
+                    @click="openDamagedReturn(record)"
+                  >Confirm Damaged Return</a-button>
+                </div>
+              </template>
+            </a-table-column>
+            <template #emptyText><a-empty description="No assets are awaiting return." /></template>
+          </a-table>
         </div>
+
+        <footer v-if="!loading && !errorMessage" class="queue-footer bigin-responsive-footer">
+          <span>Showing {{ items.length }} of {{ total }} records</span>
+          <a-pagination
+            class="bigin-touch-target"
+            :current="page"
+            :page-size="pageSize"
+            :total="total"
+            :show-size-changer="false"
+            @change="pageChange"
+          />
+        </footer>
       </section>
 
       <a-empty v-else description="You do not have access to a fulfillment queue." />
@@ -312,52 +359,30 @@ onMounted(() => {
 .queue-count span { color: var(--bigin-text-tertiary); font-size: 10px; font-weight: 700; letter-spacing: .08em; }
 .queue-count strong { color: var(--bigin-color-success-text); font-size: 24px; line-height: 1.1; margin-top: 5px; }
 .fulfillment-surface { background: var(--bigin-surface-panel); border: 1px solid var(--bigin-border-subtle); border-radius: 12px; box-shadow: var(--bigin-shadow-elevated); overflow: hidden; }
-.fulfillment-tabs { padding: 0 24px; }
+.fulfillment-tabs { border-bottom: 1px solid var(--bigin-border-secondary); padding: 0 24px; }
 .fulfillment-tabs :deep(.ant-tabs-nav) { margin: 0; }
-.queue-body { min-height: 380px; padding: 0 24px 20px; }
-.queue-list { border-top: 1px solid var(--bigin-border-secondary); }
-.queue-row { align-items: center; border-bottom: 1px solid var(--bigin-border-secondary); display: grid; gap: 22px; grid-template-columns: minmax(210px, 1.1fr) minmax(0, 2fr) auto; padding: 20px 0; }
-.queue-row:last-child { border-bottom: 0; }
-.asset-identity { align-items: center; display: flex; gap: 12px; min-width: 0; }
-.asset-identity > div { display: grid; gap: 4px; min-width: 0; }
-.asset-identity strong { color: var(--bigin-text-primary); font-size: 13px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-.asset-identity span, .asset-identity small { color: var(--bigin-text-secondary); font-size: 12px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-.asset-identity small { color: var(--bigin-text-tertiary); font-size: 10px; }
-.queue-fields { display: grid; gap: 12px 20px; grid-template-columns: repeat(4, minmax(0, 1fr)); margin: 0; }
-.queue-fields > div { display: grid; gap: 4px; min-width: 0; }
-.queue-fields dt { color: var(--bigin-text-tertiary); font-size: 10px; font-weight: 700; letter-spacing: .06em; text-transform: uppercase; }
-.queue-fields dd { color: var(--bigin-text-primary); font-size: 13px; margin: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-.queue-fields small { color: var(--bigin-text-tertiary); font-size: 11px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-.row-action { display: flex; justify-content: flex-end; min-width: 170px; }
+.queue-loading { margin: 24px; }
+.queue-table :deep(.ant-table-thead > tr > th) { background: var(--bigin-surface-subtle); color: var(--bigin-text-tertiary); font-size: 11px; font-weight: 700; letter-spacing: .06em; padding: 14px 18px; text-transform: uppercase; }
+.queue-table :deep(.ant-table-tbody > tr > td) { border-bottom: 1px solid var(--bigin-border-secondary); padding: 17px 18px; }
+.asset-cell, .person-cell, .asset-cell > div { display: grid; gap: 4px; min-width: 0; }
+.asset-cell { align-items: center; display: flex; gap: 10px; }
+.asset-cell strong, .person-cell strong { color: var(--bigin-text-primary); font-size: 13px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.asset-cell span, .asset-cell small, .person-cell span { color: var(--bigin-text-secondary); font-size: 12px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.asset-cell small, .person-cell span { color: var(--bigin-text-tertiary); font-size: 11px; }
+.action-button { border-radius: 6px; font-size: 12px; }
 .return-actions { display: grid; gap: 8px; min-width: 215px; }
-.row-action :deep(.ant-btn) { border-radius: 6px; font-size: 12px; }
-.queue-footer { align-items: center; border-top: 1px solid var(--bigin-border-secondary); color: var(--bigin-text-tertiary); display: flex; font-size: 12px; justify-content: space-between; padding-top: 18px; }
-@media (max-width: 1050px) {
-  .queue-row { grid-template-columns: minmax(190px, 1fr) minmax(0, 1.5fr) auto; }
-  .queue-fields { grid-template-columns: repeat(2, minmax(0, 1fr)); }
-}
+.queue-footer { align-items: center; border-top: 1px solid var(--bigin-border-secondary); color: var(--bigin-text-tertiary); display: flex; font-size: 12px; justify-content: space-between; padding: 16px 24px; }
 @media (max-width: 780px) {
   .fulfillment-page { padding: 24px 16px 36px; }
   .fulfillment-header { align-items: flex-start; flex-direction: column; }
   .queue-count { min-width: 120px; }
-  .queue-body { padding-inline: 16px; }
-  .queue-row { align-items: start; grid-template-columns: minmax(0, 1fr) auto; }
-  .queue-fields, .row-action { grid-column: 1 / -1; }
-  .row-action { justify-content: flex-start; }
-  .return-actions { display: flex; flex-wrap: wrap; }
+  .fulfillment-tabs { padding-inline: 16px; }
 }
-@media (max-width: 767px) {
-  .fulfillment-page { padding: 20px 16px 32px; }
-  .queue-row { grid-template-columns: 1fr; }
-  .queue-fields, .row-action { grid-column: auto; }
-  .row-action { min-width: 0; }
-  .return-actions { min-width: 0; }
-}
-@media (max-width: 575px) { .queue-fields { grid-template-columns: 1fr; } }
-@media (max-width: 520px) {
+@media (max-width: 575px) {
+  .fulfillment-page { padding: 16px 12px 28px; }
   .fulfillment-header h1 { font-size: 25px; }
-  .queue-fields { grid-template-columns: 1fr; }
-  .queue-footer { align-items: flex-start; flex-direction: column; gap: 12px; }
+  .queue-footer { padding: 14px 16px; }
+  .return-actions { min-width: 0; }
   .return-actions :deep(.ant-btn) { width: 100%; }
 }
 </style>

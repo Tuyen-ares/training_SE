@@ -3,6 +3,7 @@ import {
   ArrowLeftOutlined,
   CheckCircleOutlined,
   CloseCircleOutlined,
+  DownOutlined,
   EditOutlined,
   PlayCircleOutlined,
 } from '@ant-design/icons-vue'
@@ -38,7 +39,9 @@ const workflow = ref('start')
 const form = reactive({ vendorId: undefined, startDate: '', endDate: '', cost: null, result: '', note: '' })
 const vendors = ref([])
 const vendorLoading = ref(false)
+const vendorSearch = ref('')
 const vendorTouched = ref(false)
+let vendorSearchRequestId = 0
 
 const canReview = computed(() => authStore.hasPermission('asset_issue.update'))
 const canStart = computed(() => authStore.hasPermission('asset_issue.create'))
@@ -71,22 +74,55 @@ async function load() {
     issue.value = await getAssetIssue(authStore.api, route.params.id)
     if (authStore.hasPermission('vendor.view')) await searchVendors()
   }
-  catch (error) { errorMessage.value = error.message || 'The asset issue could not be loaded.' }
+  catch (error) {
+    if (error.status === 404) {
+      message.warning('This asset issue is no longer available.')
+      await router.replace({ name: 'asset-issues' })
+      return
+    }
+    errorMessage.value = error.message || 'The asset issue could not be loaded.'
+  }
   finally { loading.value = false }
 }
 
 async function searchVendors(search = '') {
   if (!authStore.hasPermission('vendor.view')) return
+  const requestId = ++vendorSearchRequestId
   vendorLoading.value = true
   try {
-    const result = await listVendors(authStore.api, { q: search, page: 1, pageSize: 20, isActive: true })
-    vendors.value = result.items || []
-    if (issue.value?.vendor && !vendors.value.some((item) => item.id === issue.value.vendor.id)) {
-      vendors.value.unshift({ ...issue.value.vendor, isActive: false })
+    const query = typeof search === 'string' ? search.trim() : ''
+    const result = await listVendors(authStore.api, { q: query, page: 1, pageSize: 20, isActive: true })
+    if (requestId !== vendorSearchRequestId) return
+    const nextVendors = result.items || []
+    const currentVendor = issue.value?.vendor
+    const currentVendorMatches = !query || currentVendor?.name.toLocaleLowerCase().includes(query.toLocaleLowerCase())
+    if (currentVendor && currentVendorMatches && !nextVendors.some((item) => item.id === currentVendor.id)) {
+      nextVendors.unshift({ ...currentVendor, isActive: false })
     }
+    vendors.value = nextVendors
   } catch (error) {
-    if (error.status !== 403) message.error(error.message || 'Vendors could not be loaded.')
-  } finally { vendorLoading.value = false }
+    if (requestId === vendorSearchRequestId && error.status !== 403) {
+      message.error(error.message || 'Vendors could not be loaded.')
+    }
+  } finally {
+    if (requestId === vendorSearchRequestId) vendorLoading.value = false
+  }
+}
+
+function handleVendorDropdownVisible(open) {
+  if (!open) return
+  vendorSearch.value = ''
+  void searchVendors()
+}
+
+function handleVendorSearch(search) {
+  vendorSearch.value = search
+  void searchVendors(search)
+}
+
+function handleVendorChange() {
+  vendorSearch.value = ''
+  vendorTouched.value = true
 }
 
 async function runTransition(action, successMessage) {
@@ -127,7 +163,12 @@ function resetForm() {
   })
   vendorTouched.value = false
 }
-function openWorkflow(type) { workflow.value = type; resetForm(); modalOpen.value = true }
+function openWorkflow(type) {
+  workflow.value = type
+  resetForm()
+  vendorSearch.value = ''
+  modalOpen.value = true
+}
 
 function payload() {
   const body = {}
@@ -224,12 +265,18 @@ onMounted(load)
                 allow-clear
                 :filter-option="false"
                 :loading="vendorLoading"
+                :search-value="vendorSearch"
+                :suffix-icon="h(DownOutlined)"
                 placeholder="Search vendor..."
                 :options="vendors.map(item => ({ value: item.id, label: item.isActive === false ? `${item.name} (Inactive)` : item.name }))"
-                @search="searchVendors"
-                @focus="searchVendors"
-                @change="vendorTouched = true"
-              />
+                @dropdown-visible-change="handleVendorDropdownVisible"
+                @search="handleVendorSearch"
+                @change="handleVendorChange"
+              >
+                <template #notFoundContent>
+                  <span>{{ vendorLoading ? 'Loading vendors...' : 'No matching active vendors' }}</span>
+                </template>
+              </a-select>
               <a-input v-else :value="issue.vendor?.name || '—'" disabled />
             </a-form-item>
             <a-form-item label="Cost (VND)"><a-input-number v-model:value="form.cost" :min="0" :max="9999999999.99" style="width: 100%" /></a-form-item>

@@ -11,15 +11,15 @@ const authStore = useAuthStore()
 const loading = ref(true)
 const errorMessage = ref('')
 const result = ref({ items: [], page: 1, pageSize: 10, total: 0 })
-const activeTab = ref('PENDING')
 const query = reactive({ page: 1, pageSize: 10, approvalStatus: 'PENDING' })
+const statusOptions = [
+  { value: 'PENDING', label: 'Pending approval' },
+  { value: 'APPROVED', label: 'Approved' },
+  { value: 'REJECTED', label: 'Rejected' },
+]
 
-const matchingDetails = (record) => record.details.filter((detail) => detail.approvalStatus === activeTab.value)
-const tabLabel = computed(() => ({
-  PENDING: 'Pending approval',
-  APPROVED: 'Approved',
-  REJECTED: 'Rejected',
-})[activeTab.value])
+const matchingDetails = (record) => record.details.filter((detail) => detail.approvalStatus === query.approvalStatus)
+const statusLabel = computed(() => statusOptions.find((option) => option.value === query.approvalStatus)?.label || 'Requests')
 const formatDate = (value) => new Intl.DateTimeFormat('en-GB', { dateStyle: 'medium' }).format(new Date(value))
 
 async function load() {
@@ -39,8 +39,7 @@ function pageChange(page) {
   void load()
 }
 
-function tabChange(status) {
-  activeTab.value = status
+function statusChange(status) {
   query.approvalStatus = status
   query.page = 1
   void load()
@@ -68,15 +67,15 @@ onMounted(load)
 
       <section class="queue-surface">
         <div class="queue-toolbar">
-          <div>
-            <h2>Requests to review</h2>
-            <p>Open a request to approve or reject each asset.</p>
-          </div>
-          <a-tabs class="status-tabs" :active-key="activeTab" @change="tabChange">
-            <a-tab-pane key="PENDING" tab="Pending approval" />
-            <a-tab-pane key="APPROVED" tab="Approved" />
-            <a-tab-pane key="REJECTED" tab="Rejected" />
-          </a-tabs>
+          <label class="status-filter" for="approval-status-filter">
+            <a-select
+              id="approval-status-filter"
+              :value="query.approvalStatus"
+              :options="statusOptions"
+              aria-label="Filter approval queue by status"
+              @change="statusChange"
+            />
+          </label>
         </div>
 
         <a-alert v-if="errorMessage" type="error" show-icon :message="errorMessage" />
@@ -121,18 +120,18 @@ onMounted(load)
           </a-table-column>
           <a-table-column title="Status" key="status" :width="170">
             <template #default>
-              <StatusTag class="status-tag" :status="activeTab" :label="tabLabel" />
+              <StatusTag class="status-tag" :status="query.approvalStatus" :label="statusLabel" />
             </template>
           </a-table-column>
           <a-table-column title="" key="actions" :width="150" align="right">
             <template #default="{ record }">
               <a-button
                 class="review-button bigin-touch-target"
-                :type="activeTab === 'PENDING' ? 'primary' : 'default'"
+                :type="query.approvalStatus === 'PENDING' ? 'primary' : 'default'"
                 size="small"
                 @click="router.push({ name: 'approval-detail', params: { id: record.id }, state: { request: record } })"
               >
-                {{ activeTab === 'PENDING' ? 'Review request' : 'View details' }}
+                {{ query.approvalStatus === 'PENDING' ? 'Review request' : 'View details' }}
               </a-button>
             </template>
           </a-table-column>
@@ -164,11 +163,10 @@ onMounted(load)
 .queue-header-label { color: var(--bigin-text-tertiary); font-size: 10px; font-weight: 700; letter-spacing: .08em; }
 .queue-header-meta strong { color: var(--bigin-color-success-text); font-size: 24px; line-height: 1.1; margin-top: 5px; }
 .queue-surface { background: var(--bigin-surface-panel); border: 1px solid var(--bigin-border-subtle); border-radius: 12px; box-shadow: var(--bigin-shadow-elevated); overflow: hidden; }
-.queue-toolbar { align-items: flex-end; border-bottom: 1px solid var(--bigin-border-secondary); display: flex; justify-content: space-between; gap: 20px; padding: 22px 24px 0; }
-.queue-toolbar h2 { color: var(--bigin-text-primary); font-size: 16px; margin: 0; }
-.queue-toolbar p { color: var(--bigin-text-secondary); font-size: 13px; margin: 6px 0 20px; }
-.status-tabs { margin-bottom: -1px; }
-.status-tabs :deep(.ant-tabs-nav) { margin: 0; }
+.queue-toolbar { align-items: flex-end; border-bottom: 1px solid var(--bigin-border-secondary); display: flex; gap: 24px; padding: 22px 24px 0; }
+.status-filter { align-items: center; display: flex; gap: 10px; margin-bottom: 20px; }
+.status-filter span { color: var(--bigin-text-secondary); font-size: 13px; font-weight: 600; }
+.status-filter :deep(.ant-select) { min-width: 210px; }
 .queue-table :deep(.ant-table-thead > tr > th) { background: var(--bigin-surface-subtle); color: var(--bigin-text-tertiary); font-size: 11px; font-weight: 700; letter-spacing: .06em; padding: 14px 18px; text-transform: uppercase; }
 .queue-table :deep(.ant-table-tbody > tr > td) { border-bottom: 1px solid var(--bigin-border-secondary); padding: 17px 18px; }
 .request-cell, .requester-cell, .requester-cell > div { display: grid; gap: 4px; }
@@ -180,6 +178,6 @@ onMounted(load)
 .status-tag { font-size: 11px; font-weight: 600; margin: 0; text-transform: capitalize; }
 .review-button { border-radius: 6px; font-size: 12px; }
 .queue-footer { align-items: center; border-top: 1px solid var(--bigin-border-secondary); color: var(--bigin-text-tertiary); display: flex; font-size: 12px; justify-content: space-between; padding: 16px 24px; }
-@media (max-width: 780px) { .queue-page { padding: 24px 16px 36px; } .queue-header { align-items: flex-start; flex-direction: column; } .queue-header-meta { min-width: 110px; } .queue-toolbar { align-items: flex-start; flex-direction: column; padding-bottom: 0; } .status-tabs { width: 100%; } }
+@media (max-width: 780px) { .queue-page { padding: 24px 16px 36px; } .queue-header { align-items: flex-start; flex-direction: column; } .queue-header-meta { min-width: 110px; } .queue-toolbar { align-items: flex-start; flex-direction: column; padding-bottom: 0; } .status-filter { justify-content: space-between; width: 100%; } .status-filter :deep(.ant-select) { flex: 1; max-width: 260px; } }
 @media (max-width: 575px) { .queue-page { padding: 16px 12px 28px; } .queue-toolbar { padding-inline: 16px; } .queue-footer { padding: 14px 16px; } }
 </style>
