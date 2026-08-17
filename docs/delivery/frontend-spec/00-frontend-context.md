@@ -20,6 +20,31 @@ Frontend MVP giúp user được cấp quyền quản lý asset, mượn–duy�
 - Một screen có thể phục vụ nhiều User Story; một User Story có thể dùng nhiều screen.
 - Trạng thái `PENDING`, `APPROVED`, `REJECTED`, `RESERVED`, `BORROWED`, `DAMAGED`, `IN_REPAIR`, `RETIRED` phải bám theo Business Rule, không suy diễn transition mới ở frontend.
 
+## Cấu trúc source hiện tại
+
+Production frontend giữ các thư mục boilerplate cấp cao dưới
+`apps/frontend/src/`. Route-level views được nhóm theo domain; service module
+được nhóm theo domain nhưng vẫn giữ nguyên export và HTTP behavior hiện tại.
+
+```text
+src/
+├── assets/ components/ constants/ router/ stores/ utils/
+├── services/
+│   ├── administration/ assets/ asset-issues/ borrowing/
+│   └── notifications/ vendors/
+└── views/
+    ├── auth/ dashboard/ administration/ assets/
+    ├── borrowing/ asset-issues/ vendors/ notifications/
+
+training/frontend-vue/
+├── README.md
+├── examples/
+└── components/
+```
+
+Training examples are outside `apps/frontend/src`; production routes must not
+import from `training/**`.
+
 ## Discrepancy quan trọng với nguồn cũ
 
 | ID | Nguồn cũ | Baseline frontend MVP |

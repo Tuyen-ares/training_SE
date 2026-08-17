@@ -20,7 +20,7 @@ import { useRoute, useRouter } from 'vue-router'
 
 import { useAuthStore } from '../../stores/auth'
 import { useAppStore } from '../../stores/app'
-import { getUnreadNotificationCount } from '../../services/notification.service'
+import { getUnreadNotificationCount } from '../../services/notifications/notification.service'
 
 const route = useRoute()
 const router = useRouter()

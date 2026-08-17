@@ -491,7 +491,7 @@ Frontend:
 
 ```text
 apps/frontend/src/
-  services/notification.service.js
+  services/notifications/notification.service.js
   services/fcm.service.js
   firebase-messaging-sw.js
 ```

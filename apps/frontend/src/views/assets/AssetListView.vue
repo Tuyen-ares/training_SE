@@ -13,7 +13,7 @@ import StatusTag from '../../components/common/StatusTag.vue'
 import WorkspaceLayout from '../../components/layout/WorkspaceLayout.vue'
 import { ASSET_STATUSES, statusLabel } from '../../constants/status-meta'
 import { DEFAULT_ASSET_IMAGE } from '../../constants/media'
-import { listAssets, listAssetLookups } from '../../services/asset.service'
+import { listAssets, listAssetLookups } from '../../services/assets/asset.service'
 import { useAuthStore } from '../../stores/auth'
 
 const router = useRouter()

@@ -5,7 +5,7 @@ import { useRoute, useRouter } from 'vue-router'
 
 import StatusTag from '../../components/common/StatusTag.vue'
 import WorkspaceLayout from '../../components/layout/WorkspaceLayout.vue'
-import { createAsset, getAsset, listAssetLookups, updateAsset } from '../../services/asset.service'
+import { createAsset, getAsset, listAssetLookups, updateAsset } from '../../services/assets/asset.service'
 import { useAuthStore } from '../../stores/auth'
 
 const route = useRoute()

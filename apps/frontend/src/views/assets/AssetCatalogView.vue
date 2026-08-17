@@ -4,7 +4,7 @@ import { EditOutlined, PlusOutlined } from '@ant-design/icons-vue'
 import { message } from 'ant-design-vue'
 
 import WorkspaceLayout from '../../components/layout/WorkspaceLayout.vue'
-import { createCatalogItem, listCatalog, updateCatalogItem } from '../../services/asset-catalog.service'
+import { createCatalogItem, listCatalog, updateCatalogItem } from '../../services/assets/asset-catalog.service'
 import { useAuthStore } from '../../stores/auth'
 
 const authStore = useAuthStore()

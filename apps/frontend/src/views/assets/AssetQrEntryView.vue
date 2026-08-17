@@ -2,7 +2,7 @@
 import { onMounted, ref } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 
-import { findAssetByQr } from '../../services/asset.service'
+import { findAssetByQr } from '../../services/assets/asset.service'
 import { useAuthStore } from '../../stores/auth'
 
 const route = useRoute()

@@ -5,6 +5,14 @@ giá trị lâu dài cho việc đọc, triển khai và debug project.
 
 ## Architecture Decisions
 
+### 2026-08-16 — Chuẩn hóa ownership của frontend source
+
+Production views và services được nhóm theo domain trong các thư mục boilerplate
+cấp cao hiện có của `apps/frontend/src`. Các view training được tách sang
+`training/frontend-vue/{examples,components}` và không được production import.
+Việc chuẩn hóa chỉ thay đổi filesystem/import path; route URL/name/meta/guard,
+service exports, Axios/session behavior và API contract được giữ nguyên.
+
 - Transaction boundary follows one-owner/participant: each multi-write use case
   opens exactly one Prisma transaction in its coordinating service. Called
   services expose explicit `InTransaction` methods and pass the same client to

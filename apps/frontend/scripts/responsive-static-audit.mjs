@@ -7,34 +7,34 @@ const repositoryRoot = path.resolve(scriptDirectory, '../../../')
 const frontendSourceRoot = path.join(repositoryRoot, 'apps/frontend/src')
 
 const activeViews = [
-  'views/admin/Dashboard.vue',
-  'views/admin/Users.vue',
-  'views/admin/UserFormView.vue',
-  'views/admin/UserDetailView.vue',
+  'views/dashboard/DashboardView.vue',
+  'views/administration/users/Users.vue',
+  'views/administration/users/UserFormView.vue',
+  'views/administration/users/UserDetailView.vue',
   'views/assets/AssetListView.vue',
   'views/assets/AssetDetailView.vue',
   'views/assets/AssetFormView.vue',
   'views/assets/AssetCatalogView.vue',
   'views/assets/AssetQrScanView.vue',
   'views/assets/AssetQrEntryView.vue',
-  'views/borrow/MyRequestsView.vue',
-  'views/borrow/BorrowRequestCreateView.vue',
-  'views/borrow/BorrowRequestDetailView.vue',
-  'views/borrow/ApprovalQueueView.vue',
-  'views/borrow/ApprovalDetailView.vue',
-  'views/borrow/HandoverReturnView.vue',
-  'views/borrow/BorrowingActivityView.vue',
-  'views/borrow/BorrowingActivityDetailView.vue',
-  'views/issues/AssetIssueListView.vue',
-  'views/issues/AssetIssueDetailView.vue',
+  'views/borrowing/MyBorrowRequestsView.vue',
+  'views/borrowing/BorrowRequestCreateView.vue',
+  'views/borrowing/BorrowRequestDetailView.vue',
+  'views/borrowing/ApprovalQueueView.vue',
+  'views/borrowing/ApprovalDetailView.vue',
+  'views/borrowing/HandoverReturnView.vue',
+  'views/borrowing/BorrowingActivityView.vue',
+  'views/borrowing/BorrowingActivityDetailView.vue',
+  'views/asset-issues/AssetIssueListView.vue',
+  'views/asset-issues/AssetIssueDetailView.vue',
   'views/administration/AdministrationIndexView.vue',
-  'views/administration/RegistrationRequestListView.vue',
-  'views/administration/RegistrationRequestDetailView.vue',
-  'views/administration/RoleListView.vue',
-  'views/administration/RoleFormView.vue',
+  'views/administration/registration-requests/RegistrationRequestListView.vue',
+  'views/administration/registration-requests/RegistrationRequestDetailView.vue',
+  'views/administration/roles/RoleListView.vue',
+  'views/administration/roles/RoleFormView.vue',
   'views/notifications/NotificationCenterView.vue',
-  'views/login/Login.vue',
-  'views/login/register.vue',
+  'views/auth/LoginView.vue',
+  'views/auth/RegistrationRequestCreateView.vue',
 ]
 
 const failures = []
@@ -60,7 +60,7 @@ function assert(condition, message) {
 const workspaceLayout = readSource('components/layout/WorkspaceLayout.vue')
 const responsiveCss = readSource('assets/responsive.css')
 const tokensCss = readSource('assets/tokens.css')
-const approvalDetail = readSource('views/borrow/ApprovalDetailView.vue')
+const approvalDetail = readSource('views/borrowing/ApprovalDetailView.vue')
 
 assert(
   /min-height:\s*100vh[\s\S]*min-height:\s*100dvh/.test(workspaceLayout),
@@ -112,7 +112,7 @@ for (const relativePath of activeViews) {
 
 const minWidthSelectorPattern = /(page|toolbar|footer|surface)/i
 for (const relativePath of activeViews) {
-  if (relativePath === 'views/borrow/ApprovalDetailView.vue') continue
+  if (relativePath === 'views/borrowing/ApprovalDetailView.vue') continue
   const source = readSource(relativePath)
   for (const [, selector, declarationsBlock] of source.matchAll(/([^{}]+)\{([^{}]*)\}/g)) {
     if (!minWidthSelectorPattern.test(selector)) continue
@@ -144,7 +144,7 @@ const rowColumns = approvalDetail.match(/\.asset-row\s*\{[^}]*grid-template-colu
 assert(headingColumns && headingColumns === rowColumns, 'Approval Detail header and rows share the same grid columns')
 assert(/\.asset-table-heading\s*\{[^}]*min-width:\s*960px/s.test(approvalDetail), 'Approval Detail header keeps the approved 960px custom-grid minimum')
 assert(/\.asset-row\s*\{[^}]*min-width:\s*960px/s.test(approvalDetail), 'Approval Detail rows keep the approved 960px custom-grid minimum')
-assert(!/\.queue-surface\s*\{[^}]*overflow-x/.test(readSource('views/borrow/ApprovalQueueView.vue')), 'Approval Queue does not create a toolbar/table nested horizontal scroll')
+assert(!/\.queue-surface\s*\{[^}]*overflow-x/.test(readSource('views/borrowing/ApprovalQueueView.vue')), 'Approval Queue does not create a toolbar/table nested horizontal scroll')
 
 if (failures.length) {
   console.error('Responsive static audit failed:')

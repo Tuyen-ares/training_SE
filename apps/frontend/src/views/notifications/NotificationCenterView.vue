@@ -16,7 +16,7 @@ import {
   listNotifications,
   markAllNotificationsRead,
   markNotificationRead,
-} from '../../services/notification.service'
+} from '../../services/notifications/notification.service'
 import { useAuthStore } from '../../stores/auth'
 
 const authStore = useAuthStore()

@@ -5,7 +5,7 @@
 Apply one shared responsive contract to the active authenticated frontend while
 preserving desktop information density and existing backend, API, permission,
 route, and business behavior. Authentication routes receive overflow regression
-coverage only; `views/train/**` and legacy routes are out of scope.
+coverage only; `training/frontend-vue/**` and legacy routes are out of scope.
 
 ## Breakpoints
 

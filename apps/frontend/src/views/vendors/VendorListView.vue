@@ -4,7 +4,7 @@ import { computed, h, onMounted, reactive, ref } from 'vue'
 import { message } from 'ant-design-vue'
 
 import WorkspaceLayout from '../../components/layout/WorkspaceLayout.vue'
-import { createVendor, listVendors, updateVendor, updateVendorStatus } from '../../services/vendor.service'
+import { createVendor, listVendors, updateVendor, updateVendorStatus } from '../../services/vendors/vendor.service'
 import { useAuthStore } from '../../stores/auth'
 
 const authStore = useAuthStore()
