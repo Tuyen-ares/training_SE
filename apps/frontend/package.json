@@ -10,6 +10,7 @@
   },
   "dependencies": {
     "@ant-design/icons-vue": "^7.0.1",
+    "@vercel/speed-insights": "^2.0.0",
     "ant-design-vue": "^4.2.6",
     "axios": "^1.19.0",
     "bcrypt": "^6.0.0",
