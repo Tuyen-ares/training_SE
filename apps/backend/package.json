@@ -8,6 +8,8 @@
     "test:db": "tsx --test --test-concurrency=1 tests/user-api.integration.test.ts tests/registration-rbac.integration.test.ts tests/asset-api.integration.test.ts tests/borrow-lifecycle.integration.test.ts tests/asset-issue-notification.integration.test.ts tests/vendor-api.integration.test.ts tests/department-api.integration.test.ts tests/race-condition.integration.test.ts",
     "build": "tsc -p tsconfig.json && tsc-alias -p tsconfig.json",
     "typecheck": "tsc -p tsconfig.json --noEmit",
+    "media:cleanup": "tsx src/commands/media-cleanup.ts",
+    "media:audit": "tsx src/commands/media-audit.ts",
     "start": "node dist/server.js",
     "dev": "tsx watch src/server.ts"
   },
@@ -16,6 +18,8 @@
   "license": "ISC",
   "description": "",
   "dependencies": {
+    "@aws-sdk/client-s3": "^3.879.0",
+    "@aws-sdk/s3-request-presigner": "^3.879.0",
     "@prisma/adapter-mariadb": "^7.8.0",
     "@prisma/client": "^7.8.0",
     "@prisma/client-runtime-utils": "7.8.0",

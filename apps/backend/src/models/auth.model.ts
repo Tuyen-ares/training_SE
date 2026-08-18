@@ -8,6 +8,7 @@ export interface AuthenticatedUserDto {
   userCode: string;
   name: string;
   avatarUrl: string | null;
+  avatarMediaId?: number | null;
   email: string;
   phone: string;
   departmentId: number;

@@ -44,7 +44,7 @@ service exports, Axios/session behavior và API contract được giữ nguyên.
 - Confirm Issue mới chuyển issue sang `CONFIRMED` và asset sang `DAMAGED`.
 - Repair thất bại không tự chuyển asset sang `RETIRED`.
 - QR dùng để identify/lookup asset, không phải nghiệp vụ inventory/stocktake.
-- `qr_code` immutable sau khi tạo asset; QR image chứa frontend URL `/qr/{qr_code}`. Camera lifecycle thuộc Asset QR Scan screen, không thuộc Asset List. Không có permission riêng cho việc regenerate QR; màn hình chỉ render/in mã immutable hiện có.
+- `qr_code` immutable sau khi tạo asset; QR image chứa frontend URL `/qr/{qr_code}` và helper lấy origin từ trang đang chạy, nên local/preview/production tự dùng đúng origin mà không cần switch thủ công. Camera lifecycle thuộc Asset QR Scan screen, không thuộc Asset List. Không có permission riêng cho việc regenerate QR; màn hình chỉ render/in mã immutable hiện có.
 - `department_id` là organizational ownership, không phải location.
 - Inventory/stocktake không thuộc MVP.
 - Future design nằm trong [`../future/`](../future/) và không được tự implement.
@@ -110,19 +110,56 @@ Các ghi chú deployment trên chỉ là context; khi sửa phải kiểm tra lo
 
 ## Current Known Gaps
 
-### Evidence, accessory và acknowledgement chưa có trong MVP schema
+### Accessory và acknowledgement chưa có trong MVP schema
 
-- **Gap:** Chưa có attachment/media, accessory checklist, receipt hoặc electronic acknowledgement cho handover/return/repair.
+- **Gap:** Accessory checklist, receipt và electronic acknowledgement chưa có trong MVP.
 - **Feature:** F05/F06; future scope xem [`../future/scale-system.md`](../future/scale-system.md).
-- **Evidence:** [`schema.prisma`](../../apps/backend/prisma/schema.prisma) hiện chỉ có lifecycle fields trong `borrow_histories` và repair fields trong `asset_issues`.
-- **Impact:** Cần requirement và migration riêng nếu mở rộng ITAM evidence.
+- **Evidence:** Image media/evidence hiện đã có trong `media_files`, các typed evidence table và primary-image FK; gap này không còn bao gồm media.
+- **Impact:** Accessory và acknowledgement vẫn cần requirement và migration riêng nếu mở rộng ITAM.
 - **Status:** Future candidate; không implement từ future docs.
 
 ## Important Recent Decisions
 
-### 2026-08-16 — Future image evidence dùng private AWS S3 và CloudFront
+### 2026-08-18 — Active S3/CloudFront media and evidence core
 
-**Feature:** Future Phase 1 Image Evidence Core.
+**Feature:** F02 asset images, F05 handover/return evidence, F06 successful
+repair evidence and F08 user avatars.
+
+**Decision:** Media objects are private S3 objects read through CloudFront with
+OAC. The backend creates UUID-based immutable storage keys, persists a
+`PENDING` row, signs a direct PUT with `Content-Type`, immutable `Cache-Control`
+and `If-None-Match: *`, then moves the row to `READY` only after an exact
+`HeadObject` metadata check. The browser never receives AWS credentials or
+presigned GET URLs.
+
+Business linking uses typed evidence tables and `assets.image_media_id` /
+`users.avatar_media_id`. A conditional `linked_at IS NULL` claim, the typed
+relation or FK update, and the owning business mutation share one Prisma
+transaction. Cross-purpose validation therefore belongs to the business
+linking use case, not Complete.
+
+**Operational gotchas:** a successful PUT followed by transient Complete
+failure retries the same media ID; a failed PUT or conditional `412` gets a
+new media ID/key. HeadObject failures keep the row `PENDING` and do not trigger
+automatic deletion; metadata mismatch performs best-effort DeleteObject but
+also keeps the row for cleanup. Manual cleanup distinguishes stale PENDING,
+never-linked READY and detached replacements, locks/rechecks typed references,
+and never uses ListBucket. Legacy `image_url`/`avatar_url` remain fallback read
+paths.
+
+**Affected areas:** media config/storage adapter, Prisma migration, media API,
+borrow/repair/asset/user services, Vue uploader, read models, cleanup/audit
+commands, active requirements and API contracts.
+
+**Verification:** Prisma validate, backend typecheck/build/unit tests,
+frontend production build, OpenAPI YAML parse, repository verification script
+and `git diff --check`. AWS S3/CloudFront smoke testing remains a deployment
+gate requiring the real configured infrastructure.
+
+### 2026-08-16 — Future image evidence proposal (superseded)
+
+**Status:** Historical future proposal; superseded by the active 2026-08-18
+media implementation above.
 
 **Decision:** Binary evidence sẽ nằm trong private AWS S3 bucket; CloudFront với
 Origin Access Control (OAC) cung cấp public `GET`/`HEAD` URL. Vue chỉ nhận
@@ -134,12 +171,11 @@ AWS access key env chỉ dành cho local development.
 **Reason:** Giữ S3 private và không mở public bucket/ACL, đồng thời đáp ứng
 roadmap cần stable public media URL cho evidence và kiểm soát mutation qua API.
 
-**Affected areas:** `docs/future/scale-phases/`, `apps/backend/.env.example`,
-future storage implementation contract.
+**Affected areas:** The original future design in `docs/future/scale-phases/`
+and the now-active storage implementation contract.
 
-**Verification:** Đối chiếu README, Phase 0/1/3/5, roadmap index và env mẫu;
-`git diff --check`; không triển khai code, Prisma, API hoặc AWS resource trong
-task này.
+**Verification:** The proposal was originally checked against the roadmap;
+implementation is now verified by the active media checks above.
 
 ### 2026-08-14 — Tách permission quản lý status cho User, Vendor và Department
 

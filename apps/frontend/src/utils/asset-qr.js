@@ -1,23 +1,11 @@
 import QRCode from 'qrcode'
 
 function getPublicAppOrigin() {
-  if (import.meta.env.DEV) {
-    if (typeof window === 'undefined' || !window.location.origin) {
-      throw new Error('The local app origin is not available.')
-    }
-    return window.location.origin
+  if (typeof window === 'undefined' || !window.location.origin) {
+    throw new Error('The current app origin is not available.')
   }
 
-  const configuredBaseUrl = import.meta.env.VITE_PUBLIC_APP_URL?.trim()
-  if (!configuredBaseUrl) {
-    throw new Error('VITE_PUBLIC_APP_URL is required for production QR codes.')
-  }
-
-  try {
-    return new URL(configuredBaseUrl).origin
-  } catch {
-    throw new Error('VITE_PUBLIC_APP_URL must be a valid absolute URL.')
-  }
+  return window.location.origin
 }
 
 export function buildAssetQrUrl(qrCode) {

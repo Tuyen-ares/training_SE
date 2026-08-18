@@ -6,7 +6,7 @@ subject from the access token and never accept a target user ID.
 ## Profile rules
 
 - A user may read their own safe profile through `GET /api/users/me`.
-- A user may update only `name`, `phone` and nullable `avatarUrl` through
+- A user may update only `name`, `phone` and nullable `avatarMediaId` (or legacy `avatarUrl`) through
   `PATCH /api/users/me`.
 - Email, department, user code, roles and `isActive` are read-only in this
   contract and remain Admin-managed.
@@ -36,8 +36,12 @@ and does not return a token or credential.
 | Method | Endpoint | Permission | Contract |
 | --- | --- | --- | --- |
 | GET | `/api/users/me` | Authenticated user | Return the current user's safe profile. |
-| PATCH | `/api/users/me` | Authenticated user | Update `name`, `phone`, and/or `avatarUrl`; return the safe profile. |
+| PATCH | `/api/users/me` | Authenticated user | Update `name`, `phone`, and/or `avatarMediaId`; return the safe profile. |
 | PATCH | `/api/users/me/password` | Authenticated user | Verify current password, save the new hash, revoke refresh sessions, and return `204`. |
 
 Strict schemas reject unknown fields. The self-service endpoints do not grant
 access to any Admin user-management API.
+
+When `avatarMediaId` is present it must be a READY `USER_AVATAR` media uploaded
+by the authenticated user. Avatar claim and FK replacement are atomic. The
+read resolver prefers the CloudFront URL and falls back to legacy `avatarUrl`.

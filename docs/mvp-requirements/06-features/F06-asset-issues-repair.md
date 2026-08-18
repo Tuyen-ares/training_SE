@@ -19,11 +19,11 @@ Người báo sự cố; User có permission xử lý issue/sửa chữa.
 
 ## Business Rules áp dụng
 
-`BR-ISS-01..08`, `BR-AST-01..04`.
+`BR-ISS-01..08`, `BR-AST-01..04`, `BR-MED-01`, `BR-MED-04..06`.
 
 ## Functional Requirements liên quan
 
-`FR-F06-01..08`.
+`FR-F06-01..08`, `FR-MED-01..04`.
 
 ## Quy ước dữ liệu sửa chữa
 
@@ -33,6 +33,7 @@ Người báo sự cố; User có permission xử lý issue/sửa chữa.
 - Report Issue chỉ nhập mô tả sự cố, không nhập repair result.
 - Repair mutations dùng strict `vendorId`: omitted giữ vendor hiện tại; number gán vendor active; `null` clear vendor. Set/clear cần cả repair permission của endpoint và `vendor.view`; `repairProvider` bị từ chối.
 - Vendor inactive không được chọn cho repair mới, nhưng vendor hiện tại của issue lịch sử vẫn hiển thị theo tên master hiện tại.
+- Complete Repair thành công nhận `mediaIds` evidence ảnh optional và trả lại trong issue detail; Fail Repair không nhận evidence trong MVP.
 
 ## Dependencies
 

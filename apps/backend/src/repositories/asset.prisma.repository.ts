@@ -15,6 +15,7 @@ import type {
 } from '@/models/asset.model.js';
 import { formatAssetCode } from '@/shared/asset-code.js';
 import { ConflictError } from '@/shared/app-error.js';
+import { buildPublicMediaUrl } from '@/shared/media-url.js';
 import { Prisma, type PrismaClient } from '../../generated/prisma/index.js';
 
 function getPrismaErrorCode(error: unknown): string | undefined {
@@ -134,6 +135,7 @@ export class PrismaAssetRepository implements IAssetRepository {
             },
           },
           departments: { select: { id: true, name: true } },
+          image_media: { select: { id: true, storage_path: true } },
         },
       }),
       this.prisma.assets.count({ where }),
@@ -145,7 +147,8 @@ export class PrismaAssetRepository implements IAssetRepository {
         assetCode: asset.asset_code,
         serialNumber: asset.serial_number,
         qrCode: asset.qr_code,
-        imageUrl: asset.image_url,
+        imageUrl: buildPublicMediaUrl(asset.image_media?.storage_path ?? '') ?? asset.image_url,
+        imageMediaId: asset.image_media_id,
         status: asset.status.toUpperCase(),
         model: {
           id: asset.asset_models.id,
@@ -180,6 +183,7 @@ export class PrismaAssetRepository implements IAssetRepository {
             asset_types: { select: { id: true, name: true } },
           },
         },
+        image_media: { select: { id: true, storage_path: true } },
       },
     });
     if (!asset) return null;
@@ -189,7 +193,8 @@ export class PrismaAssetRepository implements IAssetRepository {
       assetCode: asset.asset_code,
       serialNumber: asset.serial_number,
       qrCode: asset.qr_code,
-      imageUrl: asset.image_url,
+      imageUrl: buildPublicMediaUrl(asset.image_media?.storage_path ?? '') ?? asset.image_url,
+      imageMediaId: asset.image_media_id,
       status: asset.status.toUpperCase(),
       model: { id: asset.asset_models.id, name: asset.asset_models.name },
       brand: {
@@ -254,9 +259,9 @@ export class PrismaAssetRepository implements IAssetRepository {
     }
   }
 
-  async update(id: number, data: UpdateAssetDto): Promise<Asset> {
+  async update(id: number, data: UpdateAssetDto, transaction?: AssetTransaction): Promise<Asset> {
     try {
-      return await this.prisma.assets.update({
+      return await (transaction ?? this.prisma).assets.update({
         where: { id },
         data,
       });

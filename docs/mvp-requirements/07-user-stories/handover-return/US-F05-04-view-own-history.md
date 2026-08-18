@@ -13,6 +13,7 @@ so that **I can review my equipment usage**.
 - AC-US-F05-04-03: Unreturned history is clearly distinguished from returned history.
 - AC-US-F05-04-04: The user cannot change history data through the view function.
 - AC-US-F05-04-05: When opening a history detail, the user sees the borrowing reason, approver and approval date, handover person and date, and return information when returned.
+- AC-US-F05-04-06: History detail shows optional handover and return evidence with media ID, metadata and canonical CloudFront URL.
 
 ## Applicable Business Rules
 

@@ -12,6 +12,7 @@ Ma trận truy vết ở mức Business Requirement → Functional Requirement �
 | BREQ-06 | FR-F06-01..08 | F06 | US-F06-01..06 |
 | BREQ-07 | FR-F07-01..05 | F07 | US-F07-01..03 |
 | BREQ-08 | FR-F08-01..17 | F08 | US-F08-01..09 |
+| BREQ-09 | FR-MED-01..05, FR-F02-04..05, FR-F05-01/04/05, FR-F06-07, FR-F08-02/03 | F02/F05/F06/F08 | US-F02-04/05, US-F05-01/03/04/05, US-F06-06, US-F08-02/03/09 |
 
 ## Functional Requirement có điều kiện
 
@@ -22,6 +23,7 @@ Ma trận truy vết ở mức Business Requirement → Functional Requirement �
 | FR-F06-01 | US-F06-01 | Chỉ người đang mượn hoặc user có permission issue theo phạm vi được cấp. |
 | FR-F06-08 | US-F06-06 | FAILED chuyển asset về DAMAGED. |
 | FR-F07-05 | US-F07-01 | Event/recipient đã được chốt trong requirement. |
+| FR-MED-01..05 | Media Core | S3 private + CloudFront OAC; typed relation, atomic claim và cleanup semantics được chốt trong `docs/contracts/media-evidence.md`. |
 
 ## Liên kết chéo quan trọng
 

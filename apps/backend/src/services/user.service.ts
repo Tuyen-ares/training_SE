@@ -11,8 +11,10 @@ import type {
 import type { IUserRepository } from '@/repositories/user.repository.js';
 import type { RbacService } from '@/services/rbac.service.js';
 import type { SessionService } from '@/services/session.service.js';
-import { RbacError, UserError } from '@/shared/app-error.js';
+import type { MediaService } from '@/services/media.service.js';
+import { MediaError, RbacError, UserError } from '@/shared/app-error.js';
 import { hashPassword, verifyPassword } from '@/shared/security/password-hasher.js';
+import type { PrismaTransaction } from '@/shared/prisma-transaction.js';
 
 export class UserService {
   constructor(
@@ -20,6 +22,7 @@ export class UserService {
     private readonly rbacService: RbacService,
     private readonly sessionService: SessionService,
     private readonly prisma: PrismaClient,
+    private readonly mediaService?: MediaService,
   ) {}
 
   getAll(status: UserStatusFilter = 'active'): Promise<UserResponseDto[]> {
@@ -42,6 +45,7 @@ export class UserService {
   ): Promise<UserResponseDto | null> {
     const currentUser = await this.repository.findById(id);
     if (!currentUser) return null;
+    const currentAvatarMediaId = await this.getAvatarMediaId(id);
 
     const phoneExists = input.phone
       ? await this.repository.phoneExists(input.phone, id)
@@ -50,11 +54,21 @@ export class UserService {
 
     const updateData: UpdateUserData = {
       ...(input.name !== undefined ? { name: input.name } : {}),
-      ...(input.avatarUrl !== undefined ? { avatarUrl: input.avatarUrl } : {}),
+      ...(input.avatarMediaId !== undefined
+        ? { avatarMediaId: input.avatarMediaId, avatarUrl: null }
+        : input.avatarUrl !== undefined
+          ? { avatarMediaId: null, avatarUrl: input.avatarUrl }
+          : {}),
       ...(input.phone !== undefined ? { phone: input.phone } : {}),
     };
 
     return this.prisma.$transaction(async (transaction) => {
+      await this.claimAvatarIfNeeded(
+        currentAvatarMediaId,
+        input.avatarMediaId,
+        transaction,
+        id,
+      );
       await this.repository.update(id, updateData, transaction);
       return this.repository.findById(id, transaction);
     });
@@ -78,7 +92,7 @@ export class UserService {
     });
   }
 
-  async create(input: CreateUserInputDto): Promise<UserResponseDto> {
+  async create(input: CreateUserInputDto, actorId?: number): Promise<UserResponseDto> {
     const [emailExists, phoneExists, departmentExists] = await Promise.all([
       this.repository.emailExists(input.email),
       this.repository.phoneExists(input.phone),
@@ -97,13 +111,34 @@ export class UserService {
         {
           departmentId: input.departmentId,
           name: input.name,
-          avatarUrl: input.avatarUrl,
+          avatarUrl: input.avatarMediaId !== undefined ? null : input.avatarUrl,
+          avatarMediaId: null,
           email: input.email,
           phone: input.phone,
           passwordHash,
         },
         transaction,
       );
+
+      if (input.avatarMediaId !== undefined && input.avatarMediaId !== null) {
+        if (!actorId) {
+          throw new MediaError('MEDIA_FORBIDDEN', 'An authenticated uploader is required');
+        }
+        if (!this.mediaService) {
+          throw new MediaError('MEDIA_CONFIG_MISSING', 'Media service is not configured');
+        }
+        await this.mediaService.claimPrimaryImage(
+          input.avatarMediaId,
+          actorId,
+          'USER_AVATAR',
+          transaction,
+        );
+        await this.repository.update(
+          userId,
+          { avatarMediaId: input.avatarMediaId, avatarUrl: null },
+          transaction,
+        );
+      }
 
       await this.rbacService.assignRoles(userId, roleIds, transaction);
 
@@ -116,9 +151,11 @@ export class UserService {
   async update(
     id: number,
     input: UpdateUserInputDto,
+    actorId?: number,
   ): Promise<UserResponseDto | null> {
     const currentUser = await this.repository.findById(id);
     if (!currentUser) return null;
+    const currentAvatarMediaId = await this.getAvatarMediaId(id);
 
     const [emailExists, phoneExists, departmentExists] = await Promise.all([
       input.email
@@ -146,7 +183,11 @@ export class UserService {
         ? { departmentId: input.departmentId }
         : {}),
       ...(input.name !== undefined ? { name: input.name } : {}),
-      ...(input.avatarUrl !== undefined ? { avatarUrl: input.avatarUrl } : {}),
+      ...(input.avatarMediaId !== undefined
+        ? { avatarMediaId: input.avatarMediaId, avatarUrl: null }
+        : input.avatarUrl !== undefined
+          ? { avatarMediaId: null, avatarUrl: input.avatarUrl }
+          : {}),
       ...(input.email !== undefined ? { email: input.email } : {}),
       ...(input.phone !== undefined ? { phone: input.phone } : {}),
       ...(input.password !== undefined
@@ -155,6 +196,12 @@ export class UserService {
     };
 
     return this.prisma.$transaction(async (transaction) => {
+      await this.claimAvatarIfNeeded(
+        currentAvatarMediaId,
+        input.avatarMediaId,
+        transaction,
+        actorId ?? id,
+      );
       if (roleIds) {
         await this.rbacService.lockEssentialAdminGuard(transaction);
       }
@@ -211,5 +258,35 @@ export class UserService {
       }
       throw error;
     }
+  }
+
+  private async getAvatarMediaId(id: number): Promise<number | null> {
+    return this.repository.findAvatarMediaId
+      ? this.repository.findAvatarMediaId(id)
+      : null;
+  }
+
+  private async claimAvatarIfNeeded(
+    currentAvatarMediaId: number | null,
+    nextAvatarMediaId: number | null | undefined,
+    transaction: PrismaTransaction,
+    uploaderId: number,
+  ): Promise<void> {
+    if (
+      nextAvatarMediaId === undefined ||
+      nextAvatarMediaId === null ||
+      nextAvatarMediaId === currentAvatarMediaId
+    ) {
+      return;
+    }
+    if (!this.mediaService) {
+      throw new MediaError('MEDIA_CONFIG_MISSING', 'Media service is not configured');
+    }
+    await this.mediaService.claimPrimaryImage(
+      nextAvatarMediaId,
+      uploaderId,
+      'USER_AVATAR',
+      transaction,
+    );
   }
 }

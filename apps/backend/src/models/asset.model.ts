@@ -17,6 +17,7 @@ export interface Asset {
   status: AssetStatus;
   qr_code: string;
   image_url: string | null;
+  image_media_id?: number | null;
   department_id: number | null;
   created_at: Date;
 }
@@ -25,6 +26,7 @@ export interface CreateAssetDto {
   asset_model_id: number;
   serial_number?: string | null;
   image_url?: string | null;
+  image_media_id?: number | null;
   department_id?: number | null;
 }
 
@@ -32,6 +34,7 @@ export interface UpdateAssetDto {
   asset_model_id?: number;
   serial_number?: string | null;
   image_url?: string | null;
+  image_media_id?: number | null;
   department_id?: number | null;
 }
 
@@ -43,6 +46,7 @@ export interface AssetMutationDto {
   status: string;
   qrCode: string;
   imageUrl: string | null;
+  imageMediaId?: number | null;
   departmentId: number | null;
   createdAt: string;
 }
@@ -69,6 +73,7 @@ export interface AssetListItemDto {
   serialNumber: string | null;
   qrCode: string;
   imageUrl: string | null;
+  imageMediaId?: number | null;
   status: string;
   model: AssetModelSummaryDto;
   brand: AssetModelSummaryDto;

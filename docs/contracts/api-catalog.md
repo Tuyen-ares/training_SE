@@ -30,8 +30,8 @@
 | --- | --- | --- | --- | --- |
 | `GET /api/assets` | List assets | Xem danh sách thiết bị | Search (including immutable asset code), filter and paginate assets. / Tìm kiếm (gồm mã asset bất biến), lọc và phân trang thiết bị. | Existing |
 | `GET /api/assets/:assetId` | Get asset detail | Xem chi tiết thiết bị | Read the full asset detail, immutable asset code and allowed actions. / Xem chi tiết asset, mã asset bất biến và action được phép. | Existing |
-| `POST /api/assets` | Create asset | Tạo thiết bị | Add an asset; server atomically allocates the immutable type-prefixed asset code. / Tạo asset; server cấp mã bất biến theo type một cách nguyên tử. | Existing |
-| `PATCH /api/assets/:assetId` | Update asset | Cập nhật thiết bị | Update editable asset information; asset code cannot be changed. / Cập nhật thông tin asset được phép sửa; không sửa mã asset. | Existing |
+| `POST /api/assets` | Create asset | Tạo thiết bị | Add an asset; optional `imageMediaId` is atomically claimed as the one primary image; legacy `imageUrl` remains supported. / Tạo asset; `imageMediaId` optional được claim/link nguyên tử; vẫn hỗ trợ `imageUrl` legacy. | Existing |
+| `PATCH /api/assets/:assetId` | Update asset | Cập nhật thiết bị | Update editable asset information and optional primary `imageMediaId`; asset code cannot be changed. / Cập nhật thông tin và ảnh chính optional; không sửa mã asset. | Existing |
 | `POST /api/assets/:assetId/retire` | Retire asset | Ngừng sử dụng thiết bị | Retire an eligible asset through a dedicated lifecycle action. / Ngừng sử dụng asset đủ điều kiện bằng action riêng. | Existing |
 | `GET /api/assets/by-qr/:qrCode` | Look up asset by QR | Tra cứu thiết bị bằng QR | Resolve the immutable `qr_code` extracted from the frontend QR URL to the asset detail. / Tra `qr_code` bất biến được trích xuất từ frontend QR URL để mở chi tiết asset. | Existing |
 | `GET /api/brands` | List brands | Xem danh sách hãng | Read asset brands. / Xem hãng thiết bị. | Existing |
@@ -68,14 +68,14 @@
 | API | English name | Tên tiếng Việt | Purpose / Mục đích | Status |
 | --- | --- | --- | --- | --- |
 | `GET /api/borrow-request-details/handover-queue` | List pending handovers | Xem hàng đợi bàn giao | List `APPROVED` + `RESERVED` details without a borrow history for `asset.checkout`; does not require `borrow_request.view_all` or `borrow_history.view_all`. / Liệt kê detail đã duyệt, asset reserved chưa bàn giao cho quyền `asset.checkout`; không yêu cầu quyền xem toàn bộ request/history. | Existing |
-| `POST /api/borrow-request-details/:detailId/handover` | Confirm handover | Xác nhận bàn giao | Mark a reserved asset as handed over and create its borrow history. / Xác nhận bàn giao asset reserved và tạo lịch sử mượn. | Existing |
+| `POST /api/borrow-request-details/:detailId/handover` | Confirm handover | Xác nhận bàn giao | Mark a reserved asset as handed over, create its borrow history and optionally claim `mediaIds` as HANDOVER evidence atomically. / Xác nhận bàn giao, tạo history và claim evidence HANDOVER optional nguyên tử. | Existing |
 | `GET /api/borrow-histories/return-queue` | List pending returns | Xem hàng đợi hoàn trả | List unreturned histories for `asset.checkin`; does not require `borrow_request.view_all` or `borrow_history.view_all`. / Liệt kê history chưa trả cho quyền `asset.checkin`; không yêu cầu quyền xem toàn bộ request/history. | Existing |
 | `GET /api/borrow-histories/current` | List my current borrows | Xem tài sản đang mượn | List assets currently borrowed by the current user. / Liệt kê asset user hiện tại đang mượn. | Existing |
-| `POST /api/borrow-histories/:historyId/return` | Confirm return | Xác nhận hoàn trả | Record a normal return and make the asset available. / Ghi nhận trả bình thường và đưa asset về available. | Existing |
+| `POST /api/borrow-histories/:historyId/return` | Confirm return | Xác nhận hoàn trả | Record a normal return, make the asset available and optionally claim `mediaIds` as RETURN evidence atomically. / Ghi nhận trả và claim evidence RETURN optional nguyên tử. | Existing |
 | `GET /api/borrow-histories/me` | List my borrow history | Xem lịch sử mượn của tôi | List the current user's completed and open borrow history. / Xem lịch sử mượn đã/chưa hoàn trả của user hiện tại. | Existing |
 | `GET /api/borrow-histories` | List all borrow history | Xem toàn bộ lịch sử mượn | Search history across users within the permitted scope. / Tra cứu lịch sử của mọi user trong phạm vi quyền. | Existing |
 | `GET /api/borrow-histories/:historyId` | Get borrow history detail | Xem chi tiết lịch sử mượn | Read request reason, approval, handover and return metadata within the user's effective history scope. / Xem lý do mượn, duyệt, bàn giao và hoàn trả trong phạm vi lịch sử được cấp. | Existing |
-| `POST /api/borrow-histories/:historyId/return-damaged` | Return damaged asset | Xác nhận trả thiết bị hỏng | Return a damaged asset and create the linked confirmed issue atomically; response includes `issueId`. / Trả asset hỏng và tạo issue confirmed liên kết nguyên tử; response có `issueId`. | Existing |
+| `POST /api/borrow-histories/:historyId/return-damaged` | Return damaged asset | Xác nhận trả thiết bị hỏng | Return a damaged asset, create the linked confirmed issue and optionally claim RETURN `mediaIds` atomically; response includes `issueId`. / Trả asset hỏng, tạo issue và claim evidence RETURN optional nguyên tử; response có `issueId`. | Existing |
 
 ## F06 — Asset Issues & Repair / Sự cố và sửa chữa tài sản
 
@@ -88,7 +88,7 @@
 | `POST /api/asset-issues/:issueId/reject` | Reject asset issue | Từ chối sự cố | Reject a `REPORTED` issue with an optional note; asset status is unchanged. / Từ chối issue `REPORTED` với note tùy chọn; không đổi trạng thái asset. | Existing |
 | `POST /api/asset-issues/:issueId/start-repair` | Start repair | Bắt đầu sửa chữa | Start repair for a confirmed damaged issue and move the asset into repair. / Bắt đầu sửa issue confirmed/damaged và chuyển asset sang in repair. | Existing |
 | `PATCH /api/asset-issues/:issueId/repair` | Update repair progress | Cập nhật quá trình sửa | Update vendor, timing, cost, result and notes. `vendorId` omitted preserves; number/null changes it and requires both `asset_issue.update` and `vendor.view`. / Cập nhật vendor, thời gian, chi phí, kết quả và ghi chú; set/clear vendor cần đồng thời `asset_issue.update` và `vendor.view`. | Existing |
-| `POST /api/asset-issues/:issueId/complete` | Complete repair | Hoàn tất sửa chữa | Complete an in-progress repair and move the asset to available. / Hoàn tất sửa chữa đang thực hiện và đưa asset về available. | Existing |
+| `POST /api/asset-issues/:issueId/complete` | Complete repair | Hoàn tất sửa chữa | Complete an in-progress repair, optionally claim `mediaIds` as AFTER_REPAIR evidence and move the asset to available. / Hoàn tất sửa, claim evidence optional và đưa asset về available. | Existing |
 | `POST /api/asset-issues/:issueId/fail` | Fail repair | Ghi nhận sửa chữa thất bại | Record a failed repair and move the asset to damaged; never retire it automatically. / Ghi nhận sửa thất bại và chuyển asset về damaged; không tự retire. | Existing |
 
 ## Vendor Management / Quản lý vendor dùng chung
@@ -114,13 +114,13 @@
 
 | API | English name | Tên tiếng Việt | Purpose / Mục đích | Status |
 | --- | --- | --- | --- | --- |
-| `GET /api/users/me` | Get my profile | Xem profile của tôi | Read the authenticated user's safe profile. / Xem profile an toàn của user hiện tại. | Existing |
-| `PATCH /api/users/me` | Update my profile | Cập nhật profile của tôi | Update name, phone and avatar URL only. / Chỉ cập nhật name, phone và avatar URL. | Existing |
+| `GET /api/users/me` | Get my profile | Xem profile của tôi | Read the authenticated user's safe profile; media avatar URL takes precedence over legacy URL. / Xem profile an toàn, ưu tiên avatar media. | Existing |
+| `PATCH /api/users/me` | Update my profile | Cập nhật profile của tôi | Update name, phone and optional `avatarMediaId` (legacy URL remains fallback) only. / Chỉ cập nhật name, phone và avatar media optional. | Existing |
 | `PATCH /api/users/me/password` | Change my password | Đổi mật khẩu của tôi | Verify the current password, save a new hash and revoke refresh sessions. / Xác minh mật khẩu cũ, lưu hash mới và thu hồi refresh session. | Existing |
 | `GET /api/users` | List users | Xem danh sách người dùng | Search and list users for administration. / Tìm kiếm và liệt kê user phục vụ quản trị. | Existing |
 | `GET /api/users/:userId` | Get user | Xem chi tiết người dùng | Read one user's profile and assigned roles. / Xem hồ sơ và role của một user. | Existing |
-| `POST /api/users` | Create user | Tạo người dùng | Create an administrative user account. / Tạo user từ màn quản trị. | Existing |
-| `PATCH /api/users/:userId` | Update user information | Cập nhật thông tin người dùng | Update profile, department or allowed roles; status is not changed here and requires `user.update`. / Cập nhật hồ sơ, department hoặc role; không đổi status và cần `user.update`. | Existing |
+| `POST /api/users` | Create user | Tạo người dùng | Create an administrative user account with optional atomically claimed `avatarMediaId`. / Tạo user với avatar media optional được claim nguyên tử. | Existing |
+| `PATCH /api/users/:userId` | Update user information | Cập nhật thông tin người dùng | Update profile, department, allowed roles and optional `avatarMediaId`; status is not changed here. / Cập nhật hồ sơ, role và avatar media; không đổi status. | Existing |
 | `PATCH /api/users/:userId/status` | Change user active status | Kích hoạt/vô hiệu hóa người dùng | Set `isActive` to `true` or `false` without deleting history; requires `user.manage_status` for both directions. / Gửi `isActive` là `true` hoặc `false`; cả hai chiều cần `user.manage_status`. | Existing |
 | `GET /api/rbac/roles` | List roles | Xem role | List role type and permission/user counts. / Liệt kê type và count permission/user. | Existing |
 | `GET /api/rbac/roles/:roleId` | Get role detail | Xem chi tiết role | Read role and its described permission set. / Xem role và permission descriptions. | Existing |
@@ -133,6 +133,14 @@
 | `POST /api/departments` | Create department | Tạo phòng ban | Add a department. / Thêm department. | Existing |
 | `PATCH /api/departments/:departmentId` | Update department information | Cập nhật thông tin phòng ban | Update name only; requires `department.update`, and `isActive` is rejected. / Chỉ sửa name; cần `department.update`, `isActive` bị từ chối. | Existing |
 | `PATCH /api/departments/:departmentId/status` | Change department active status | Kích hoạt/vô hiệu hóa phòng ban | Set `isActive` to `true` or `false`; requires `department.manage_status`. Inactive departments retain links/history but cannot be selected for new assignments. / Đổi status; department inactive giữ liên kết/lịch sử nhưng không được chọn cho assignment mới. | Existing |
+
+## Media Core / Ảnh và evidence
+
+| API | English name | Tên tiếng Việt | Purpose / Mục đích | Status |
+| --- | --- | --- | --- | --- |
+| `POST /api/media/presign` | Presign media upload | Cấp presigned upload | Validate purpose/permission/MIME/size, create a PENDING media row and return a presigned PUT with signed `Content-Type`, immutable `Cache-Control` and `If-None-Match: *`; never returns AWS credentials or public URL. / Validate và cấp PUT trực tiếp S3. | Existing |
+| `POST /api/media/:mediaId/complete` | Complete media upload | Hoàn tất upload | Verify ownership and `HeadObject` metadata, transition PENDING to READY and return the CloudFront URL; READY retry is idempotent. / Verify object và chuyển READY. | Existing |
+| `DELETE /api/media/:mediaId` | Cancel media upload | Hủy upload | Uploader-only cancel while unlinked; backend deletes S3 object and then row, without exposing DeleteObject credentials. / Uploader hủy media chưa claim. | Existing |
 
 ## Not planned as public APIs / Không triển khai thành public API
 

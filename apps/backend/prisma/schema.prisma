@@ -15,12 +15,14 @@ model assets {
   status                 assets_status            @default(available)
   qr_code                String                   @unique(map: "qr_code") @db.VarChar(36)
   image_url              String?                  @db.VarChar(500)
+  image_media_id         Int?                     @unique(map: "uq_assets_image_media_id")
   department_id          Int?
   created_at             DateTime                 @default(now()) @db.DateTime(0)
   asset_models           asset_models             @relation(fields: [asset_model_id], references: [id], onUpdate: NoAction, map: "fk_assets_model")
   departments            departments?             @relation(fields: [department_id], references: [id], onDelete: SetNull, onUpdate: Cascade, map: "fk_assets_department")
   asset_issues           asset_issues[]
   borrow_request_details borrow_request_details[]
+  image_media            media_files?             @relation("asset_image_media", fields: [image_media_id], references: [id], onDelete: SetNull, onUpdate: NoAction, map: "fk_assets_image_media")
 
   @@index([asset_model_id], map: "fk_assets_model")
   @@index([department_id], map: "fk_assets_department")
@@ -32,6 +34,7 @@ model users {
   department_id                          Int
   name                                   String                   @db.VarChar(30)
   avatar_url                             String?                  @db.VarChar(500)
+  avatar_media_id                        Int?                     @unique(map: "uq_users_avatar_media_id")
   password                               String                   @db.VarChar(60)
   email                                  String                   @unique(map: "email") @db.VarChar(40)
   phone                                  String                   @unique(map: "phone") @db.VarChar(10)
@@ -45,6 +48,8 @@ model users {
   notifications                          notifications[]
   refresh_tokens                         refresh_tokens[]
   user_roles                             user_roles[]
+  uploaded_media_files                   media_files[]            @relation("media_files_uploaded_by")
+  avatar_media                           media_files?             @relation("user_avatar_media", fields: [avatar_media_id], references: [id], onDelete: SetNull, onUpdate: NoAction, map: "fk_users_avatar_media")
   reviewed_registration_requests        registration_requests[] @relation("registration_requests_reviewed_by")
   created_from_registration_request     registration_requests?  @relation("registration_requests_created_user")
   department                             departments              @relation(fields: [department_id], references: [id], onUpdate: NoAction, map: "fk_users_department")
@@ -55,6 +60,29 @@ model users {
 model user_code_sequences {
   year          Int @id
   last_sequence Int
+}
+
+model media_files {
+  id                    Int                 @id @default(autoincrement())
+  storage_path          String              @unique(map: "uq_media_files_storage_path") @db.VarChar(500)
+  mime_type             String              @db.VarChar(100)
+  size_bytes            Int
+  purpose               media_purpose
+  upload_status         media_upload_status @default(pending)
+  uploaded_by           Int
+  created_at            DateTime            @default(now()) @db.DateTime(0)
+  uploaded_at           DateTime?           @db.DateTime(0)
+  linked_at             DateTime?           @db.DateTime(0)
+  uploaded_by_user      users               @relation("media_files_uploaded_by", fields: [uploaded_by], references: [id], onDelete: Restrict, onUpdate: NoAction, map: "fk_media_files_uploaded_by")
+  asset_image           assets?             @relation("asset_image_media")
+  user_avatar           users?              @relation("user_avatar_media")
+  handover_evidence     handover_evidence?
+  return_evidence       return_evidence?
+  repair_evidence       repair_evidence?
+
+  @@index([uploaded_by], map: "fk_media_files_uploaded_by")
+  @@index([upload_status, created_at], map: "idx_media_files_cleanup_status_created")
+  @@index([linked_at], map: "idx_media_files_linked_at")
 }
 
 model refresh_tokens {
@@ -95,9 +123,29 @@ model borrow_histories {
   borrow_request_details   borrow_request_details @relation(fields: [borrow_request_detail_id], references: [id], onUpdate: NoAction, map: "fk_borrow_histories_detail")
   handed_over_by_users     users?                 @relation("borrow_histories_handed_over_by", fields: [handed_over_by], references: [id], onDelete: Restrict, onUpdate: NoAction, map: "fk_borrow_histories_handed_over_by")
   received_by_users        users?                 @relation("borrow_histories_received_by", fields: [received_by], references: [id], onDelete: Restrict, onUpdate: NoAction, map: "fk_borrow_histories_received_by")
+  handover_evidence        handover_evidence[]
+  return_evidence          return_evidence[]
 
   @@index([handed_over_by], map: "fk_borrow_histories_handed_over_by")
   @@index([received_by], map: "fk_borrow_histories_received_by")
+}
+
+model handover_evidence {
+  media_file_id      Int              @id
+  borrow_history_id  Int
+  media_files        media_files      @relation(fields: [media_file_id], references: [id], onDelete: Restrict, onUpdate: NoAction, map: "fk_handover_evidence_media")
+  borrow_histories   borrow_histories @relation(fields: [borrow_history_id], references: [id], onDelete: Restrict, onUpdate: NoAction, map: "fk_handover_evidence_history")
+
+  @@index([borrow_history_id], map: "fk_handover_evidence_history")
+}
+
+model return_evidence {
+  media_file_id      Int              @id
+  borrow_history_id  Int
+  media_files        media_files      @relation(fields: [media_file_id], references: [id], onDelete: Restrict, onUpdate: NoAction, map: "fk_return_evidence_media")
+  borrow_histories   borrow_histories @relation(fields: [borrow_history_id], references: [id], onDelete: Restrict, onUpdate: NoAction, map: "fk_return_evidence_history")
+
+  @@index([borrow_history_id], map: "fk_return_evidence_history")
 }
 
 model departments {
@@ -140,11 +188,21 @@ model asset_issues {
   vendors                vendors?  @relation(fields: [vendor_id], references: [id], onDelete: Restrict, onUpdate: NoAction, map: "fk_asset_issues_vendor")
   reported_by_users      users?    @relation("asset_issues_reported_by", fields: [reported_by], references: [id], onDelete: Restrict, onUpdate: NoAction, map: "fk_asset_issues_reported_by")
   handled_by_users       users?    @relation("asset_issues_handled_by", fields: [handled_by], references: [id], onDelete: Restrict, onUpdate: NoAction, map: "fk_asset_issues_handled_by")
+  repair_evidence        repair_evidence[]
 
   @@index([asset_id], map: "fk_asset_issues_asset")
   @@index([vendor_id], map: "fk_asset_issues_vendor")
   @@index([reported_by], map: "fk_asset_issues_reported_by")
   @@index([handled_by], map: "fk_asset_issues_handled_by")
+}
+
+model repair_evidence {
+  media_file_id  Int          @id
+  asset_issue_id Int
+  media_files    media_files  @relation(fields: [media_file_id], references: [id], onDelete: Restrict, onUpdate: NoAction, map: "fk_repair_evidence_media")
+  asset_issues   asset_issues @relation(fields: [asset_issue_id], references: [id], onDelete: Restrict, onUpdate: NoAction, map: "fk_repair_evidence_issue")
+
+  @@index([asset_issue_id], map: "fk_repair_evidence_issue")
 }
 
 model asset_models {
@@ -294,4 +352,17 @@ enum registration_requests_status {
   pending  @map("PENDING")
   approved @map("APPROVED")
   rejected @map("REJECTED")
+}
+
+enum media_purpose {
+  handover     @map("HANDOVER")
+  return       @map("RETURN")
+  after_repair @map("AFTER_REPAIR")
+  asset_image  @map("ASSET_IMAGE")
+  user_avatar  @map("USER_AVATAR")
+}
+
+enum media_upload_status {
+  pending @map("PENDING")
+  ready   @map("READY")
 }

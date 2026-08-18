@@ -37,9 +37,83 @@ tags:
     description: Thông báo
   - name: F08 - Administration
     description: Quản trị người dùng, phân quyền và phòng ban
+  - name: Media Core
+    description: Presigned upload, verification, CloudFront read URL và cleanup lifecycle
   - name: Vendor Management
     description: Quản lý shared vendor master dùng cho repair và các workflow tài sản mở rộng
 paths:
+  /media/presign:
+    post:
+      tags: [Media Core]
+      summary: Cấp presigned PUT cho media
+      description: >-
+        Tạo media PENDING và cấp presigned PUT direct-to-S3 theo purpose. Signature
+        bind Content-Type, Cache-Control và If-None-Match: *. Không trả AWS credential
+        hoặc public URL. Permission được kiểm theo purpose.
+      operationId: presignMedia
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/MediaPresignInput'
+      responses:
+        '201':
+          description: Presigned PUT đã được cấp
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data:
+                    $ref: '#/components/schemas/MediaPresignResponse'
+        '400': { $ref: '#/components/responses/BadRequest' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+        '503':
+          description: Media storage chưa được cấu hình hoặc đang không khả dụng
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Error' }
+  /media/{mediaId}/complete:
+    post:
+      tags: [Media Core]
+      summary: Hoàn tất media upload
+      description: >-
+        Verify ownership và HeadObject metadata. PENDING chỉ chuyển READY khi
+        ContentLength, ContentType và CacheControl khớp chính xác; READY retry idempotent.
+      operationId: completeMedia
+      parameters:
+        - $ref: '#/components/parameters/MediaId'
+      responses:
+        '200':
+          description: Media READY và canonical CloudFront URL
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data: { $ref: '#/components/schemas/MediaCompleteResponse' }
+        '400': { $ref: '#/components/responses/BadRequest' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+        '404': { description: Media/object không được xác nhận, content: { application/json: { schema: { $ref: '#/components/schemas/Error' } } } }
+        '503': { description: Storage verification failure, content: { application/json: { schema: { $ref: '#/components/schemas/Error' } } } }
+  /media/{mediaId}:
+    delete:
+      tags: [Media Core]
+      summary: Hủy media chưa claim
+      description: Chỉ uploader được hủy khi linked_at còn null; backend tự DeleteObject và xóa row khi storage state an toàn.
+      operationId: cancelMedia
+      parameters:
+        - $ref: '#/components/parameters/MediaId'
+      responses:
+        '204': { description: Media đã được hủy }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+        '404': { description: Media không tồn tại, content: { application/json: { schema: { $ref: '#/components/schemas/Error' } } } }
+        '409': { description: Media đã linked, content: { application/json: { schema: { $ref: '#/components/schemas/Error' } } } }
+        '503': { description: Storage delete failure, content: { application/json: { schema: { $ref: '#/components/schemas/Error' } } } }
   /registration-requests:
     post:
       tags: [F01 - Authentication]
@@ -1189,10 +1263,16 @@ paths:
       summary: Xác nhận bàn giao
       description: >-
         Chuyển `RESERVED → BORROWED` và tạo đúng một lịch sử mượn với borrower là chủ phiếu.
-        Request body rỗng.
+        Có thể gửi `mediaIds` để claim evidence HANDOVER tùy chọn trong cùng transaction.
       operationId: confirmHandover
       parameters:
         - $ref: '#/components/parameters/DetailId'
+      requestBody:
+        required: false
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/MediaIdsInput'
       responses:
         '200':
           description: Bàn giao thành công
@@ -1370,7 +1450,8 @@ paths:
       summary: Xác nhận hoàn trả
       description: >-
         Ghi nhận người nhận/thời gian, ghi `returnCondition=NORMAL` canonical, chuyển asset
-        `BORROWED → AVAILABLE`. Client không thể tự chọn tình trạng trả trong lượt trả bình thường.
+        `BORROWED → AVAILABLE`. Có thể gửi `mediaIds` evidence RETURN tùy chọn; client không thể
+        tự chọn tình trạng trả trong lượt trả bình thường.
       operationId: confirmReturn
       parameters:
         - name: historyId
@@ -1379,6 +1460,12 @@ paths:
           schema:
             type: integer
             minimum: 1
+      requestBody:
+        required: false
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/MediaIdsInput'
       responses:
         '200':
           description: Hoàn trả thành công
@@ -2639,6 +2726,13 @@ components:
       schema:
         type: integer
         minimum: 1
+    MediaId:
+      name: mediaId
+      in: path
+      required: true
+      schema:
+        type: integer
+        minimum: 1
     Page:
       name: page
       in: query
@@ -2686,6 +2780,61 @@ components:
           schema:
             $ref: '#/components/schemas/Error'
   schemas:
+    MediaPurpose:
+      type: string
+      enum: [HANDOVER, RETURN, AFTER_REPAIR, ASSET_IMAGE, USER_AVATAR]
+    MediaPresignInput:
+      type: object
+      required: [purpose, mimeType, sizeBytes]
+      additionalProperties: false
+      properties:
+        purpose: { $ref: '#/components/schemas/MediaPurpose' }
+        mimeType: { type: string, minLength: 1, maxLength: 100 }
+        sizeBytes: { type: integer, minimum: 1 }
+    MediaRequiredHeaders:
+      type: object
+      required: [Content-Type, Cache-Control, If-None-Match]
+      properties:
+        Content-Type: { type: string }
+        Cache-Control: { type: string, enum: ['public,max-age=31536000,immutable'] }
+        If-None-Match: { type: string, enum: ['*'] }
+    MediaPresignResponse:
+      type: object
+      required: [mediaId, uploadUrl, expiresAt, requiredHeaders]
+      properties:
+        mediaId: { type: integer }
+        uploadUrl: { type: string, format: uri }
+        expiresAt: { type: string, format: date-time }
+        requiredHeaders: { $ref: '#/components/schemas/MediaRequiredHeaders' }
+    MediaCompleteResponse:
+      type: object
+      required: [mediaId, mimeType, sizeBytes, purpose, uploadStatus, uploadedAt, publicUrl]
+      properties:
+        mediaId: { type: integer }
+        mimeType: { type: string }
+        sizeBytes: { type: integer }
+        purpose: { $ref: '#/components/schemas/MediaPurpose' }
+        uploadStatus: { type: string, enum: [READY] }
+        uploadedAt: { type: string, format: date-time }
+        publicUrl: { type: string, format: uri }
+    MediaIdsInput:
+      type: object
+      additionalProperties: false
+      properties:
+        mediaIds:
+          type: array
+          maxItems: 10
+          uniqueItems: true
+          items: { type: integer, minimum: 1 }
+    MediaEvidence:
+      type: object
+      required: [mediaId, mimeType, sizeBytes, uploadedAt, publicUrl]
+      properties:
+        mediaId: { type: integer }
+        mimeType: { type: string }
+        sizeBytes: { type: integer }
+        uploadedAt: { type: string, format: date-time }
+        publicUrl: { type: string, format: uri }
     Error:
       type: object
       properties:
@@ -2737,6 +2886,10 @@ components:
         avatarUrl:
           type: string
           format: uri
+          nullable: true
+        avatarMediaId:
+          type: integer
+          minimum: 1
           nullable: true
         email:
           type: string
@@ -2883,6 +3036,10 @@ components:
           format: uri
           maxLength: 500
           nullable: true
+        imageMediaId:
+          type: integer
+          minimum: 1
+          nullable: true
         departmentId:
           type: integer
           minimum: 1
@@ -2905,6 +3062,10 @@ components:
           type: string
           format: uri
           maxLength: 500
+          nullable: true
+        imageMediaId:
+          type: integer
+          minimum: 1
           nullable: true
         departmentId:
           type: integer
@@ -2936,6 +3097,10 @@ components:
           type: string
         imageUrl:
           type: string
+          nullable: true
+        imageMediaId:
+          type: integer
+          minimum: 1
           nullable: true
         status:
           $ref: '#/components/schemas/AssetStatus'
@@ -3009,6 +3174,10 @@ components:
           $ref: '#/components/schemas/AssetStatus'
         imageUrl:
           type: string
+          nullable: true
+        imageMediaId:
+          type: integer
+          minimum: 1
           nullable: true
         departmentId:
           type: integer
@@ -3428,6 +3597,10 @@ components:
       required:
         - historyId
         - returned
+    MediaEvidenceList:
+      type: array
+      items:
+        $ref: '#/components/schemas/MediaEvidence'
     DamagedReturnInput:
       type: object
       properties:
@@ -3435,6 +3608,11 @@ components:
           type: string
           minLength: 1
           maxLength: 1000
+        mediaIds:
+          type: array
+          maxItems: 10
+          uniqueItems: true
+          items: { type: integer, minimum: 1 }
       required:
         - description
       additionalProperties: false
@@ -3473,6 +3651,9 @@ components:
               nullable: true
             qrCode:
               type: string
+            imageUrl:
+              type: string
+              nullable: true
             status:
               $ref: '#/components/schemas/AssetStatus'
             model:
@@ -3534,6 +3715,10 @@ components:
         returnCondition:
           type: string
           nullable: true
+        handoverEvidence:
+          $ref: '#/components/schemas/MediaEvidenceList'
+        returnEvidence:
+          $ref: '#/components/schemas/MediaEvidenceList'
       required:
         - id
         - detailId
@@ -3541,6 +3726,8 @@ components:
         - borrower
         - expectedReturnDate
         - borrowedAt
+        - handoverEvidence
+        - returnEvidence
     BorrowHistoryDetail:
       type: object
       properties:
@@ -3679,6 +3866,10 @@ components:
             - NORMAL
             - DAMAGED
           nullable: true
+        handoverEvidence:
+          $ref: '#/components/schemas/MediaEvidenceList'
+        returnEvidence:
+          $ref: '#/components/schemas/MediaEvidenceList'
       required:
         - id
         - request
@@ -3693,6 +3884,8 @@ components:
         - receivedBy
         - returnedAt
         - returnCondition
+        - handoverEvidence
+        - returnEvidence
     BorrowHistoryPage:
       type: object
       properties:
@@ -3857,12 +4050,15 @@ components:
             - id
             - name
           nullable: true
+        repairEvidence:
+          $ref: '#/components/schemas/MediaEvidenceList'
       required:
         - id
         - assetId
         - description
         - status
         - vendor
+        - repairEvidence
     AssetIssuePage:
       type: object
       properties:
@@ -3951,6 +4147,11 @@ components:
           type: string
           format: date-time
           nullable: true
+        mediaIds:
+          type: array
+          maxItems: 10
+          uniqueItems: true
+          items: { type: integer, minimum: 1 }
       required:
         - result
       additionalProperties: false
@@ -4029,6 +4230,10 @@ components:
         avatarUrl:
           type: string
           nullable: true
+        avatarMediaId:
+          type: integer
+          minimum: 1
+          nullable: true
         email:
           type: string
           format: email
@@ -4064,6 +4269,10 @@ components:
           type: string
           format: uri
           maxLength: 500
+          nullable: true
+        avatarMediaId:
+          type: integer
+          minimum: 1
           nullable: true
         email:
           type: string
@@ -4105,6 +4314,10 @@ components:
           format: uri
           maxLength: 500
           nullable: true
+        avatarMediaId:
+          type: integer
+          minimum: 1
+          nullable: true
         email:
           type: string
           format: email
@@ -4136,6 +4349,10 @@ components:
           type: string
           format: uri
           maxLength: 500
+          nullable: true
+        avatarMediaId:
+          type: integer
+          minimum: 1
           nullable: true
         phone:
           type: string

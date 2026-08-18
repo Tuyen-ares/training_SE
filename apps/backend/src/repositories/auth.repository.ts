@@ -11,6 +11,7 @@ export interface AuthUserRecord {
   departmentId: number;
   name: string;
   avatarUrl: string | null;
+  avatarMediaId?: number | null;
   passwordHash: string;
   email: string;
   phone: string;

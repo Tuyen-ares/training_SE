@@ -1,7 +1,7 @@
 import { z } from 'zod';
 import type { Request, Response } from 'express';
 import type { BorrowWorkflowService } from '@/services/borrow-workflow.service.js';
-import { BorrowError, ConflictError } from '@/shared/app-error.js';
+import { BorrowError, ConflictError, MediaError } from '@/shared/app-error.js';
 import { ApiResponse } from '@/shared/api-response.js';
 import { parseRequestBody } from '@/shared/request-validation.js';
 
@@ -22,9 +22,22 @@ const historyQuerySchema = pageQuerySchema.extend({
   state: z.enum(['ALL', 'CURRENT', 'RETURNED']).default('ALL'),
 });
 
-const normalReturnSchema = z.strictObject({});
+const mediaIdsSchema = z
+  .array(z.number().int().positive())
+  .max(10)
+  .refine((ids) => new Set(ids).size === ids.length, {
+    message: 'Media IDs must be unique',
+  });
+
+const normalReturnSchema = z.strictObject({
+  mediaIds: mediaIdsSchema.optional(),
+});
+const handoverSchema = z.strictObject({
+  mediaIds: mediaIdsSchema.optional(),
+});
 const damagedReturnSchema = z.strictObject({
   description: z.string().trim().min(1).max(1000),
+  mediaIds: mediaIdsSchema.optional(),
 });
 
 function readPositiveId(value: string | string[] | undefined): number | null {
@@ -59,6 +72,13 @@ export class BorrowWorkflowController {
       if (error instanceof ConflictError) {
         return ApiResponse.conflict(res, error.message);
       }
+      if (error instanceof MediaError) {
+        if (error.code === 'MEDIA_FORBIDDEN') return ApiResponse.forbidden(res, 'You do not have access to this media');
+        if (error.code === 'MEDIA_CONFIG_MISSING' || error.code === 'MEDIA_STORAGE_ACCESS' || error.code === 'MEDIA_STORAGE_UNAVAILABLE') {
+          return ApiResponse.serviceUnavailable(res, 'Media storage is currently unavailable');
+        }
+        return ApiResponse.badRequest(res, { mediaIds: [error.message] });
+      }
       return ApiResponse.internalError(res);
     }
   };
@@ -87,8 +107,11 @@ export class BorrowWorkflowController {
   };
 
   handover = async (req: Request, res: Response): Promise<void> => {
+    const parsed = parseRequestBody(handoverSchema, req.body ?? {});
+    if (parsed.success === false) return ApiResponse.badRequest(res, parsed.errors);
+
     return this.runAction(req, res, async (actorId, detailId) => ({
-      historyId: await this.service.handover(detailId, actorId),
+      historyId: await this.service.handover(detailId, actorId, parsed.data.mediaIds),
     }));
   };
 
@@ -97,7 +120,7 @@ export class BorrowWorkflowController {
     if (parsed.success === false) return ApiResponse.badRequest(res, parsed.errors);
 
     return this.runAction(req, res, async (actorId, historyId) => {
-      await this.service.returnNormal(historyId, actorId);
+      await this.service.returnNormal(historyId, actorId, parsed.data.mediaIds);
       return { historyId, returned: true };
     });
   };
@@ -193,7 +216,7 @@ export class BorrowWorkflowController {
       historyId,
       returned: true,
       returnCondition: 'DAMAGED',
-      issueId: await this.service.returnDamaged(historyId, actorId, parsed.data.description),
+      issueId: await this.service.returnDamaged(historyId, actorId, parsed.data.description, parsed.data.mediaIds),
     }));
   };
 

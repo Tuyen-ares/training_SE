@@ -22,11 +22,11 @@ Admin có permission tương ứng.
 
 ## Business Rules áp dụng
 
-`BR-USR-01..03`, `BR-RBAC-01..07`, `BR-AUTH-01..08`.
+`BR-USR-01..03`, `BR-RBAC-01..07`, `BR-AUTH-01..08`, `BR-MED-02`, `BR-MED-04..08`.
 
 ## Functional Requirements liên quan
 
-`FR-F08-01..17`.
+`FR-F08-01..17`, `FR-MED-01..04`.
 
 ## Dependencies
 
@@ -35,3 +35,7 @@ F01; departments; role và permission baseline.
 ## Out of Scope
 
 Delete role, CRUD permission code và role inheritance.
+
+Avatar là optional. Create/update admin và self-profile dùng `avatarMediaId`
+cho luồng mới, vẫn giữ `avatar_url` fallback; user chỉ có một avatar chính và
+claim media/FK replacement nằm trong cùng transaction.

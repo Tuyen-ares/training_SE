@@ -10,6 +10,7 @@
 - Báo, xác minh và theo dõi sửa chữa asset.
 - Thông báo trong hệ thống.
 - Quản lý user và gán/gỡ role có sẵn.
+- Ảnh evidence tùy chọn cho bàn giao, hoàn trả và sửa chữa thành công; ảnh chính tùy chọn cho asset và avatar user. Binary được upload trực tiếp vào S3 private qua presigned PUT, đọc public qua CloudFront.
 
 ## Ngoài phạm vi
 
@@ -21,5 +22,6 @@
 - Role inheritance, wildcard permission, CRUD role và CRUD permission code.
 - Tự chọn role khi đăng ký; role được reviewer gán sau khi duyệt.
 - Bảng handover hoặc event-history mới ngoài baseline.
+- Presigned GET, public S3 object, worker/cron cleanup, multipart upload, S3 versioning/Object Lock và electronic acknowledgement.
 
 QR là thuộc tính nhận diện asset. QR immutable sau khi tạo và chứa frontend entry URL để mở tra cứu asset; không được hiểu thành module kiểm kê.

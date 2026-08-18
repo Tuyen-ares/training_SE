@@ -16,6 +16,7 @@ import type {
   IAssetRepository,
 } from '@/repositories/asset.repository.js';
 import type { IBaseService } from '@/shared/base.service.js';
+import type { MediaService } from '@/services/media.service.js';
 import {
   ConflictError,
   InvalidStateTransitionError,
@@ -27,6 +28,7 @@ export class AssetService
   constructor(
     private readonly repo: IAssetRepository,
     private readonly prisma: PrismaClient,
+    private readonly mediaService?: MediaService,
   ) {}
 
   getAll(): Promise<Asset[]> {
@@ -51,6 +53,7 @@ export class AssetService
 
   async create(
     dto: CreateAssetDto,
+    actorId?: number,
   ): Promise<{ data?: Asset; error?: string }> {
     const assetModelExists = await this.repo.assetModelExists(dto.asset_model_id);
     if (!assetModelExists) {
@@ -69,16 +72,24 @@ export class AssetService
     }
 
     try {
-      const data = await this.prisma.$transaction((transaction) =>
-        this.repo.createWithAllocatedCode({
+      const data = await this.prisma.$transaction(async (transaction) => {
+        const asset = await this.repo.createWithAllocatedCode({
           asset_model_id: dto.asset_model_id,
           serial_number: dto.serial_number ?? null,
           image_url: dto.image_url ?? null,
+          image_media_id: null,
           department_id: dto.department_id ?? null,
           qr_code: randomUUID(),
           status: 'available',
-        }, transaction),
-      );
+        }, transaction);
+        if (dto.image_media_id !== undefined && dto.image_media_id !== null) {
+          if (!this.mediaService || actorId === undefined) throw new ConflictError('Media uploader is required');
+          await this.mediaService.claimPrimaryImage(dto.image_media_id, actorId, 'ASSET_IMAGE', transaction);
+          await this.repo.update(asset.id, { image_media_id: dto.image_media_id, image_url: null }, transaction);
+        }
+        return this.repo.findById(asset.id, transaction);
+      });
+      if (!data) return { error: 'Asset could not be created' };
       return { data };
     } catch (error) {
       if (error instanceof ConflictError) {
@@ -88,7 +99,7 @@ export class AssetService
     }
   }
 
-  async update(id: number, dto: UpdateAssetDto): Promise<Asset | null> {
+  async update(id: number, dto: UpdateAssetDto, actorId?: number): Promise<Asset | null> {
     const asset = await this.repo.findById(id);
     if (!asset) return null;
 
@@ -116,7 +127,31 @@ export class AssetService
       }
     }
 
-    return this.repo.update(id, dto);
+    const hasImageMediaField = Object.prototype.hasOwnProperty.call(dto, 'image_media_id');
+    if (!hasImageMediaField) {
+      if (dto.image_url === undefined || asset.image_media_id === null || asset.image_media_id === undefined) {
+        return this.repo.update(id, dto);
+      }
+      return this.prisma.$transaction((transaction) =>
+        this.repo.update(id, { ...dto, image_media_id: null }, transaction),
+      );
+    }
+
+    const nextMediaId = dto.image_media_id ?? null;
+    if (nextMediaId !== null && nextMediaId !== asset.image_media_id) {
+      if (!this.mediaService || actorId === undefined) throw new ConflictError('Media uploader is required');
+    }
+
+    return this.prisma.$transaction(async (transaction) => {
+      if (nextMediaId !== null && nextMediaId !== asset.image_media_id) {
+        await this.mediaService!.claimPrimaryImage(nextMediaId, actorId!, 'ASSET_IMAGE', transaction);
+      }
+      return this.repo.update(id, {
+        ...dto,
+        image_media_id: nextMediaId,
+        image_url: null,
+      }, transaction);
+    });
   }
 
   delete(id: number): Promise<boolean> {

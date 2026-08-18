@@ -14,12 +14,36 @@ import type {
   ReviewQueueQuery,
   BorrowHistoryQuery,
 } from '@/models/borrow-lifecycle.model.js';
+import type { MediaEvidenceDto } from '@/models/media.model.js';
 import { BorrowError } from '@/shared/app-error.js';
+import { buildPublicMediaUrl } from '@/shared/media-url.js';
 import {
   type borrow_requests_status,
   type PrismaClient,
 } from '../../generated/prisma/index.js';
 import type { BorrowActionDetail, BorrowTransaction, IBorrowRequestRepository } from './borrow-request.repository.js';
+
+const mediaSelect = {
+  id: true,
+  storage_path: true,
+  mime_type: true,
+  size_bytes: true,
+  uploaded_at: true,
+} as const;
+
+function mediaUrl(media: { storage_path: string } | null | undefined): string | null {
+  return media ? buildPublicMediaUrl(media.storage_path) : null;
+}
+
+function mapEvidence(entries: Array<{ media_files: any }> | undefined): MediaEvidenceDto[] {
+  return (entries ?? []).map(({ media_files: media }) => ({
+    mediaId: media.id,
+    mimeType: media.mime_type,
+    sizeBytes: media.size_bytes,
+    uploadedAt: media.uploaded_at ?? new Date(0),
+    publicUrl: buildPublicMediaUrl(media.storage_path) ?? '',
+  }));
+}
 
 const requestInclude = {
   users: {
@@ -29,12 +53,18 @@ const requestInclude = {
       name: true,
       email: true,
       avatar_url: true,
+      avatar_media: { select: { storage_path: true } },
       department: { select: { id: true, name: true } },
     },
   },
   borrow_request_details: {
     include: {
-      assets: { include: { asset_models: { select: { id: true, name: true } } } },
+      assets: {
+        include: {
+          asset_models: { select: { id: true, name: true } },
+          image_media: { select: { storage_path: true } },
+        },
+      },
       approved_by_users: { select: { id: true, name: true } },
     },
   },
@@ -51,13 +81,20 @@ const historyInclude = {
   borrow_request_details: {
     include: {
       borrow_requests: {
-        include: { users: { select: { id: true, user_code: true, name: true, avatar_url: true } } },
+        include: { users: { select: { id: true, user_code: true, name: true, avatar_url: true, avatar_media: { select: { storage_path: true } } } } },
       },
-      assets: { include: { asset_models: { select: { id: true, name: true } } } },
+      assets: {
+        include: {
+          asset_models: { select: { id: true, name: true } },
+          image_media: { select: { storage_path: true } },
+        },
+      },
     },
   },
   handed_over_by_users: { select: { id: true, name: true } },
   received_by_users: { select: { id: true, name: true } },
+  handover_evidence: { include: { media_files: { select: mediaSelect } } },
+  return_evidence: { include: { media_files: { select: mediaSelect } } },
 } as const;
 
 const historyDetailInclude = {
@@ -72,17 +109,25 @@ const historyDetailInclude = {
               name: true,
               email: true,
               avatar_url: true,
+              avatar_media: { select: { storage_path: true } },
               department: { select: { id: true, name: true } },
             },
           },
         },
       },
-      assets: { include: { asset_models: { select: { id: true, name: true } } } },
+      assets: {
+        include: {
+          asset_models: { select: { id: true, name: true } },
+          image_media: { select: { storage_path: true } },
+        },
+      },
       approved_by_users: { select: { id: true, name: true } },
     },
   },
   handed_over_by_users: { select: { id: true, name: true } },
   received_by_users: { select: { id: true, name: true } },
+  handover_evidence: { include: { media_files: { select: mediaSelect } } },
+  return_evidence: { include: { media_files: { select: mediaSelect } } },
 } as const;
 
 const handoverQueueInclude = {
@@ -95,12 +140,18 @@ const handoverQueueInclude = {
           name: true,
           email: true,
           avatar_url: true,
+          avatar_media: { select: { storage_path: true } },
           department: { select: { id: true, name: true } },
         },
       },
     },
   },
-  assets: { include: { asset_models: { select: { id: true, name: true } } } },
+  assets: {
+    include: {
+      asset_models: { select: { id: true, name: true } },
+      image_media: { select: { storage_path: true } },
+    },
+  },
   approved_by_users: { select: { id: true, name: true } },
 } as const;
 
@@ -113,7 +164,7 @@ function mapHistory(history: any): BorrowHistoryDto {
       id: detail.assets.id,
       serialNumber: detail.assets.serial_number,
       qrCode: detail.assets.qr_code,
-      imageUrl: detail.assets.image_url,
+      imageUrl: mediaUrl(detail.assets.image_media) ?? detail.assets.image_url,
       status: detail.assets.status.toUpperCase(),
       model: { id: detail.assets.asset_models.id, name: detail.assets.asset_models.name },
     },
@@ -121,7 +172,7 @@ function mapHistory(history: any): BorrowHistoryDto {
       id: detail.borrow_requests.users.id,
       userCode: detail.borrow_requests.users.user_code,
       name: detail.borrow_requests.users.name,
-      avatarUrl: detail.borrow_requests.users.avatar_url,
+      avatarUrl: mediaUrl(detail.borrow_requests.users.avatar_media) ?? detail.borrow_requests.users.avatar_url,
     },
     expectedReturnDate: dateOnlyFormatter.format(detail.expected_return_date),
     handedOverBy: history.handed_over_by_users,
@@ -129,6 +180,8 @@ function mapHistory(history: any): BorrowHistoryDto {
     receivedBy: history.received_by_users,
     returnedAt: history.return_date,
     returnCondition: history.return_condition,
+    handoverEvidence: mapEvidence(history.handover_evidence),
+    returnEvidence: mapEvidence(history.return_evidence),
   };
 }
 
@@ -148,7 +201,7 @@ function mapHistoryDetail(history: any): BorrowHistoryDetailDto {
         userCode: request.users.user_code,
         name: request.users.name,
         email: request.users.email,
-        avatarUrl: request.users.avatar_url,
+        avatarUrl: mediaUrl(request.users.avatar_media) ?? request.users.avatar_url,
         department: request.users.department
           ? { id: request.users.department.id, name: request.users.department.name }
           : null,
@@ -158,7 +211,7 @@ function mapHistoryDetail(history: any): BorrowHistoryDetailDto {
       id: asset.id,
       serialNumber: asset.serial_number,
       qrCode: asset.qr_code,
-      imageUrl: asset.image_url,
+      imageUrl: mediaUrl(asset.image_media) ?? asset.image_url,
       status: asset.status.toUpperCase(),
       model: { id: asset.asset_models.id, name: asset.asset_models.name },
     },
@@ -174,6 +227,8 @@ function mapHistoryDetail(history: any): BorrowHistoryDetailDto {
     receivedBy: history.received_by_users,
     returnedAt: history.return_date,
     returnCondition: history.return_condition,
+    handoverEvidence: mapEvidence(history.handover_evidence),
+    returnEvidence: mapEvidence(history.return_evidence),
   };
 }
 
@@ -188,7 +243,7 @@ function mapHandoverQueueItem(detail: any): HandoverQueueItemDto {
       userCode: request.users.user_code,
       name: request.users.name,
       email: request.users.email,
-      avatarUrl: request.users.avatar_url,
+      avatarUrl: mediaUrl(request.users.avatar_media) ?? request.users.avatar_url,
       department: request.users.department
         ? { id: request.users.department.id, name: request.users.department.name }
         : null,
@@ -197,7 +252,7 @@ function mapHandoverQueueItem(detail: any): HandoverQueueItemDto {
       id: detail.assets.id,
       serialNumber: detail.assets.serial_number,
       qrCode: detail.assets.qr_code,
-      imageUrl: detail.assets.image_url,
+      imageUrl: mediaUrl(detail.assets.image_media) ?? detail.assets.image_url,
       status: detail.assets.status.toUpperCase(),
       model: { id: detail.assets.asset_models.id, name: detail.assets.asset_models.name },
     },
@@ -217,7 +272,7 @@ function mapRequest(request: any): BorrowRequestDto {
       userCode: request.users.user_code,
       name: request.users.name,
       email: request.users.email,
-      avatarUrl: request.users.avatar_url,
+      avatarUrl: mediaUrl(request.users.avatar_media) ?? request.users.avatar_url,
       department: request.users.department
         ? { id: request.users.department.id, name: request.users.department.name }
         : null,
@@ -231,7 +286,7 @@ function mapRequest(request: any): BorrowRequestDto {
         id: detail.assets.id,
         serialNumber: detail.assets.serial_number,
         qrCode: detail.assets.qr_code,
-        imageUrl: detail.assets.image_url,
+      imageUrl: mediaUrl(detail.assets.image_media) ?? detail.assets.image_url,
         status: detail.assets.status.toUpperCase(),
         model: { id: detail.assets.asset_models.id, name: detail.assets.asset_models.name },
       },

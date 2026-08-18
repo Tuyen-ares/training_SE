@@ -4,8 +4,10 @@ import type {
   IAuthRepository,
 } from '@/repositories/auth.repository.js';
 import type { PrismaTransaction } from '@/shared/prisma-transaction.js';
+import { buildPublicMediaUrl } from '@/shared/media-url.js';
 
 const userAuthorizationInclude = {
+  avatar_media: { select: { id: true, storage_path: true } },
   user_roles: {
     include: {
       roles: {
@@ -45,7 +47,8 @@ function toAuthUser(user: AuthUserQueryResult): AuthUserRecord {
     userCode: user.user_code,
     departmentId: user.department_id,
     name: user.name,
-    avatarUrl: user.avatar_url,
+    avatarUrl: buildPublicMediaUrl(user.avatar_media?.storage_path ?? '') ?? user.avatar_url,
+    avatarMediaId: user.avatar_media?.id ?? null,
     passwordHash: user.password,
     email: user.email,
     phone: user.phone,

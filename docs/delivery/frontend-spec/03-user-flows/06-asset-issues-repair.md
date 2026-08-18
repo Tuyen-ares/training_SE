@@ -176,3 +176,12 @@ Issue kết thúc và asset có state chính xác, không tự retire.
 - Issue responses expose `handledBy` as the confirming/handling user object (`id`, `name`); the UI displays the person's name and never formats a synthetic `User #<id>` label.
 - Start Repair uses the note field as `Diagnosis / Initial notes`; `Repair result` is shown only for Update/Complete/Fail, and is required when completing a repair.
 - The timeline only renders milestones supported by both persisted status and timestamps; it does not infer a lifecycle from inconsistent legacy dates.
+
+## Optional repair evidence
+
+Complete Repair may attach optional image evidence using purpose `AFTER_REPAIR`.
+Failed Repair does not show or submit the evidence control. The uploader uses
+presign → direct PUT with the required conditional headers → complete, shows a
+stable loading state without percentage progress, and sends `mediaIds` only
+after complete succeeds. Issue detail reads `repairEvidence[]` through
+CloudFront; legacy fields remain unchanged.

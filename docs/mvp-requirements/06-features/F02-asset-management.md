@@ -21,11 +21,18 @@ Nhân viên; User có permission quản lý asset.
 
 ## Business Rules áp dụng
 
-`BR-AST-01..10`, `BR-RBAC-01..03`.
+`BR-AST-01..10`, `BR-RBAC-01..03`, `BR-MED-02`, `BR-MED-04..08`.
 
 ## Functional Requirements liên quan
 
-`FR-F02-01..09`.
+`FR-F02-01..09`, `FR-MED-01..04`.
+
+## Media behavior
+
+Ảnh chính là optional. Luồng mới upload `ASSET_IMAGE` qua `/api/media/presign`
+và gửi `imageMediaId` khi create/update; `image_url` vẫn được đọc như fallback
+legacy. Asset chỉ có một ảnh chính tại một thời điểm; replacement dùng media/key
+mới và không overwrite object cũ.
 
 ## Dependencies
 
@@ -36,5 +43,7 @@ F01; departments; brands; asset types; asset models.
 Kiểm kê QR, location, asset history, lịch chuyển department, procurement.
 
 QR trong MVP chỉ là mã định danh bất biến được sinh khi tạo asset. Payload là
-`{VITE_PUBLIC_APP_URL}/qr/{qr_code}`; việc quét camera thuộc màn hình Asset QR
-Scan riêng và không tạo bản ghi kiểm kê hay thay đổi trạng thái asset.
+`{current frontend origin}/qr/{qr_code}`; frontend tự lấy origin của trang đang
+chạy nên local và production không cần switch thủ công. Việc quét camera thuộc
+màn hình Asset QR Scan riêng và không tạo bản ghi kiểm kê hay thay đổi trạng
+thái asset.

@@ -13,6 +13,7 @@ export interface CreateAssetData {
   asset_model_id: number;
   serial_number: string | null;
   image_url: string | null;
+  image_media_id?: number | null;
   department_id: number | null;
   qr_code: string;
   status: 'available';
@@ -34,7 +35,7 @@ export interface IAssetRepository {
     data: Omit<CreateAssetData, 'asset_code'>,
     transaction: AssetCreateTransaction,
   ): Promise<Asset>;
-  update(id: number, data: UpdateAssetDto): Promise<Asset>;
+  update(id: number, data: UpdateAssetDto, transaction?: AssetTransaction): Promise<Asset>;
   findBySerialNumber(serialNumber: string): Promise<Asset | null>;
   findByQrCode(qrCode: string): Promise<Asset | null>;
   assetModelExists(assetModelId: number): Promise<boolean>;

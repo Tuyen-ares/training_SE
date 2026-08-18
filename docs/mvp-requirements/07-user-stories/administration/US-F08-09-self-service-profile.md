@@ -9,7 +9,8 @@ so that my contact information and account security remain current.
 ## Acceptance Criteria
 
 - AC-US-F08-09-01: When opening Profile from the authenticated avatar dropdown, the system displays only the current user's profile.
-- AC-US-F08-09-02: The user may update their name, phone number, and optional avatar URL; email, department, user code, roles, and active status are read-only.
+- AC-US-F08-09-02: The user may update their name, phone number, and optional avatar through `avatarMediaId` (or legacy URL fallback); email, department, user code, roles, and active status are read-only.
+- AC-US-F08-09-08: Self-profile avatar claim and FK replacement are atomic and cannot target another user through the presign contract.
 - AC-US-F08-09-03: A duplicate phone number or invalid profile field is rejected without changing the profile.
 - AC-US-F08-09-04: Changing the password requires the current password and a valid new password; an incorrect current password is rejected.
 - AC-US-F08-09-05: After a successful password change, refresh-token sessions are revoked and the user must sign in again.

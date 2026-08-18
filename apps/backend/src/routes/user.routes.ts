@@ -9,8 +9,11 @@ import {
 import { PrismaRbacRepository } from '@/repositories/rbac.prisma.repository.js';
 import { PrismaRefreshTokenRepository } from '@/repositories/refresh-token.prisma.repository.js';
 import { PrismaUserRepository } from '@/repositories/user.prisma.repository.js';
+import { PrismaMediaRepository } from '@/repositories/media.prisma.repository.js';
 import { RbacService } from '@/services/rbac.service.js';
 import { SessionService } from '@/services/session.service.js';
+import { S3MediaStorage } from '@/services/media-storage.service.js';
+import { MediaService } from '@/services/media.service.js';
 import { UserService } from '@/services/user.service.js';
 import { createRestRouter } from '@/shared/rest-router.js';
 
@@ -19,11 +22,17 @@ const rbacRepository = new PrismaRbacRepository(prisma);
 const refreshTokenRepository = new PrismaRefreshTokenRepository(prisma);
 const rbacService = new RbacService(rbacRepository, prisma);
 const sessionService = new SessionService(refreshTokenRepository);
+const mediaService = new MediaService(
+  new PrismaMediaRepository(prisma),
+  new S3MediaStorage(),
+  prisma,
+);
 const service = new UserService(
   userRepository,
   rbacService,
   sessionService,
   prisma,
+  mediaService,
 );
 const controller = new UserController(service);
 

@@ -18,6 +18,7 @@ function toAuthenticatedUserDto(user: AuthUserRecord): AuthenticatedUserDto {
     userCode: user.userCode,
     name: user.name,
     avatarUrl: user.avatarUrl,
+    avatarMediaId: user.avatarMediaId,
     email: user.email,
     phone: user.phone,
     departmentId: user.departmentId,

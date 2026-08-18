@@ -113,3 +113,16 @@
 - **BR-USR-04:** `user.update` chỉ sửa thông tin; bật/tắt `is_active` cho cả hai chiều cần `user.manage_status`.
 - **BR-USR-05:** Self-service profile chỉ được sửa `name`, `phone` và `avatar_url`; email, department, user code, roles và `is_active` là read-only với user hiện tại.
 - **BR-USR-06:** Đổi mật khẩu self-service phải xác minh mật khẩu hiện tại, lưu hash mới và thu hồi toàn bộ refresh-token session; không trả credential hoặc token trong response.
+
+## Media và evidence
+
+- **BR-MED-01:** Evidence là optional. Handover và return có thể nhận ảnh `HANDOVER`/`RETURN`; chỉ Complete Repair thành công mới có thể nhận ảnh `AFTER_REPAIR`. Repair failed không nhận evidence trong MVP.
+- **BR-MED-02:** Asset có tối đa một ảnh chính (`ASSET_IMAGE`) và user có tối đa một avatar (`USER_AVATAR`). `assets.image_url` và `users.avatar_url` vẫn được giữ làm fallback legacy.
+- **BR-MED-03:** S3 bucket private, Block Public Access bật và Object Ownership là Bucket owner enforced. CloudFront đọc public `GET`/`HEAD` qua OAC; không dùng presigned GET.
+- **BR-MED-04:** Upload bắt đầu ở `PENDING` và chỉ chuyển `READY` sau `HeadObject` xác nhận chính xác `ContentLength`, `ContentType` và `CacheControl`.
+- **BR-MED-05:** `linked_at` là one-time claim marker. Claim media phải kiểm tra uploader, `READY`, `linked_at IS NULL` và expected purpose trong cùng transaction với business mutation và typed evidence/FK.
+- **BR-MED-06:** Không có polymorphic target. Handover, return và repair evidence dùng typed relation/FK riêng; một media không được xuất hiện ở hai typed relation khác nhau.
+- **BR-MED-07:** Object key là UUID immutable ở application và S3 conditional-write layer. Presigned PUT ký `If-None-Match: *`; object key đã tồn tại không được overwrite.
+- **BR-MED-08:** `Complete` không kiểm tra cross-purpose. Business linking phải reject purpose sai. Không có `targetId`, `targetType`, `uploadId`, `originalName` hoặc AWS credential trong contract.
+- **BR-MED-09:** Cleanup phân biệt stale `PENDING`, never-linked `READY` và detached replacement `READY` đã từng claim nhưng không còn reference. Cleanup là manual, lock/recheck relation trước khi xóa và không dùng `ListBucket`.
+- **BR-MED-10:** Metadata mismatch sau `HeadObject` được best-effort `DeleteObject` nhưng giữ row `PENDING`; lỗi verification/access/404 không tự xóa object hoặc row và cho phép retry `Complete` cùng `mediaId`.

@@ -179,3 +179,14 @@ User có dữ liệu lịch sử thực tế từ borrow histories, không suy r
 ## Related Screens
 
 `SCR-F05-02`, `SCR-F02-02`, `SCR-F03-03`.
+
+## Optional image evidence
+
+Handover and both return actions expose a shared optional image uploader. The
+client validates image MIME/size, calls `POST /api/media/presign`, sends a
+native `PUT` with the exact `Content-Type`, immutable `Cache-Control` and
+`If-None-Match: *` headers, then calls `complete` and keeps the returned
+`mediaId`. The business request sends `mediaIds`; no percentage progress is
+shown. PUT failure/412 uses a new presign/key, while a transient complete
+failure retries complete with the same media ID. History detail renders saved
+evidence through the canonical CloudFront URL.

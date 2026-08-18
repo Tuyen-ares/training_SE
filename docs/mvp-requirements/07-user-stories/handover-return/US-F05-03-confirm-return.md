@@ -14,6 +14,7 @@ so that **the borrowing period ends and the equipment becomes available again**.
 - AC-US-F05-03-04: Given an error occurs in any update, then the history and asset are not saved in a partial state.
 - AC-US-F05-03-05: When every approved/handed-over item in the request has been returned, then the header becomes `COMPLETED`.
 - AC-US-F05-03-06: Given the recipient confirms the condition as `DAMAGED`, when returning the asset, then the history records `return_date` and `return_condition = DAMAGED`, an issue with status `CONFIRMED` is created, and the asset changes from `BORROWED → DAMAGED`.
+- AC-US-F05-03-07: The user may attach optional image evidence via `mediaIds` for normal or damaged return; evidence is claimed and stored atomically with the return transaction.
 
 ## Applicable Business Rules
 

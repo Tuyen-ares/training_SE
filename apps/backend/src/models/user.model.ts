@@ -15,6 +15,7 @@ export interface UserResponseDto {
   department: UserDepartmentDto;
   name: string;
   avatarUrl: string | null;
+  avatarMediaId?: number | null;
   email: string;
   phone: string;
   isActive: boolean;
@@ -25,6 +26,7 @@ export interface CreateUserInputDto {
   departmentId: number;
   name: string;
   avatarUrl?: string | null;
+  avatarMediaId?: number | null;
   email: string;
   phone: string;
   password: string;
@@ -35,6 +37,7 @@ export interface UpdateUserInputDto {
   departmentId?: number;
   name?: string;
   avatarUrl?: string | null;
+  avatarMediaId?: number | null;
   email?: string;
   phone?: string;
   password?: string;
@@ -44,6 +47,7 @@ export interface UpdateUserInputDto {
 export interface UpdateSelfProfileInputDto {
   name?: string;
   avatarUrl?: string | null;
+  avatarMediaId?: number | null;
   phone?: string;
 }
 
@@ -56,6 +60,7 @@ export interface CreateUserData {
   departmentId: number;
   name: string;
   avatarUrl?: string | null;
+  avatarMediaId?: number | null;
   email: string;
   phone: string;
   passwordHash: string;
@@ -65,6 +70,7 @@ export interface UpdateUserData {
   departmentId?: number;
   name?: string;
   avatarUrl?: string | null;
+  avatarMediaId?: number | null;
   email?: string;
   phone?: string;
   passwordHash?: string;

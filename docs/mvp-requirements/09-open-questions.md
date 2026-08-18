@@ -15,10 +15,13 @@ Các quyết định dưới đây đã được chốt và phải được ph�
 | OQ-07 | Không hỗ trợ xóa brand/type/model đang được tham chiếu; MVP chỉ hỗ trợ tạo/xem/cập nhật danh mục ở mức cần thiết. | F02, BR-AST-10 |
 | OQ-08 | Đã chốt bổ sung self-service profile: user đăng nhập được xem/cập nhật name, phone, avatar URL và tự đổi mật khẩu qua API riêng; các field quản trị vẫn do Admin quản lý. | F08 |
 | OQ-09 | Chỉ user có permission quản lý asset phù hợp được chuyển RETIRED; không chuyển trực tiếp từ RESERVED hoặc BORROWED; cho phép từ AVAILABLE, DAMAGED, IN_REPAIR khi có quyết định không còn sử dụng. | F02, BR-ISS-06 |
+| OQ-10 | Media evidence dùng S3 private + CloudFront OAC; upload direct bằng presigned PUT, đọc bằng CloudFront, không presigned GET; `PENDING → READY` sau HeadObject và claim một lần bằng `linked_at`. | F02, F05, F06, F08 |
+| OQ-11 | Handover/return/Complete Repair thành công nhận evidence ảnh tùy chọn; repair failed không nhận evidence; asset image/avatar tối đa một ảnh và vẫn giữ URL legacy fallback. | F02, F05, F06, F08 |
+| OQ-12 | Cleanup thủ công phân biệt stale PENDING, never-linked READY và detached replacement; lock/recheck typed FK trước khi DeleteObject và xóa row, không dùng ListBucket. | Media Core |
 
 ## Open Questions còn lại
 
-Hiện chưa còn câu hỏi nghiệp vụ bắt buộc để viết bộ Requirement MVP. Nếu phát sinh quyết định mới, bổ sung ID tiếp theo và cập nhật traceability cùng thay đổi.
+Hiện chưa còn câu hỏi nghiệp vụ bắt buộc để viết bộ Requirement MVP. Media Core không còn decision WHAT/WHY cần suy diễn; implementation phải theo media contract và matrix kiểm chứng đã ghi.
 
 ## Discrepancies với tài liệu repository cũ
 

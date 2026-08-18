@@ -20,7 +20,10 @@ export const rejectBorrowDetail = (api, detailId, rejectionReason) => api(`/borr
   method: 'POST',
   body: { rejectionReason },
 })
-export const handoverBorrowDetail = (api, detailId) => api(`/borrow-request-details/${detailId}/handover`, { method: 'POST' })
+export const handoverBorrowDetail = (api, detailId, mediaIds = []) => api(`/borrow-request-details/${detailId}/handover`, {
+  method: 'POST',
+  body: mediaIds.length ? { mediaIds } : {},
+})
 export const listHandoverQueue = (api, params) => api(`/borrow-request-details/handover-queue${queryString(params)}`)
 
 export const listCurrentBorrowing = (api, params) => api(`/borrow-histories/current${queryString(params)}`)
@@ -28,8 +31,11 @@ export const listMyBorrowHistory = (api, params) => api(`/borrow-histories/me${q
 export const listAllBorrowHistory = (api, params) => api(`/borrow-histories${queryString(params)}`)
 export const listReturnQueue = (api, params) => api(`/borrow-histories/return-queue${queryString(params)}`)
 export const getBorrowHistoryDetail = (api, historyId) => api(`/borrow-histories/${historyId}`)
-export const receiveNormalReturn = (api, historyId) => api(`/borrow-histories/${historyId}/return`, { method: 'POST' })
-export const receiveDamagedReturn = (api, historyId, description) => api(`/borrow-histories/${historyId}/return-damaged`, {
+export const receiveNormalReturn = (api, historyId, mediaIds = []) => api(`/borrow-histories/${historyId}/return`, {
   method: 'POST',
-  body: { description },
+  body: mediaIds.length ? { mediaIds } : {},
+})
+export const receiveDamagedReturn = (api, historyId, description, mediaIds = []) => api(`/borrow-histories/${historyId}/return-damaged`, {
+  method: 'POST',
+  body: { description, ...(mediaIds.length ? { mediaIds } : {}) },
 })

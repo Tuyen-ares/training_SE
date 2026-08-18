@@ -18,11 +18,18 @@ Nhân viên; User có permission bàn giao/nhận trả/xem lịch sử.
 
 ## Business Rules áp dụng
 
-`BR-HAN-01..06`, `BR-RET-01..04`, `BR-BOR-18`.
+`BR-HAN-01..06`, `BR-RET-01..04`, `BR-BOR-18`, `BR-MED-01`, `BR-MED-04..06`.
 
 ## Functional Requirements liên quan
 
-`FR-F05-01..05`.
+`FR-F05-01..05`, `FR-MED-01..04`.
+
+## Evidence behavior
+
+Handover và normal/damaged return nhận `mediaIds` ảnh optional. Evidence được
+claim một lần và insert vào typed relation trong cùng transaction với history,
+return condition và asset state. History detail đọc lại `handoverEvidence[]` và
+`returnEvidence[]`; request không có media giữ nguyên behavior cũ.
 
 ## Dependencies
 

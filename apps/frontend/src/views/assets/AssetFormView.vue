@@ -4,6 +4,7 @@ import { message } from 'ant-design-vue'
 import { useRoute, useRouter } from 'vue-router'
 
 import StatusTag from '../../components/common/StatusTag.vue'
+import MediaUploader from '../../components/common/MediaUploader.vue'
 import WorkspaceLayout from '../../components/layout/WorkspaceLayout.vue'
 import { createAsset, getAsset, listAssetLookups, updateAsset } from '../../services/assets/asset.service'
 import { useAuthStore } from '../../stores/auth'
@@ -18,7 +19,7 @@ const forbidden = ref(false)
 const notFound = ref(false)
 const errorMessage = ref('')
 const lookups = ref({ models: [], departments: [] })
-const form = reactive({ assetCode: '', assetModelId: undefined, serialNumber: '', imageUrl: '', departmentId: undefined })
+const form = reactive({ assetCode: '', assetModelId: undefined, serialNumber: '', imageUrl: '', imageMediaId: null, departmentId: undefined })
 const isEdit = computed(() => route.name === 'asset-edit')
 const pageTitle = computed(() => isEdit.value ? 'Edit Asset' : 'Add New Asset')
 
@@ -51,6 +52,7 @@ async function load() {
         assetModelId: asset.model.id,
         serialNumber: asset.serialNumber || '',
         imageUrl: asset.imageUrl || '',
+        imageMediaId: asset.imageMediaId || null,
         departmentId: asset.department?.id,
       })
     }
@@ -68,7 +70,9 @@ async function submit() {
     const payload = {
       assetModelId: form.assetModelId,
       serialNumber: form.serialNumber.trim() || null,
-      imageUrl: form.imageUrl.trim() || null,
+      ...(form.imageMediaId
+        ? { imageMediaId: form.imageMediaId }
+        : { imageUrl: form.imageUrl.trim() || null }),
       departmentId: form.departmentId ?? null,
     }
     const saved = isEdit.value
@@ -109,8 +113,14 @@ onMounted(load)
             <a-input v-model:value="form.serialNumber" allow-clear :maxlength="100" placeholder="Optional unique serial number" />
           </a-form-item>
           <a-form-item name="imageUrl" label="Image URL">
-            <a-input v-model:value="form.imageUrl" allow-clear :maxlength="500" placeholder="https://example.com/asset.png" />
+            <a-input v-model:value="form.imageUrl" allow-clear :maxlength="500" placeholder="https://example.com/asset.png" @input="form.imageMediaId = null" />
           </a-form-item>
+          <MediaUploader
+            purpose="ASSET_IMAGE"
+            label="Upload primary asset image"
+            :model-value="form.imageMediaId"
+            @update:model-value="form.imageMediaId = $event; form.imageUrl = ''"
+          />
           <a-form-item name="departmentId" label="Managing department">
             <a-select v-model:value="form.departmentId" allow-clear show-search option-filter-prop="label" placeholder="Unassigned" :options="lookups.departments.map(item => ({ value: item.id, label: item.name }))" />
           </a-form-item>

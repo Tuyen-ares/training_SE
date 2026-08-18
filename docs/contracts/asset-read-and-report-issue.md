@@ -103,3 +103,11 @@ The effective permission assignment determines who can report issues. Runtime
 authorization checks permission codes only; there is no role inheritance or
 role-name check. Seed/migration data may assign the capability to existing
 roles, but the business logic does not depend on those role names.
+
+## Optional asset image
+
+Asset create/update may send `imageMediaId` instead of the legacy `imageUrl`.
+The media must be READY, owned by the actor and purpose `ASSET_IMAGE`; claim and
+the `assets.image_media_id` FK update commit with the asset mutation. Only one
+primary image is allowed. Reads prefer the CloudFront URL resolved from the FK
+and fall back to `imageUrl` for legacy rows.

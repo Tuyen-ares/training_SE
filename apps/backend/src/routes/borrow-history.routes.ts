@@ -7,24 +7,33 @@ import { PrismaAssetRepository } from '@/repositories/asset.prisma.repository.js
 import { PrismaAssetIssueRepository } from '@/repositories/asset-issue.prisma.repository.js';
 import { PrismaVendorRepository } from '@/repositories/vendor.prisma.repository.js';
 import { PrismaBorrowRequestRepository } from '@/repositories/borrow-request.prisma.repository.js';
+import { PrismaMediaRepository } from '@/repositories/media.prisma.repository.js';
 import { AssetService } from '@/services/assets.service.js';
 import { AssetIssueService } from '@/services/asset-issue.service.js';
 import { BorrowWorkflowService } from '@/services/borrow-workflow.service.js';
 import { PrismaNotificationRepository } from '@/repositories/notification.prisma.repository.js';
 import { NotificationService } from '@/services/notification.service.js';
 import { VendorService } from '@/services/vendor.service.js';
+import { S3MediaStorage } from '@/services/media-storage.service.js';
+import { MediaService } from '@/services/media.service.js';
 
 const router = Router();
 const borrowRepository = new PrismaBorrowRequestRepository(prisma);
 const assetService = new AssetService(new PrismaAssetRepository(prisma), prisma);
 const notificationRepository = new PrismaNotificationRepository(prisma);
 const notificationService = new NotificationService(notificationRepository);
+const mediaService = new MediaService(
+  new PrismaMediaRepository(prisma),
+  new S3MediaStorage(),
+  prisma,
+);
 const assetIssueService = new AssetIssueService(
   assetService,
   new PrismaAssetIssueRepository(prisma),
   new VendorService(new PrismaVendorRepository(prisma), prisma),
   notificationService,
   prisma,
+  mediaService,
 );
 const controller = new BorrowWorkflowController(
   new BorrowWorkflowService(
@@ -33,6 +42,7 @@ const controller = new BorrowWorkflowController(
     assetIssueService,
     notificationService,
     prisma,
+    mediaService,
   ),
 );
 

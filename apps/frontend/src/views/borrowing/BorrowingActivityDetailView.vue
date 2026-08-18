@@ -180,6 +180,43 @@ onMounted(load);
               <div v-if="!isReturned" class="active-note">
                 <ClockCircleOutlined /> This asset is currently borrowed.
               </div>
+              <div v-if="history.handoverEvidence?.length || history.returnEvidence?.length" class="evidence-section">
+                <span class="field-label">Image evidence</span>
+                <div v-if="history.handoverEvidence?.length" class="evidence-group">
+                  <strong>Handover</strong>
+                  <a-image-preview-group>
+                    <div class="evidence-gallery">
+                      <a-image
+                        v-for="item in history.handoverEvidence"
+                        :key="`handover-${item.mediaId}`"
+                        :src="item.publicUrl"
+                        :alt="`Handover evidence ${item.mediaId}`"
+                        :fallback="DEFAULT_ASSET_IMAGE"
+                        :width="96"
+                        :height="72"
+                        :preview="true"
+                      />
+                    </div>
+                  </a-image-preview-group>
+                </div>
+                <div v-if="history.returnEvidence?.length" class="evidence-group">
+                  <strong>Return</strong>
+                  <a-image-preview-group>
+                    <div class="evidence-gallery">
+                      <a-image
+                        v-for="item in history.returnEvidence"
+                        :key="`return-${item.mediaId}`"
+                        :src="item.publicUrl"
+                        :alt="`Return evidence ${item.mediaId}`"
+                        :fallback="DEFAULT_ASSET_IMAGE"
+                        :width="96"
+                        :height="72"
+                        :preview="true"
+                      />
+                    </div>
+                  </a-image-preview-group>
+                </div>
+              </div>
             </section>
           </aside>
         </div>
@@ -242,6 +279,11 @@ onMounted(load);
 .rejection-note { color: var(--bigin-color-error-text); background: var(--bigin-surface-error); border: 1px solid var(--bigin-border-error); border-radius: 4px; padding: 10px; margin: 16px 0 0; }
 .active-note { color: var(--bigin-text-secondary); background: var(--bigin-surface-subtle); border: 1px solid var(--bigin-border-secondary); border-radius: 4px; padding: 10px; margin-top: 16px; }
 .active-note :deep(svg) { color: var(--bigin-color-warning); margin-right: 6px; }
+.evidence-section { border-top: 1px solid var(--bigin-border-secondary); display: grid; gap: 9px; margin-top: 16px; padding-top: 16px; }
+.evidence-group { display: grid; gap: 7px; }
+.evidence-gallery { display: flex; flex-wrap: wrap; gap: 10px; }
+.evidence-gallery :deep(.ant-image) { background: var(--bigin-surface-subtle); border: 1px solid var(--bigin-border-secondary); border-radius: 6px; cursor: pointer; overflow: hidden; }
+.evidence-gallery :deep(.ant-image-img) { object-fit: cover; }
 @media (max-width: 900px) {
   .detail-grid { grid-template-columns: 1fr; }
 }

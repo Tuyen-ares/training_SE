@@ -13,6 +13,7 @@ so that **I can manage and reconcile assets**.
 - AC-US-F05-05-03: Given the user lacks permission to view all history, then the user cannot access other users' history.
 - AC-US-F05-05-04: The displayed data reflects recorded history and does not infer a handover from approval status alone.
 - AC-US-F05-05-05: When opening a history detail, a user with permission to view all history sees the stored borrowing reason, approval metadata, handover metadata, and return metadata.
+- AC-US-F05-05-06: Where evidence exists, permitted history detail reads the stored typed evidence and does not infer evidence from legacy URLs.
 
 ## Applicable Business Rules
 

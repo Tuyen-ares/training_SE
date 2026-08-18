@@ -10,6 +10,9 @@ import { AssetIssueService } from '@/services/asset-issue.service.js';
 import { AssetService } from '@/services/assets.service.js';
 import { NotificationService } from '@/services/notification.service.js';
 import { VendorService } from '@/services/vendor.service.js';
+import { MediaService } from '@/services/media.service.js';
+import { S3MediaStorage } from '@/services/media-storage.service.js';
+import { PrismaMediaRepository } from '@/repositories/media.prisma.repository.js';
 import { ApiResponse } from '@/shared/api-response.js';
 import { createRestRouter } from '@/shared/rest-router.js';
 import type { RequestHandler } from 'express';
@@ -19,7 +22,8 @@ const issueRepository = new PrismaAssetIssueRepository(prisma);
 const vendorRepository = new PrismaVendorRepository(prisma);
 const notificationRepository = new PrismaNotificationRepository(prisma);
 const notificationService = new NotificationService(notificationRepository);
-const service = new AssetService(repository, prisma);
+const mediaService = new MediaService(new PrismaMediaRepository(prisma), new S3MediaStorage(), prisma);
+const service = new AssetService(repository, prisma, mediaService);
 const issueService = new AssetIssueService(
   service,
   issueRepository,

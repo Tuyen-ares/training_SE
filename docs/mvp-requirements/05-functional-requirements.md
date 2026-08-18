@@ -21,8 +21,8 @@
 | FR-F02-01 | Hệ thống phải hiển thị danh sách asset cho user có quyền xem, gồm asset code bất biến và hỗ trợ tìm theo mã. |
 | FR-F02-02 | Hệ thống phải hiển thị asset code, chi tiết, danh mục, department và trạng thái hiện tại của asset. |
 | FR-F02-03 | Hệ thống phải cung cấp danh sách asset `AVAILABLE` đủ điều kiện tạo yêu cầu mượn. |
-| FR-F02-04 | Hệ thống phải cho phép user có quyền tạo asset với model, dữ liệu nhận diện hợp lệ và image_url tùy chọn; server cấp asset code bất biến theo asset type. |
-| FR-F02-05 | Hệ thống phải cho phép user có quyền cập nhật thông tin, image_url và department quản lý asset. |
+| FR-F02-04 | Hệ thống phải cho phép user có quyền tạo asset với model, dữ liệu nhận diện hợp lệ và ảnh chính tùy chọn qua `imageMediaId`; `image_url` vẫn được hỗ trợ làm fallback legacy; server cấp asset code bất biến theo asset type. |
+| FR-F02-05 | Hệ thống phải cho phép user có quyền cập nhật thông tin, ảnh chính qua `imageMediaId` hoặc `image_url` legacy, và department quản lý asset. |
 | FR-F02-06 | Hệ thống phải hỗ trợ xem, tạo và cập nhật brand/type/model ở mức MVP; type có prefix asset-code nội bộ duy nhất do server sinh. |
 | FR-F02-07 | Hệ thống phải cho phép lọc asset theo thông tin và trạng thái được hỗ trợ. |
 | FR-F02-08 | Hệ thống phải hỗ trợ ngừng sử dụng asset khi user có permission phù hợp và asset không ở `RESERVED` hoặc `BORROWED`. |
@@ -53,11 +53,11 @@
 
 | ID | Yêu cầu chức năng |
 |---|---|
-| FR-F05-01 | Hệ thống phải cho phép user có quyền xác nhận bàn giao một detail đã duyệt và được giữ chỗ. |
+| FR-F05-01 | Hệ thống phải cho phép user có quyền xác nhận bàn giao một detail đã duyệt và được giữ chỗ, kèm danh sách `mediaIds` evidence ảnh tùy chọn. |
 | FR-F05-02 | Hệ thống phải tạo lịch sử bàn giao duy nhất cho detail và ghi người/thời điểm bàn giao. |
 | FR-F05-03 | Hệ thống phải cho phép nhân viên xem các asset mình đang mượn. |
-| FR-F05-04 | Hệ thống phải cho phép user có quyền xác nhận hoàn trả bình thường và ghi tình trạng trả. |
-| FR-F05-05 | Hệ thống phải cho phép xem lịch sử mượn của bản thân hoặc toàn bộ theo permission và mở chi tiết một history để xem request reason, approval, handover và return metadata đã được ghi nhận. |
+| FR-F05-04 | Hệ thống phải cho phép user có quyền xác nhận hoàn trả bình thường hoặc hỏng, kèm danh sách `mediaIds` evidence ảnh tùy chọn; trả hỏng tạo issue như BR-ISS-08. |
+| FR-F05-05 | Hệ thống phải cho phép xem lịch sử mượn của bản thân hoặc toàn bộ theo permission và mở chi tiết một history để xem request reason, approval, handover/return metadata và evidence đã được ghi nhận. |
 
 ## F06 – Asset Issues & Repair
 
@@ -69,7 +69,7 @@
 | FR-F06-04 | Hệ thống phải cho phép từ chối issue `REPORTED`. |
 | FR-F06-05 | Hệ thống phải cho phép bắt đầu sửa issue đã xác nhận. |
 | FR-F06-06 | Hệ thống phải cho phép cập nhật vendor sửa chữa, thời gian, chi phí, kết quả và ghi chú phù hợp giai đoạn xử lý; set/clear vendor cần cả repair permission và `vendor.view`. |
-| FR-F06-07 | Hệ thống phải cho phép hoàn tất sửa thành công và đồng bộ asset về `AVAILABLE`. |
+| FR-F06-07 | Hệ thống phải cho phép hoàn tất sửa thành công, nhận evidence `mediaIds` tùy chọn và đồng bộ asset về `AVAILABLE`. |
 | FR-F06-08 | Hệ thống phải ghi nhận sửa thất bại ở issue `FAILED` và chuyển asset `IN_REPAIR → DAMAGED`. |
 
 ## Shared Vendor Master
@@ -98,8 +98,8 @@
 | ID | Yêu cầu chức năng |
 |---|---|
 | FR-F08-01 | Hệ thống phải cho phép Admin có quyền xem và tìm danh sách user, bao gồm mã user. |
-| FR-F08-02 | Hệ thống phải cho phép Admin có quyền tạo user với department hợp lệ và avatar_url tùy chọn; hệ thống tự cấp mã user duy nhất theo format `BI[YY][Sequence]`. |
-| FR-F08-03 | Hệ thống phải cho phép Admin có quyền cập nhật thông tin và avatar_url của user, nhưng không được sửa mã user. |
+| FR-F08-02 | Hệ thống phải cho phép Admin có quyền tạo user với department hợp lệ và avatar tùy chọn qua `avatarMediaId`; `avatar_url` vẫn là fallback legacy; hệ thống tự cấp mã user duy nhất theo format `BI[YY][Sequence]`. |
+| FR-F08-03 | Hệ thống phải cho phép Admin có quyền cập nhật thông tin và avatar qua `avatarMediaId` hoặc `avatar_url` legacy, nhưng không được sửa mã user. |
 | FR-F08-04 | Hệ thống phải cho phép Admin có quyền kích hoạt hoặc vô hiệu hóa user mà không thay đổi mã user. |
 | FR-F08-05 | Hệ thống phải hiển thị các role có sẵn phục vụ việc phân vai trò. |
 | FR-F08-06 | Hệ thống phải cho phép Admin có quyền gán hoặc gỡ role có sẵn của user. |
@@ -114,3 +114,13 @@
 | FR-F08-15 | Hệ thống phải cho phép user có `department.manage_status` bật/tắt department; department inactive vẫn giữ lịch sử nhưng không dùng cho assignment mới. |
 | FR-F08-16 | Hệ thống phải cho phép user đã đăng nhập xem profile của chính mình và cập nhật name, phone, avatar_url; email, department, user code, roles và status chỉ đọc. |
 | FR-F08-17 | Hệ thống phải cho phép user đã đăng nhập đổi mật khẩu sau khi xác minh mật khẩu hiện tại; sau khi thành công phải thu hồi refresh-token sessions. |
+
+## Media Core
+
+| ID | Yêu cầu chức năng |
+|---|---|
+| FR-MED-01 | Hệ thống phải cung cấp presigned PUT theo purpose, MIME whitelist và size limit; response bind `Content-Type`, immutable `Cache-Control` và `If-None-Match: *`. |
+| FR-MED-02 | Hệ thống phải xác nhận object bằng `HeadObject` trước khi chuyển `PENDING` sang `READY`; metadata mismatch, storage error, 403 và 404 phải xử lý theo contract media. |
+| FR-MED-03 | Hệ thống phải cho phép uploader complete retry cùng `mediaId`, cancel media chưa linked qua API backend và không expose AWS credential/DeleteObject cho frontend. |
+| FR-MED-04 | Hệ thống phải trả canonical CloudFront URL sau complete và ưu tiên media FK hơn legacy URL ở read model. |
+| FR-MED-05 | Hệ thống phải có manual `media:cleanup --dry-run/--execute` và read-only `media:audit`; Phase 1 không chạy worker hoặc Render Cron. |

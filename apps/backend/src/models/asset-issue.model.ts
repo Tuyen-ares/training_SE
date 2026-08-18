@@ -1,3 +1,5 @@
+import type { MediaEvidenceDto } from '@/models/media.model.js';
+
 export interface AssetIssue {
   id: number;
   assetId: number;
@@ -20,6 +22,7 @@ export interface AssetIssue {
     modelName: string;
   } | null;
   reporter: { id: number; name: string } | null;
+  repairEvidence: MediaEvidenceDto[];
 }
 
 export interface CreateAssetIssueReport {

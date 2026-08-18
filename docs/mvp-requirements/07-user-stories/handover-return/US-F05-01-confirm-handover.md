@@ -13,6 +13,7 @@ so that **the borrower is recorded as having received the equipment**.
 - AC-US-F05-01-03: Given the detail already has a borrow history, when confirming it again, then the system rejects creating a second history record.
 - AC-US-F05-01-04: Given the asset is no longer `RESERVED` for the detail, then no history or status is partially recorded.
 - AC-US-F05-01-05: The borrower is identified from the request and does not need to be entered again.
+- AC-US-F05-01-06: The user may attach optional image evidence via `mediaIds`; each media must be READY, purpose HANDOVER, owned by the uploader and claimed in the same transaction as the handover history.
 
 ## Applicable Business Rules
 

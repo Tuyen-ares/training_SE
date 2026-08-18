@@ -11,7 +11,7 @@ import type {
   UpdateAssetDto,
 } from '@/models/asset.model.js';
 import type { Request, Response } from 'express';
-import { AssetIssueError, ConflictError } from '@/shared/app-error.js';
+import { AssetIssueError, ConflictError, MediaError } from '@/shared/app-error.js';
 import { ApiResponse } from '@/shared/api-response.js';
 import { parseRequestBody } from '@/shared/request-validation.js';
 
@@ -59,13 +59,18 @@ class AssetController extends BaseController<Asset, CreateAssetDto, UpdateAssetD
       assetModelId: z.number().int().positive(),
       serialNumber: z.string().trim().min(1).max(100).nullable().optional(),
       imageUrl: z.string().url().max(500).nullable().optional(),
+      imageMediaId: z.number().int().positive().nullable().optional(),
       departmentId: z.number().int().positive().nullable().optional(),
+    })
+    .refine((data) => !(data.imageMediaId !== undefined && data.imageUrl !== undefined), {
+      message: 'Use imageMediaId or imageUrl, not both',
     })
     .transform((data) => ({
       asset_model_id: data.assetModelId,
-      serial_number: data.serialNumber,
-      image_url: data.imageUrl,
-      department_id: data.departmentId,
+      ...(data.serialNumber !== undefined ? { serial_number: data.serialNumber } : {}),
+      ...(data.imageUrl !== undefined ? { image_url: data.imageUrl } : {}),
+      ...(data.imageMediaId !== undefined ? { image_media_id: data.imageMediaId } : {}),
+      ...(data.departmentId !== undefined ? { department_id: data.departmentId } : {}),
     }));
 
   protected readonly updateSchema: z.ZodType<UpdateAssetDto> = z
@@ -73,16 +78,21 @@ class AssetController extends BaseController<Asset, CreateAssetDto, UpdateAssetD
       assetModelId: z.number().int().positive().optional(),
       serialNumber: z.string().trim().min(1).max(100).nullable().optional(),
       imageUrl: z.string().url().max(500).nullable().optional(),
+      imageMediaId: z.number().int().positive().nullable().optional(),
       departmentId: z.number().int().positive().nullable().optional(),
+    })
+    .refine((data) => !(data.imageMediaId !== undefined && data.imageUrl !== undefined), {
+      message: 'Use imageMediaId or imageUrl, not both',
     })
     .refine((data) => Object.keys(data).length > 0, {
       message: 'At least one asset field is required',
     })
     .transform((data) => ({
-      asset_model_id: data.assetModelId,
-      serial_number: data.serialNumber,
-      image_url: data.imageUrl,
-      department_id: data.departmentId,
+      ...(data.assetModelId !== undefined ? { asset_model_id: data.assetModelId } : {}),
+      ...(data.serialNumber !== undefined ? { serial_number: data.serialNumber } : {}),
+      ...(data.imageUrl !== undefined ? { image_url: data.imageUrl } : {}),
+      ...(data.imageMediaId !== undefined ? { image_media_id: data.imageMediaId } : {}),
+      ...(data.departmentId !== undefined ? { department_id: data.departmentId } : {}),
     }));
 
   protected readonly resourceName = 'Asset';
@@ -94,6 +104,50 @@ class AssetController extends BaseController<Asset, CreateAssetDto, UpdateAssetD
     super(assetService);
   }
 
+  create = async (req: Request, res: Response): Promise<void> => {
+    if (!req.auth) return ApiResponse.unauthorized(res);
+    const parsed = parseRequestBody(this.createSchema, req.body);
+    if (parsed.success === false) return ApiResponse.badRequest(res, parsed.errors);
+    try {
+      const result = await this.assetService.create(parsed.data, req.auth.sub);
+      if (result.error || !result.data) return ApiResponse.conflict(res, result.error);
+      return ApiResponse.created(res, this.serialize(result.data));
+    } catch (error) {
+      if (error instanceof MediaError) {
+        if (error.code === 'MEDIA_FORBIDDEN') return ApiResponse.forbidden(res, 'You do not have access to this media');
+        if (error.code === 'MEDIA_CONFIG_MISSING' || error.code === 'MEDIA_STORAGE_ACCESS' || error.code === 'MEDIA_STORAGE_UNAVAILABLE') {
+          return ApiResponse.serviceUnavailable(res, 'Media storage is currently unavailable');
+        }
+        return ApiResponse.badRequest(res, { imageMediaId: [error.message] });
+      }
+      if (error instanceof ConflictError) return ApiResponse.conflict(res, error.message);
+      return ApiResponse.internalError(res);
+    }
+  };
+
+  update = async (req: Request, res: Response): Promise<void> => {
+    if (!req.auth) return ApiResponse.unauthorized(res);
+    const id = Number(req.params.id);
+    if (!Number.isInteger(id) || id <= 0) return ApiResponse.badRequest(res, { id: ['Asset id must be a positive integer'] });
+    const parsed = parseRequestBody(this.updateSchema, req.body);
+    if (parsed.success === false) return ApiResponse.badRequest(res, parsed.errors);
+    try {
+      const asset = await this.assetService.update(id, parsed.data, req.auth.sub);
+      if (!asset) return ApiResponse.notFound(res, 'Asset not found');
+      return ApiResponse.ok(res, this.serialize(asset));
+    } catch (error) {
+      if (error instanceof MediaError) {
+        if (error.code === 'MEDIA_FORBIDDEN') return ApiResponse.forbidden(res, 'You do not have access to this media');
+        if (error.code === 'MEDIA_CONFIG_MISSING' || error.code === 'MEDIA_STORAGE_ACCESS' || error.code === 'MEDIA_STORAGE_UNAVAILABLE') {
+          return ApiResponse.serviceUnavailable(res, 'Media storage is currently unavailable');
+        }
+        return ApiResponse.badRequest(res, { imageMediaId: [error.message] });
+      }
+      if (error instanceof ConflictError) return ApiResponse.conflict(res, error.message);
+      return ApiResponse.internalError(res);
+    }
+  };
+
   protected override serialize(asset: Asset): AssetMutationDto {
     return {
       id: asset.id,
@@ -103,6 +157,7 @@ class AssetController extends BaseController<Asset, CreateAssetDto, UpdateAssetD
       qrCode: asset.qr_code,
       status: asset.status.toUpperCase(),
       imageUrl: asset.image_url,
+      imageMediaId: asset.image_media_id,
       departmentId: asset.department_id,
       createdAt: asset.created_at.toISOString(),
     };

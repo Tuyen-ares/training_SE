@@ -12,6 +12,7 @@ import { message, Modal } from 'ant-design-vue'
 import { useRoute, useRouter } from 'vue-router'
 
 import StatusTag from '../../components/common/StatusTag.vue'
+import MediaUploader from '../../components/common/MediaUploader.vue'
 import WorkspaceLayout from '../../components/layout/WorkspaceLayout.vue'
 import { statusTimelineColor } from '../../constants/status-meta'
 import {
@@ -41,6 +42,7 @@ const vendors = ref([])
 const vendorLoading = ref(false)
 const vendorSearch = ref('')
 const vendorTouched = ref(false)
+const repairMediaId = ref(null)
 let vendorSearchRequestId = 0
 
 const canReview = computed(() => authStore.hasPermission('asset_issue.update'))
@@ -161,6 +163,7 @@ function resetForm() {
     result: issue.value?.result || '',
     note: issue.value?.note || '',
   })
+  repairMediaId.value = null
   vendorTouched.value = false
 }
 function openWorkflow(type) {
@@ -178,6 +181,7 @@ function payload() {
   if (form.cost !== null && form.cost !== '') body.cost = Number(form.cost)
   if (workflow.value !== 'start' && form.result.trim()) body.result = form.result.trim()
   if (form.note.trim()) body.note = form.note.trim()
+  if (workflow.value === 'complete' && repairMediaId.value) body.mediaIds = [repairMediaId.value]
   return body
 }
 
@@ -250,6 +254,20 @@ onMounted(load)
               <a-descriptions-item label="Result" :span="2">{{ issue.result || '—' }}</a-descriptions-item>
               <a-descriptions-item label="Notes" :span="3">{{ issue.note || '—' }}</a-descriptions-item>
             </a-descriptions>
+            <div v-if="issue.repairEvidence?.length" class="evidence-list">
+              <h3>After-repair evidence</h3>
+              <a-space wrap>
+                <a
+                  v-for="evidence in issue.repairEvidence"
+                  :key="evidence.mediaId"
+                  :href="evidence.publicUrl"
+                  target="_blank"
+                  rel="noreferrer"
+                >
+                  View image {{ evidence.mediaId }}
+                </a>
+              </a-space>
+            </div>
           </section>
         </div>
       </template>
@@ -285,6 +303,13 @@ onMounted(load)
           </div>
           <a-form-item v-if="workflow !== 'start'" :label="requiresResult ? 'Repair result *' : 'Repair result'"><a-textarea v-model:value="form.result" :rows="3" :maxlength="300" show-count placeholder="Describe the repair result (max 300 characters)" /></a-form-item>
           <a-form-item :label="workflow === 'start' ? 'Diagnosis / Initial notes' : 'Notes'"><a-textarea v-model:value="form.note" :rows="3" :maxlength="300" show-count :placeholder="workflow === 'start' ? 'Describe the initial diagnosis or planned repair (max 300 characters).' : 'Add operational notes (max 300 characters)'" /></a-form-item>
+          <MediaUploader
+            v-if="workflow === 'complete'"
+            purpose="AFTER_REPAIR"
+            label="Optional after-repair evidence"
+            :model-value="repairMediaId"
+            @update:model-value="repairMediaId = $event"
+          />
         </a-form>
       </a-modal>
     </main>

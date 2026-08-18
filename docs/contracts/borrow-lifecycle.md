@@ -214,7 +214,23 @@ type BorrowHistoryDetail = {
 }
 ```
 
+## Optional image evidence
+
+`POST /api/borrow-request-details/:detailId/handover` accepts an optional strict
+body `{ "mediaIds": [10, 11] }` and requires each ID to be a READY `HANDOVER`
+media uploaded by the actor. The claim and `handover_evidence` rows commit with
+the borrow history and RESERVED → BORROWED transition.
+
+`POST /api/borrow-histories/:historyId/return` accepts the same optional
+`mediaIds` shape for `RETURN` evidence. The damaged-return endpoint accepts it
+too; the claim and typed relation commit with the history return, asset state
+and confirmed issue. An omitted field preserves the existing behavior.
+
+History list/detail responses add `handoverEvidence` and `returnEvidence`
+arrays. Each item contains `mediaId`, `mimeType`, `sizeBytes`, `uploadedAt` and
+the canonical CloudFront `publicUrl`.
+
 ## Explicit exclusions
 
 - Department-scoped visibility.
-- Evidence/media, accessory checklist, signature and repair handback workflows.
+- Accessory checklist, signature and repair handback workflows.

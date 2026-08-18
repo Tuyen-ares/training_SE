@@ -172,17 +172,16 @@ transition, not a database delete.
 
 The QR identifier is immutable after asset creation. The MVP does not expose
 QR regeneration. The printed QR payload is a frontend entry URL in the form
-`{VITE_PUBLIC_APP_URL}/qr/{qr_code}`. The `/qr/:qrCode` path is a frontend-only
-authenticated entry point and never exposes asset data to guests.
+`{current frontend origin}/qr/{qr_code}`. The `/qr/:qrCode` path is a
+frontend-only authenticated entry point and never exposes asset data to guests.
 
 `GET /api/assets/by-qr/:qrCode`
 
-In local Vite development, QR generation and parsing use the browser's current
-origin, so the flow works on `localhost:5173`, `localhost:5174`, or another
-Vite port without changing the QR helper. In production, the frontend must
-define `VITE_PUBLIC_APP_URL` with the deployed frontend origin (for example
-`https://training-se-frontend.vercel.app`). Production never falls back to
-localhost when this variable is missing or invalid.
+QR generation and parsing always use the browser's current origin. Therefore
+the same code works automatically on `localhost:5173`, another local Vite
+port, a Vercel preview URL, or the production frontend URL without a manual
+environment switch or a `VITE_PUBLIC_APP_URL` variable. A QR generated in one
+origin is intentionally rejected by the scanner running on another origin.
 
 Permission: `asset.view`.
 

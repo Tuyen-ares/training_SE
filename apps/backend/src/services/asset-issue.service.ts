@@ -13,6 +13,8 @@ import type { VendorTransaction } from '@/repositories/vendor.repository.js';
 import type { PrismaClient } from '../../generated/prisma/index.js';
 import type { PrismaTransaction } from '@/shared/prisma-transaction.js';
 import { AssetIssueError } from '@/shared/app-error.js';
+import { MediaError } from '@/shared/app-error.js';
+import type { MediaService } from '@/services/media.service.js';
 
 export interface ReportAssetIssueInput {
   assetId: number;
@@ -28,6 +30,7 @@ export class AssetIssueService {
     private readonly vendors: VendorService,
     private readonly notifications: NotificationService,
     private readonly prisma: PrismaClient,
+    private readonly mediaService?: MediaService,
   ) {}
 
   canReport(
@@ -156,7 +159,11 @@ export class AssetIssueService {
     status: 'COMPLETED' | 'FAILED',
     permissionCodes: string[],
     data: AssetIssueRepairUpdate,
+    mediaIds?: number[],
   ): Promise<AssetIssue> {
+    if (status === 'FAILED' && mediaIds?.length) {
+      throw new MediaError('EVIDENCE_NOT_ALLOWED', 'Failed repairs cannot include after-repair evidence');
+    }
     this.assertVendorChangePermission(data, permissionCodes);
     return this.prisma.$transaction(async (transaction) => {
       const issue = await this.requireIssue(id, transaction, 'IN_REPAIR');
@@ -169,6 +176,12 @@ export class AssetIssueService {
       const updated = await this.issueRepository.completeRepair(
         id, status, actorId, data, transaction,
       );
+      if (status === 'COMPLETED' && mediaIds?.length) {
+        if (!this.mediaService) {
+          throw new MediaError('MEDIA_CONFIG_MISSING', 'Media service is not configured');
+        }
+        await this.mediaService.claimRepairEvidence(id, mediaIds, actorId, transaction);
+      }
       await this.notifyReporter(
         issue,
         status === 'COMPLETED' ? 'ASSET_REPAIR_COMPLETED' : 'ASSET_REPAIR_FAILED',

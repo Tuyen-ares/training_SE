@@ -6,6 +6,7 @@ import { useRouter } from 'vue-router'
 
 import WorkspaceLayout from '../../components/layout/WorkspaceLayout.vue'
 import StatusTag from '../../components/common/StatusTag.vue'
+import MediaUploader from '../../components/common/MediaUploader.vue'
 import { changeMyPassword, getMyProfile, updateMyProfile } from '../../services/administration/profile.service'
 import { useAuthStore } from '../../stores/auth'
 
@@ -19,7 +20,7 @@ const errorMessage = ref('')
 const passwordError = ref('')
 const profileSuccess = ref('')
 
-const profileForm = reactive({ name: '', phone: '', avatarUrl: '' })
+const profileForm = reactive({ name: '', phone: '', avatarUrl: '', avatarMediaId: null })
 const passwordForm = reactive({ currentPassword: '', newPassword: '', confirmPassword: '' })
 
 const initials = computed(() => profile.value?.name
@@ -36,6 +37,7 @@ function syncProfile(nextProfile) {
     name: nextProfile.name,
     phone: nextProfile.phone,
     avatarUrl: nextProfile.avatarUrl || '',
+    avatarMediaId: nextProfile.avatarMediaId || null,
   })
   authStore.setCurrentUser(nextProfile)
 }
@@ -62,7 +64,9 @@ async function saveProfile() {
     const saved = await updateMyProfile(authStore.api, {
       name: profileForm.name.trim(),
       phone: profileForm.phone.trim(),
-      avatarUrl: profileForm.avatarUrl.trim() || null,
+      ...(profileForm.avatarMediaId
+        ? { avatarMediaId: profileForm.avatarMediaId }
+        : { avatarUrl: profileForm.avatarUrl.trim() || null }),
     })
     syncProfile(saved)
     profileSuccess.value = 'Profile updated successfully.'
@@ -147,7 +151,13 @@ onMounted(loadProfile)
                 <label><span>Full name <b>*</b></span><a-input v-model:value="profileForm.name" required :maxlength="30" /></label>
                 <label><span>Email</span><a-input :value="profile.email" disabled /></label>
                 <label><span>Phone number <b>*</b></span><a-input v-model:value="profileForm.phone" required :maxlength="10" /></label>
-                <label><span>Avatar URL</span><a-input v-model:value="profileForm.avatarUrl" type="url" :maxlength="500" placeholder="https://example.com/avatar.jpg" /></label>
+                <label><span>Avatar URL</span><a-input v-model:value="profileForm.avatarUrl" type="url" :maxlength="500" placeholder="https://example.com/avatar.jpg" @input="profileForm.avatarMediaId = null" /></label>
+                <MediaUploader
+                  purpose="USER_AVATAR"
+                  label="Upload avatar"
+                  :model-value="profileForm.avatarMediaId"
+                  @update:model-value="profileForm.avatarMediaId = $event; profileForm.avatarUrl = ''"
+                />
                 <footer class="form-footer"><a-button type="primary" html-type="submit" class="primary-action bigin-touch-target" :loading="savingProfile"><template #icon><SaveOutlined /></template>Save changes</a-button></footer>
               </form>
             </section>

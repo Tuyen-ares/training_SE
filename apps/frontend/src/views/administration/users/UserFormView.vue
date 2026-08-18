@@ -7,6 +7,7 @@ import { useRoute, useRouter } from 'vue-router'
 import WorkspaceLayout from '../../../components/layout/WorkspaceLayout.vue'
 import AdministrationTabs from '../../../components/administration/AdministrationTabs.vue'
 import StatusTag from '../../../components/common/StatusTag.vue'
+import MediaUploader from '../../../components/common/MediaUploader.vue'
 import { useAuthStore } from '../../../stores/auth'
 
 const authStore = useAuthStore()
@@ -22,7 +23,7 @@ const errorMessage = ref('')
 const showPassword = ref(false)
 const showConfirmPassword = ref(false)
 const changingStatus = ref(false)
-const form = reactive({ name: '', email: '', phone: '', departmentId: undefined, avatarUrl: '', password: '', confirmPassword: '', roleIds: [], isActive: true })
+const form = reactive({ name: '', email: '', phone: '', departmentId: undefined, avatarUrl: '', avatarMediaId: null, password: '', confirmPassword: '', roleIds: [], isActive: true })
 
 const roleOptions = computed(() => roles.value.map((role) => ({
   value: role.id,
@@ -41,7 +42,7 @@ async function loadPage() {
     ])
     departments.value = departmentData.filter((department) => department.isActive || department.id === userData?.departmentId)
     roles.value = roleData
-    if (userData) Object.assign(form, { name: userData.name, email: userData.email, phone: userData.phone, departmentId: userData.departmentId, avatarUrl: userData.avatarUrl || '', password: '', confirmPassword: '', roleIds: userData.roles.map((role) => role.id), isActive: userData.isActive })
+    if (userData) Object.assign(form, { name: userData.name, email: userData.email, phone: userData.phone, departmentId: userData.departmentId, avatarUrl: userData.avatarUrl || '', avatarMediaId: userData.avatarMediaId || null, password: '', confirmPassword: '', roleIds: userData.roles.map((role) => role.id), isActive: userData.isActive })
   } catch {
     errorMessage.value = 'We could not load the information required for this form.'
   } finally {
@@ -67,7 +68,9 @@ async function submit() {
   try {
     const payload = {
       name: form.name.trim(), email: form.email.trim(), phone: form.phone.trim(), departmentId: Number(form.departmentId),
-      avatarUrl: form.avatarUrl.trim() || null,
+      ...(form.avatarMediaId
+        ? { avatarMediaId: form.avatarMediaId }
+        : { avatarUrl: form.avatarUrl.trim() || null }),
       ...(form.password ? { password: form.password } : {}),
       ...(authStore.hasPermission('role.assign') && (isEdit.value || form.roleIds.length) ? { roleIds: [...form.roleIds] } : {}),
     }
@@ -136,7 +139,13 @@ onMounted(loadPage)
             <label><span>Email <b>*</b></span><a-input v-model:value="form.email" required type="email" :maxlength="40" placeholder="mail@company.com" /></label>
             <label><span>Phone Number <b>*</b></span><a-input v-model:value="form.phone" required :maxlength="10" placeholder="10 digits" /></label>
             <label><span>Department <b>*</b></span><a-select v-model:value="form.departmentId" class="full-control" placeholder="Select department"><a-select-option v-for="department in departments" :key="department.id" :value="department.id">{{ department.name }}</a-select-option></a-select></label>
-            <label><span>Avatar URL</span><a-input v-model:value="form.avatarUrl" type="url" :maxlength="500" placeholder="https://example.com/avatar.jpg" /></label>
+            <label><span>Avatar URL</span><a-input v-model:value="form.avatarUrl" type="url" :maxlength="500" placeholder="https://example.com/avatar.jpg" @input="form.avatarMediaId = null" /></label>
+            <MediaUploader
+              purpose="USER_AVATAR"
+              label="Upload avatar"
+              :model-value="form.avatarMediaId"
+              @update:model-value="form.avatarMediaId = $event; form.avatarUrl = ''"
+            />
           </div>
           <a-divider />
           <h2>{{ isEdit ? 'Change Password' : 'Security' }} <small v-if="isEdit">Optional</small></h2>

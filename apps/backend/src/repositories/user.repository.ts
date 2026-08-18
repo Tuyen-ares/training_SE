@@ -17,6 +17,7 @@ export interface IUserRepository {
   ): Promise<string | null>;
   emailExists(email: string, excludeUserId?: number, transaction?: PrismaTransaction): Promise<boolean>;
   phoneExists(phone: string, excludeUserId?: number, transaction?: PrismaTransaction): Promise<boolean>;
+  findAvatarMediaId?(id: number, transaction?: PrismaTransaction): Promise<number | null>;
   departmentExists(departmentId: number, transaction?: PrismaTransaction): Promise<boolean>;
   create(data: CreateUserData, transaction: PrismaTransaction): Promise<number>;
   update(

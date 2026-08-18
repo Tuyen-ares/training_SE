@@ -6,6 +6,8 @@ import type {
   AssetIssueStatus,
   CreateAssetIssueReport,
 } from '@/models/asset-issue.model.js';
+import type { MediaEvidenceDto } from '@/models/media.model.js';
+import { buildPublicMediaUrl } from '@/shared/media-url.js';
 import type {
   AssetIssueTransaction,
   IAssetIssueRepository,
@@ -38,7 +40,30 @@ const issueSelect = {
   reported_by_users: { select: { id: true, name: true } },
   handled_by_users: { select: { id: true, name: true } },
   vendors: { select: { id: true, name: true } },
+  repair_evidence: {
+    include: {
+      media_files: {
+        select: {
+          id: true,
+          storage_path: true,
+          mime_type: true,
+          size_bytes: true,
+          uploaded_at: true,
+        },
+      },
+    },
+  },
 } as const;
+
+function mapEvidence(entries: Array<{ media_files: any }> | undefined): MediaEvidenceDto[] {
+  return (entries ?? []).map(({ media_files: media }) => ({
+    mediaId: media.id,
+    mimeType: media.mime_type,
+    sizeBytes: media.size_bytes,
+    uploadedAt: media.uploaded_at ?? new Date(0),
+    publicUrl: buildPublicMediaUrl(media.storage_path) ?? '',
+  }));
+}
 
 function mapIssue(issue: any): AssetIssue {
   return {
@@ -67,6 +92,7 @@ function mapIssue(issue: any): AssetIssue {
     reporter: issue.reported_by_users
       ? { id: issue.reported_by_users.id, name: issue.reported_by_users.name }
       : null,
+    repairEvidence: mapEvidence(issue.repair_evidence),
   };
 }
 

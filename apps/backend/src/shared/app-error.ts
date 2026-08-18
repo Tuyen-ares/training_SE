@@ -91,6 +91,25 @@ export class RegistrationError extends Error {
   }
 }
 
+export type MediaErrorCode =
+  | 'MEDIA_CONFIG_MISSING'
+  | 'MEDIA_FORBIDDEN'
+  | 'MEDIA_NOT_FOUND'
+  | 'MEDIA_ALREADY_LINKED'
+  | 'MEDIA_INVALID'
+  | 'MEDIA_METADATA_MISMATCH'
+  | 'MEDIA_VERIFY_NOT_FOUND'
+  | 'MEDIA_STORAGE_UNAVAILABLE'
+  | 'MEDIA_STORAGE_ACCESS'
+  | 'EVIDENCE_NOT_ALLOWED';
+
+export class MediaError extends Error {
+  constructor(public readonly code: MediaErrorCode, message?: string) {
+    super(message ?? code);
+    this.name = 'MediaError';
+  }
+}
+
 export type BorrowErrorCode =
   | 'REQUEST_NOT_FOUND'
   | 'REQUEST_FORBIDDEN'

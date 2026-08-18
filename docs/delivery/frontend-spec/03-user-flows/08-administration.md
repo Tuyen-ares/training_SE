@@ -151,3 +151,12 @@ Cho phép user cập nhật thông tin cá nhân và mật khẩu của chính m
 ## Related Screens
 
 `SCR-F08-09`, `SCR-SYS-01`.
+
+## Media-backed avatar
+
+User create/edit and self-profile use the shared optional avatar uploader. The
+admin/self user flow sends `avatarMediaId` after complete; the presign request
+never includes a target user ID. Preview uses a local object URL, the canonical
+CloudFront URL is only rendered after complete, and a replacement always uses a
+new media/key. If media configuration is unavailable, the form shows the
+backend error and the legacy URL field remains available for compatibility.

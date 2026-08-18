@@ -46,4 +46,8 @@ export class ApiResponse {
     res.status(500).json({ error: message })
   }
 
+  static serviceUnavailable(res: Response, message: string = 'Service temporarily unavailable'): void {
+    res.status(503).json({ error: message })
+  }
+
 }

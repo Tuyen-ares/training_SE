@@ -1,9 +1,10 @@
 <script setup>
 import { computed, h, onMounted, ref } from 'vue'
 import { CheckCircleOutlined, SwapOutlined, WarningOutlined } from '@ant-design/icons-vue'
-import { message, Modal } from 'ant-design-vue'
+import { message } from 'ant-design-vue'
 import { useRoute } from 'vue-router'
 import WorkspaceLayout from '../../components/layout/WorkspaceLayout.vue'
+import MediaUploader from '../../components/common/MediaUploader.vue'
 import {
   handoverBorrowDetail,
   listHandoverQueue,
@@ -35,6 +36,13 @@ const busy = ref(null)
 const damagedOpen = ref(false)
 const damagedHistory = ref(null)
 const damagedDescription = ref('')
+const damagedMediaId = ref(null)
+const handoverOpen = ref(false)
+const handoverItem = ref(null)
+const handoverMediaId = ref(null)
+const normalReturnOpen = ref(false)
+const normalReturnHistory = ref(null)
+const normalReturnMediaId = ref(null)
 
 const formatDate = (value) => value
   ? new Intl.DateTimeFormat('en-GB', { dateStyle: 'medium' }).format(new Date(`${value}T00:00:00`))
@@ -77,54 +85,57 @@ function pageChange(nextPage) {
 }
 
 function confirmHandover(item) {
-  Modal.confirm({
-    title: 'Confirm handover?',
-    content: `${item.asset.model.name} will move from RESERVED to BORROWED and a borrow history will be created for ${item.requester.name}.`,
-    okText: 'Confirm handover',
-    cancelText: 'Cancel',
-    async onOk() {
-      busy.value = busyKey('handover', item.detailId)
-      try {
-        await handoverBorrowDetail(authStore.api, item.detailId)
-        message.success('Handover confirmed.')
-        await load('handover')
-      } catch (error) {
-        message.error(error.status === 409
-          ? 'This asset has already been processed or is no longer reserved.'
-          : error.message || 'Handover could not be confirmed.')
-      } finally {
-        busy.value = null
-      }
-    },
-  })
+  handoverItem.value = item
+  handoverMediaId.value = null
+  handoverOpen.value = true
 }
 
 function confirmNormalReturn(history) {
-  Modal.confirm({
-    title: 'Confirm asset return?',
-    content: `${history.asset.model.name} will become AVAILABLE.`,
-    okText: 'Confirm Normal Return',
-    cancelText: 'Cancel',
-    async onOk() {
-      busy.value = busyKey('return', history.id)
-      try {
-        await receiveNormalReturn(authStore.api, history.id)
-        message.success('Return recorded.')
-        await load('return')
-      } catch (error) {
-        message.error(error.status === 409
-          ? 'This return has already been processed or the asset is no longer borrowed.'
-          : error.message || 'Return could not be recorded.')
-      } finally {
-        busy.value = null
-      }
-    },
-  })
+  normalReturnHistory.value = history
+  normalReturnMediaId.value = null
+  normalReturnOpen.value = true
+}
+
+async function submitHandover() {
+  const item = handoverItem.value
+  if (!item) return
+  busy.value = busyKey('handover', item.detailId)
+  try {
+    await handoverBorrowDetail(authStore.api, item.detailId, handoverMediaId.value ? [handoverMediaId.value] : [])
+    handoverOpen.value = false
+    message.success('Handover confirmed.')
+    await load('handover')
+  } catch (error) {
+    message.error(error.status === 409
+      ? 'This asset has already been processed or is no longer reserved.'
+      : error.message || 'Handover could not be confirmed.')
+  } finally {
+    busy.value = null
+  }
+}
+
+async function submitNormalReturn() {
+  const history = normalReturnHistory.value
+  if (!history) return
+  busy.value = busyKey('return', history.id)
+  try {
+    await receiveNormalReturn(authStore.api, history.id, normalReturnMediaId.value ? [normalReturnMediaId.value] : [])
+    normalReturnOpen.value = false
+    message.success('Return recorded.')
+    await load('return')
+  } catch (error) {
+    message.error(error.status === 409
+      ? 'This return has already been processed or the asset is no longer borrowed.'
+      : error.message || 'Return could not be recorded.')
+  } finally {
+    busy.value = null
+  }
 }
 
 function openDamagedReturn(history) {
   damagedHistory.value = history
   damagedDescription.value = ''
+  damagedMediaId.value = null
   damagedOpen.value = true
 }
 
@@ -139,7 +150,7 @@ async function confirmDamagedReturn() {
   if (!history) return
   busy.value = busyKey('return', history.id)
   try {
-    const result = await receiveDamagedReturn(authStore.api, history.id, description)
+    const result = await receiveDamagedReturn(authStore.api, history.id, description, damagedMediaId.value ? [damagedMediaId.value] : [])
     damagedOpen.value = false
     message.success(`Damaged return recorded. Issue #${result.issueId} created.`)
     await load('return')
@@ -326,6 +337,40 @@ onMounted(() => {
       <a-empty v-else description="You do not have access to a fulfillment queue." />
 
       <a-modal
+        v-model:open="handoverOpen"
+        title="Confirm handover"
+        ok-text="Confirm handover"
+        cancel-text="Cancel"
+        :confirm-loading="busy === busyKey('handover', handoverItem?.detailId)"
+        @ok="submitHandover"
+      >
+        <p>{{ handoverItem?.asset.model.name }} will move from RESERVED to BORROWED and a borrow history will be created.</p>
+        <MediaUploader
+          purpose="HANDOVER"
+          label="Optional handover evidence"
+          :model-value="handoverMediaId"
+          @update:model-value="handoverMediaId = $event"
+        />
+      </a-modal>
+
+      <a-modal
+        v-model:open="normalReturnOpen"
+        title="Confirm asset return"
+        ok-text="Confirm normal return"
+        cancel-text="Cancel"
+        :confirm-loading="busy === busyKey('return', normalReturnHistory?.id)"
+        @ok="submitNormalReturn"
+      >
+        <p>{{ normalReturnHistory?.asset.model.name }} will become AVAILABLE.</p>
+        <MediaUploader
+          purpose="RETURN"
+          label="Optional return evidence"
+          :model-value="normalReturnMediaId"
+          @update:model-value="normalReturnMediaId = $event"
+        />
+      </a-modal>
+
+      <a-modal
         v-model:open="damagedOpen"
         wrap-class-name="bigin-modal-content"
         title="Confirm damaged return"
@@ -344,6 +389,12 @@ onMounted(() => {
             placeholder="Describe the damage found during return inspection."
           />
         </a-form-item>
+        <MediaUploader
+          purpose="RETURN"
+          label="Optional return evidence"
+          :model-value="damagedMediaId"
+          @update:model-value="damagedMediaId = $event"
+        />
       </a-modal>
     </main>
   </WorkspaceLayout>

@@ -8,7 +8,8 @@ so that **staff can access the system according to their assigned roles**.
 
 ## Acceptance Criteria
 
-- AC-US-F08-02-01: Given the required data and a valid department, when creating the user, then the system creates an active user and automatically assigns a unique user code in the format `BI[YY][Sequence]`; avatar_url is optional.
+- AC-US-F08-02-01: Given the required data and a valid department, when creating the user, then the system creates an active user and automatically assigns a unique user code in the format `BI[YY][Sequence]`; avatar is optional via `avatarMediaId`, with legacy `avatarUrl` retained as fallback.
+- AC-US-F08-02-07: When `avatarMediaId` is provided, the server claims READY USER_AVATAR media and links it atomically with user creation.
 - AC-US-F08-02-02: Given the email or phone already exists, then the system rejects the request.
 - AC-US-F08-02-03: Given the department does not exist, then the system rejects the request.
 - AC-US-F08-02-04: Then the password is not returned in the result.

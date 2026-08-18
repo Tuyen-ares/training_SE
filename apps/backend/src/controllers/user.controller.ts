@@ -8,7 +8,7 @@ import type {
   UserStatusFilter,
 } from '@/models/user.model.js';
 import type { UserService } from '@/services/user.service.js';
-import { RbacError, UserError } from '@/shared/app-error.js';
+import { MediaError, RbacError, UserError } from '@/shared/app-error.js';
 import { ApiResponse } from '@/shared/api-response.js';
 import { parseRequestBody } from '@/shared/request-validation.js';
 
@@ -24,14 +24,19 @@ const avatarUrlSchema = z
   .max(500)
   .nullable();
 
+const avatarMediaIdSchema = z.number().int().positive().nullable();
+
 const createUserSchema: z.ZodType<CreateUserInputDto> = z.strictObject({
   departmentId: z.number().int().positive(),
   name: z.string().trim().min(1).max(30),
   avatarUrl: avatarUrlSchema.optional(),
+  avatarMediaId: avatarMediaIdSchema.optional(),
   email: z.email().max(40),
   phone: z.string().trim().regex(/^\d{10}$/, 'Phone must contain exactly 10 digits'),
   password: z.string().min(6).max(72),
   roleIds: roleIdsSchema.optional(),
+}).refine((input) => !(input.avatarUrl !== undefined && input.avatarMediaId !== undefined), {
+  message: 'Provide either avatarUrl or avatarMediaId, not both',
 });
 
 const updateUserSchema: z.ZodType<UpdateUserInputDto> = z
@@ -39,6 +44,7 @@ const updateUserSchema: z.ZodType<UpdateUserInputDto> = z
     departmentId: z.number().int().positive().optional(),
     name: z.string().trim().min(1).max(30).optional(),
     avatarUrl: avatarUrlSchema.optional(),
+    avatarMediaId: avatarMediaIdSchema.optional(),
     email: z.email().max(40).optional(),
     phone: z
       .string()
@@ -48,6 +54,9 @@ const updateUserSchema: z.ZodType<UpdateUserInputDto> = z
     password: z.string().min(6).max(72).optional(),
     roleIds: roleIdsSchema.min(1).optional(),
   })
+  .refine((input) => !(input.avatarUrl !== undefined && input.avatarMediaId !== undefined), {
+    message: 'Provide either avatarUrl or avatarMediaId, not both',
+  })
   .refine((input) => Object.keys(input).length > 0, {
     message: 'At least one field is required',
   });
@@ -56,11 +65,15 @@ const updateSelfProfileSchema: z.ZodType<UpdateSelfProfileInputDto> = z
   .strictObject({
     name: z.string().trim().min(1).max(30).optional(),
     avatarUrl: avatarUrlSchema.optional(),
+    avatarMediaId: avatarMediaIdSchema.optional(),
     phone: z
       .string()
       .trim()
       .regex(/^\d{10}$/, 'Phone must contain exactly 10 digits')
       .optional(),
+  })
+  .refine((input) => !(input.avatarUrl !== undefined && input.avatarMediaId !== undefined), {
+    message: 'Provide either avatarUrl or avatarMediaId, not both',
   })
   .refine((input) => Object.keys(input).length > 0, {
     message: 'At least one field is required',
@@ -84,6 +97,25 @@ function parsePositiveId(value: string | string[] | undefined): number | null {
 }
 
 function handleUserError(error: unknown, res: Response): void {
+  if (error instanceof MediaError) {
+    if (error.code === 'MEDIA_FORBIDDEN') {
+      return ApiResponse.forbidden(res, 'You do not have access to this media');
+    }
+    if (error.code === 'MEDIA_NOT_FOUND') {
+      return ApiResponse.notFound(res, 'Media not found');
+    }
+    if (error.code === 'MEDIA_ALREADY_LINKED') {
+      return ApiResponse.conflict(res, 'Media has already been linked');
+    }
+    if (
+      error.code === 'MEDIA_CONFIG_MISSING' ||
+      error.code === 'MEDIA_STORAGE_ACCESS' ||
+      error.code === 'MEDIA_STORAGE_UNAVAILABLE'
+    ) {
+      return ApiResponse.serviceUnavailable(res, 'Media storage is currently unavailable');
+    }
+    return ApiResponse.badRequest(res, { avatarMediaId: [error.message] });
+  }
   if (error instanceof RbacError && error.code === 'ESSENTIAL_ADMIN_REQUIRED') {
     return ApiResponse.conflict(res, 'At least one active user must retain all essential administration permissions');
   }
@@ -207,7 +239,7 @@ export default class UserController {
     }
 
     try {
-      const user = await this.service.create(parsed.data);
+      const user = await this.service.create(parsed.data, req.auth?.sub);
       return ApiResponse.created(res, user);
     } catch (error) {
       return handleUserError(error, res);
@@ -226,7 +258,7 @@ export default class UserController {
     }
 
     try {
-      const user = await this.service.update(id, parsed.data);
+      const user = await this.service.update(id, parsed.data, req.auth?.sub);
       if (!user) return ApiResponse.notFound(res, 'User not found');
       return ApiResponse.ok(res, user);
     } catch (error) {

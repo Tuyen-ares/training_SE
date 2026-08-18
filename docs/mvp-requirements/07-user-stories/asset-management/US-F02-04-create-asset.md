@@ -9,7 +9,8 @@ so that **new equipment is added to the managed inventory**.
 ## Acceptance Criteria
 
 - AC-US-F02-04-01: Given a valid model and all required data, when creating the asset, then the system records it with a server-issued immutable asset code and status `AVAILABLE`.
-- AC-US-F02-04-02: image_url is optional; when provided, it is stored as the asset image URL.
+- AC-US-F02-04-02: Asset image is optional. New clients upload `ASSET_IMAGE` first and send `imageMediaId`; legacy `imageUrl` remains accepted as fallback.
+- AC-US-F02-04-07: When `imageMediaId` is provided, the server claims a READY media once and links it to the asset in the same transaction as asset creation.
 - AC-US-F02-04-03: Given the QR already exists, when creating the asset, then the system rejects the request.
 - AC-US-F02-04-04: Given the serial value already exists, when creating the asset, then the system rejects the request.
 - AC-US-F02-04-05: Given the department does not exist, when creating the asset, then the system rejects the request.

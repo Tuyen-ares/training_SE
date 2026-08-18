@@ -2,7 +2,7 @@ import { z } from 'zod';
 import type { Request, Response } from 'express';
 import { ASSET_ISSUE_STATUSES } from '@/models/asset-issue.model.js';
 import type { AssetIssueService } from '@/services/asset-issue.service.js';
-import { AssetIssueError } from '@/shared/app-error.js';
+import { AssetIssueError, MediaError } from '@/shared/app-error.js';
 import { ApiResponse } from '@/shared/api-response.js';
 import { parseRequestBody } from '@/shared/request-validation.js';
 
@@ -32,6 +32,9 @@ const repairUpdateSchema = repairStartSchema.refine((value) => Object.keys(value
 });
 const repairCloseSchema = repairStartSchema.extend({
   result: z.string().trim().min(1).max(300),
+  mediaIds: z.array(z.number().int().positive()).max(10).refine((ids) => new Set(ids).size === ids.length, {
+    message: 'Media IDs must be unique',
+  }).optional(),
 });
 
 function positiveId(value: string | string[] | undefined): number | null {
@@ -40,6 +43,13 @@ function positiveId(value: string | string[] | undefined): number | null {
 }
 
 function handleIssueError(error: unknown, res: Response): void {
+  if (error instanceof MediaError) {
+    if (error.code === 'MEDIA_FORBIDDEN') return ApiResponse.forbidden(res, 'You do not have access to this media');
+    if (error.code === 'MEDIA_CONFIG_MISSING' || error.code === 'MEDIA_STORAGE_ACCESS' || error.code === 'MEDIA_STORAGE_UNAVAILABLE') {
+      return ApiResponse.serviceUnavailable(res, 'Media storage is currently unavailable');
+    }
+    return ApiResponse.badRequest(res, { mediaIds: [error.message] });
+  }
   if (!(error instanceof AssetIssueError)) return ApiResponse.internalError(res);
   if (error.code === 'ISSUE_NOT_FOUND' || error.code === 'ASSET_NOT_FOUND') {
     return ApiResponse.notFound(res, 'Asset issue not found');
@@ -108,7 +118,14 @@ export class AssetIssueController {
     const parsed = parseRequestBody(repairCloseSchema, req.body);
     if (parsed.success === false) return ApiResponse.badRequest(res, parsed.errors);
     return this.run(req, res, (id, actorId, permissionCodes) =>
-      this.service.finishRepair(id, actorId, 'COMPLETED', permissionCodes, parsed.data));
+      this.service.finishRepair(
+        id,
+        actorId,
+        'COMPLETED',
+        permissionCodes,
+        parsed.data,
+        parsed.data.mediaIds,
+      ));
   };
 
   fail = async (req: Request, res: Response): Promise<void> => {

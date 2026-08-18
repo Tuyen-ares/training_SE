@@ -10,3 +10,4 @@
 | BREQ-06 | Công ty cần ghi nhận, xác minh và theo dõi việc xử lý sự cố/sửa chữa tài sản. |
 | BREQ-07 | Người dùng cần nhận và theo dõi thông tin nghiệp vụ có liên quan trong hệ thống. |
 | BREQ-08 | Quản trị viên cần quản lý vòng đời tài khoản và phân vai trò có sẵn cho người dùng. |
+| BREQ-09 | Công ty cần lưu trữ ảnh evidence và ảnh chính an toàn, có thể đọc ổn định nhưng không cấp quyền ghi storage cho frontend. |

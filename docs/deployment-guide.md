@@ -122,8 +122,11 @@ Thêm Environment Variable trên Vercel:
 
 ```env
 VITE_API_BASE_URL=https://<backend-render>.onrender.com/api
-VITE_PUBLIC_APP_URL=https://<ten-app>.vercel.app
 ```
+
+QR tự dùng origin của website đang mở, nên không cần thêm biến
+`VITE_PUBLIC_APP_URL` trên Vercel. Sau khi đổi `VITE_API_BASE_URL`, cần
+redeploy frontend.
 
 Deploy xong, copy URL frontend dạng:
 

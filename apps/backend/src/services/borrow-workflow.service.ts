@@ -3,10 +3,12 @@ import type { IBorrowRequestRepository } from '@/repositories/borrow-request.rep
 import { BorrowError } from '@/shared/app-error.js';
 import type { ApproveAllResultDto, BorrowHistoryQuery, PageQuery, ReviewQueueQuery } from '@/models/borrow-lifecycle.model.js';
 import { ConflictError } from '@/shared/app-error.js';
+import { MediaError } from '@/shared/app-error.js';
 import type { AssetIssueService } from '@/services/asset-issue.service.js';
 import type { NotificationService } from '@/services/notification.service.js';
 import type { PrismaClient } from '../../generated/prisma/index.js';
 import type { PrismaTransaction } from '@/shared/prisma-transaction.js';
+import type { MediaService } from '@/services/media.service.js';
 
 export class BorrowWorkflowService {
   constructor(
@@ -15,6 +17,7 @@ export class BorrowWorkflowService {
     private readonly assetIssues: AssetIssueService,
     private readonly notifications: NotificationService,
     private readonly prisma: PrismaClient,
+    private readonly mediaService?: MediaService,
   ) {}
 
   async approve(detailId: number, reviewerId: number): Promise<void> {
@@ -82,7 +85,7 @@ export class BorrowWorkflowService {
     });
   }
 
-  async handover(detailId: number, actorId: number): Promise<number> {
+  async handover(detailId: number, actorId: number, mediaIds?: number[]): Promise<number> {
     return this.prisma.$transaction(async (transaction) => {
       const detail = await this.repository.findActionDetail(detailId, transaction);
       if (!detail) throw new BorrowError('REQUEST_NOT_FOUND');
@@ -96,6 +99,7 @@ export class BorrowWorkflowService {
 
       await this.assets.confirmHandover([detail.assetId], transaction);
       const historyId = await this.repository.createHistory(detailId, actorId, transaction);
+      await this.claimHandoverEvidence(historyId, mediaIds, actorId, transaction);
       await this.notifyRequester(
         detail.requesterId,
         'ASSET_HANDED_OVER',
@@ -111,6 +115,7 @@ export class BorrowWorkflowService {
   async returnNormal(
     historyId: number,
     actorId: number,
+    mediaIds?: number[],
   ): Promise<void> {
     await this.prisma.$transaction(async (transaction) => {
       const history = await this.repository.findHistoryForAction(historyId, transaction);
@@ -121,6 +126,7 @@ export class BorrowWorkflowService {
 
       await this.repository.completeReturn(historyId, actorId, 'NORMAL', transaction);
       await this.assets.returnAsset(history.assetId, 'good', transaction);
+      await this.claimReturnEvidence(historyId, mediaIds, actorId, transaction);
       const detail = await this.repository.findActionDetail(history.detailId, transaction);
       if (detail) {
         await this.repository.refreshRequestStatus(detail.requestId, transaction);
@@ -140,6 +146,7 @@ export class BorrowWorkflowService {
     historyId: number,
     actorId: number,
     description: string,
+    mediaIds?: number[],
   ): Promise<number> {
     return this.prisma.$transaction(async (transaction) => {
       const history = await this.repository.findHistoryForAction(historyId, transaction);
@@ -156,6 +163,7 @@ export class BorrowWorkflowService {
         description,
         transaction,
       );
+      await this.claimReturnEvidence(historyId, mediaIds, actorId, transaction);
 
       const detail = await this.repository.findActionDetail(history.detailId, transaction);
       if (detail) {
@@ -244,5 +252,31 @@ export class BorrowWorkflowService {
       relatedEntityType: 'ASSET_ISSUE',
       relatedEntityId: issueId,
     }, [excludedUserId], transaction);
+  }
+
+  private async claimHandoverEvidence(
+    historyId: number,
+    mediaIds: number[] | undefined,
+    actorId: number,
+    transaction: PrismaTransaction,
+  ): Promise<void> {
+    if (!mediaIds?.length) return;
+    if (!this.mediaService) {
+      throw new MediaError('MEDIA_CONFIG_MISSING', 'Media service is not configured');
+    }
+    await this.mediaService.claimHandoverEvidence(historyId, mediaIds, actorId, transaction);
+  }
+
+  private async claimReturnEvidence(
+    historyId: number,
+    mediaIds: number[] | undefined,
+    actorId: number,
+    transaction: PrismaTransaction,
+  ): Promise<void> {
+    if (!mediaIds?.length) return;
+    if (!this.mediaService) {
+      throw new MediaError('MEDIA_CONFIG_MISSING', 'Media service is not configured');
+    }
+    await this.mediaService.claimReturnEvidence(historyId, mediaIds, actorId, transaction);
   }
 }

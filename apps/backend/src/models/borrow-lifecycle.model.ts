@@ -1,3 +1,5 @@
+import type { MediaEvidenceDto } from '@/models/media.model.js';
+
 export type BorrowRequestStatus =
   | 'PENDING'
   | 'APPROVED'
@@ -147,6 +149,8 @@ export interface BorrowHistoryDto {
   receivedBy: { id: number; name: string } | null;
   returnedAt: Date | null;
   returnCondition: string | null;
+  handoverEvidence: MediaEvidenceDto[];
+  returnEvidence: MediaEvidenceDto[];
 }
 
 export interface BorrowHistoryDetailDto {
@@ -176,4 +180,6 @@ export interface BorrowHistoryDetailDto {
   receivedBy: { id: number; name: string } | null;
   returnedAt: Date | null;
   returnCondition: string | null;
+  handoverEvidence: MediaEvidenceDto[];
+  returnEvidence: MediaEvidenceDto[];
 }
