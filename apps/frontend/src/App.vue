@@ -3,6 +3,7 @@ import { computed, watch } from 'vue'
 import { theme as antTheme } from 'ant-design-vue'
 import { useRoute } from 'vue-router'
 import { useAppStore } from './stores/app'
+import { SpeedInsights } from '@vercel/speed-insights/vue'
 
 const appStore = useAppStore()
 const route = useRoute()
@@ -129,5 +130,6 @@ watch(() => effectiveTheme.value, syncDocumentTheme, { immediate: true })
 <template>
   <a-config-provider :theme="antThemeConfig">
     <router-view />
+    <SpeedInsights />
   </a-config-provider>
 </template>
