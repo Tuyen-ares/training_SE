@@ -190,3 +190,12 @@ native `PUT` with the exact `Content-Type`, immutable `Cache-Control` and
 shown. PUT failure/412 uses a new presign/key, while a transient complete
 failure retries complete with the same media ID. History detail renders saved
 evidence through the canonical CloudFront URL.
+
+## Asset identity presentation
+
+Handover, Return và Borrowing Activity dùng chung presentation order Model, Code,
+SN ở desktop và mobile. Missing value là `—`; QR không xuất hiện trong
+operational list hoặc history summary dạng text. Borrowing Activity Detail cũng
+không render dòng QR code, nhưng QR workflow chuyên biệt ngoài flow này vẫn giữ
+nguyên. Mobile có thể dùng stacked row/card hoặc intentional scroll theo table
+foundation, nhưng không duplicate business/permission logic.

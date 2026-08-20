@@ -81,6 +81,20 @@ User biết detail nào PENDING, APPROVED hoặc REJECTED mà không suy ra bàn
 
 `SCR-F03-02`, `SCR-F03-03`, `SCR-F07-01`, `SCR-SYS-02`.
 
+## Asset identity presentation
+
+`SCR-F03-01` lấy danh sách available asset từ `GET /assets`, trong đó
+`assetCode` đã có trong response. Audit frontend hiện tại ghi nhận hai formatter
+khác nhau: option selector dùng `model.name · (serialNumber || qrCode)`; asset
+đã chọn dùng `model + brand + (serialNumber || "Not assigned")` và chưa hiển
+thị Code. Implementation phải thay cả hai bằng canonical normalizer/formatter:
+Model, Code và SN theo cùng thứ tự, thiếu value hiển thị `—`, tuyệt đối không
+fallback sang QR. Selection id, validation, expected return date và submit
+payload không thay đổi.
+
+Request Detail dùng cùng identity contract cho từng detail; không render raw QR
+hoặc suy ra Code/SN từ QR.
+
 # FLOW-06 – Thu hồi phiếu hợp lệ
 
 ## Goal

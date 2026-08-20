@@ -21,7 +21,7 @@ User đã đăng nhập và có permission xem asset.
 1. User mở `SCR-F02-01` từ navigation, Dashboard hoặc Create Borrow Request.
 2. User search/filter danh sách hoặc mở `SCR-F02-05` để quét QR bằng camera hoặc tải ảnh QR lên.
 3. Hệ thống hiển thị asset phù hợp; selection mode chỉ cho phép chọn `AVAILABLE`.
-4. User mở `SCR-F02-02` để xem asset code bất biến, model, department, QR và status.
+4. User mở `SCR-F02-02` để xem asset code bất biến, serial, model, department và status; nếu cần QR thì dùng action `Asset QR` để mở QR label drawer.
 5. Nếu đang tạo phiếu, user chọn asset rồi trở về `SCR-F03-01` với selection đã giữ trong form.
 
 ## Alternative Flows
@@ -42,6 +42,14 @@ User tìm được asset đúng hoặc có selection hợp lệ; QR không tạo
 ## Related Screens
 
 `SCR-F02-01`, `SCR-F02-02`, `SCR-F03-01`, `SCR-SYS-02`.
+
+## Asset identity presentation
+
+Asset List hiển thị cell Asset theo thứ tự Model name và `Code: <assetCode>`;
+Category, Brand và Serial Number vẫn là column riêng. Asset Detail giữ các
+dedicated metadata fields cho Model, Code và SN, không thêm một summary lặp lại
+các field đó. Missing value là `—`; `qrCode` chỉ dùng cho scan, lookup và Asset
+QR action/drawer, không dùng làm text identity.
 
 # FLOW-03 – Quản lý asset và danh mục
 

@@ -2,9 +2,9 @@
 
 > Quy chuẩn UI/UX bắt buộc cho toàn bộ giao diện BigIn Asset Tracking.
 >
-> Phiên bản: **1.3**
+> Phiên bản: **1.5**
 >
-> Cập nhật: **2026-07-28**
+> Cập nhật: **2026-08-20**
 >
 > Nguồn chuẩn: **Ant Design light theme** trong [`DESIGN.md`](DESIGN.md), điều
 > chỉnh primary theo logo/thương hiệu BigIn Việt Nam.
@@ -689,7 +689,14 @@ nếu row có checkbox hoặc nhiều action tương tác.
 
 - Action thường xuyên: hiển thị trực tiếp tối đa 1–2.
 - Action ít dùng: overflow menu.
-- View/edit dùng icon nếu đã có convention rõ; luôn có accessible label.
+- View/edit là row action không destructive và phải dùng convention rõ: khi có
+  thể, hiển thị icon chuẩn (`EyeOutlined`/`EditOutlined`) đi trước verb label
+  (`View`/`Edit`) để người dùng nhận diện bằng cả hình và chữ. Treatment dùng
+  info blue text token (`--bigin-color-info-text`), không dùng primary orange;
+  primary orange dành cho action chính của region.
+- Asset List luôn hiển thị `View` và `Edit` theo dạng icon + text màu xanh. Chỉ
+  được dùng icon-only ở một breakpoint hoặc surface bị giới hạn chiều rộng khi
+  vẫn có tooltip và accessible label rõ ràng.
 - Destructive action dùng text rõ trong menu và confirmation.
 - Không dùng ba icon không nhãn nếu ý nghĩa khó đoán.
 
@@ -722,6 +729,46 @@ PageHeader phải cho biết:
 - status;
 - metadata quan trọng nhất;
 - action phù hợp trạng thái và permission.
+
+#### Asset Identity standard
+
+Asset identity trong frontend dùng một presentation contract chung:
+
+```text
+Model name
+Code: <assetCode>
+SN: <serialNumber>
+```
+
+- Giá trị thiếu luôn hiển thị `—`; không render label rỗng hoặc `undefined`.
+- Không dùng `serialNumber || qrCode`, asset id nội bộ hoặc model name làm
+  fallback cho Code/SN.
+- `qrCode` không phải asset identity text. QR chỉ xuất hiện trong scan, lookup,
+  generate, QR drawer hoặc interaction chuyên biệt liên quan đến QR.
+- Renderer có thể dùng shared normalizer, formatter hoặc `AssetIdentity`
+  component tùy context; không bắt buộc mọi surface phải dùng cùng một Vue
+  component.
+- Asset List là inventory comparison exception: cell Asset chỉ có Model + Code;
+  Category, Brand và Serial Number giữ thành column riêng.
+- Asset Detail không được lặp Model/Code/SN. Nếu dedicated metadata fields đã
+  hiển thị các giá trị này, chỉ dùng shared primitive để cấp dữ liệu hoặc ở một
+  khu vực khác không gây duplicate.
+
+#### Asset identity responsive verification
+
+Review runtime phải tách riêng các viewport sau, không suy ra kết quả tablet từ
+desktop hoặc mobile:
+
+| Context | Viewport target | Điều phải kiểm tra |
+| --- | --- | --- |
+| Desktop rộng | 1440×900 | Identity không bị cắt; table/header/action alignment và primary actions ổn định |
+| Desktop có sidebar | 1280×800, persistent sidebar 248px (`>=992px`) | Content width sau sidebar không làm vỡ table; action column, fixed/intentional scroll và page header vẫn thẳng hàng |
+| Tablet | 834×1112 và 768×1024, drawer navigation (`<992px`) | Drawer/backdrop, table-to-mobile-row transition, wrapped toolbar và Code/SN không bị mất hoặc tràn |
+| Mobile | 390×844 | Stacked row/card, label `—`, touch target và QR action/drawer vẫn dùng được |
+
+Các trường hợp data phải bao gồm đủ Model/Code/SN, thiếu từng field, thiếu cả
+Code và SN, model dài, asset không có image và request có nhiều asset. Không coi
+`overflow-x: hidden` là nghiệm thu responsive.
 
 ### 13.2 Description data
 

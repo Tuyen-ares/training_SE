@@ -185,3 +185,11 @@ presign → direct PUT with the required conditional headers → complete, shows
 stable loading state without percentage progress, and sends `mediaIds` only
 after complete succeeds. Issue detail reads `repairEvidence[]` through
 CloudFront; legacy fields remain unchanged.
+
+## Asset identity presentation
+
+Issue List và Issue Detail hiển thị asset bằng canonical Model, Code và SN khi
+API cung cấp field tương ứng; missing value là `—`. Không dùng `Asset <id>`,
+`ID <id>`, raw QR hoặc bất kỳ synthetic fallback nào để thay identity. Issue
+status, repair transition, evidence, vendor và permission behavior không bị thay
+đổi bởi presentation này.
