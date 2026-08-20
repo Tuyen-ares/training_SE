@@ -32,6 +32,7 @@ const issueSelect = {
   assets: {
     select: {
       id: true,
+      asset_code: true,
       serial_number: true,
       status: true,
       asset_models: { select: { name: true } },
@@ -85,6 +86,7 @@ function mapIssue(issue: any): AssetIssue {
     updatedAt: issue.updated_at,
     asset: issue.assets ? {
       id: issue.assets.id,
+      assetCode: issue.assets.asset_code,
       serialNumber: issue.assets.serial_number,
       status: issue.assets.status.toUpperCase(),
       modelName: issue.assets.asset_models.name,

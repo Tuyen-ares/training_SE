@@ -142,6 +142,7 @@ onMounted(loadPage)
             <label><span>Avatar URL</span><a-input v-model:value="form.avatarUrl" type="url" :maxlength="500" placeholder="https://example.com/avatar.jpg" @input="form.avatarMediaId = null" /></label>
             <MediaUploader
               purpose="USER_AVATAR"
+              capture-facing="user"
               label="Upload avatar"
               :model-value="form.avatarMediaId"
               @update:model-value="form.avatarMediaId = $event; form.avatarUrl = ''"

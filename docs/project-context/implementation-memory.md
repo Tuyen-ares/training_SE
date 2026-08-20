@@ -120,6 +120,95 @@ Các ghi chú deployment trên chỉ là context; khi sửa phải kiểm tra lo
 
 ## Important Recent Decisions
 
+### 2026-08-19 — Shared AppTable foundation and progressive table reduction
+
+**Feature:** Active authenticated frontend list/table consistency.
+
+**Decision:** Production list/table screens use the shared Vue
+`components/common/AppTable.vue` foundation. It owns Ant Design table spacing,
+typography, loading/empty rendering, server/client pagination footer, mobile
+stacked-row slot support, touch targets and intentional-scroll behavior. Action
+columns use the shared semantic `compact`/`normal`/`wide` widths and the title
+`Action`; `fixed="right"` is only used on tables that intentionally scroll.
+
+Columns reduce width by grouping descriptive metadata into the primary cell;
+fields used for filtering, sorting or frequent cross-row comparison remain
+separate. `scroll.x = 'max-content'` is not a page default. Pages opt into the
+foundation's intentional mode only when comparison/workflow context cannot be
+preserved through grouping; otherwise the table is allowed to flex or renders
+a stacked mobile row. No API, permission or business behavior changed.
+
+Screen-specific exceptions are explicit: Asset List keeps Category, Brand and
+Serial Number as separate columns and does not render QR metadata; Asset Detail
+keeps QR out of the descriptions and exposes it through the Asset QR action;
+Borrowing Activity and
+Handover/Return also omit QR from their Asset cells; My Borrow Requests keeps
+the Created timestamp separate; Vendor keeps contact and address fields as
+separate management columns and uses intentional table scroll.
+
+**Reason:** The previous per-page table wrappers, padding values and pagination
+patterns caused inconsistent density and unnecessary horizontal scrolling. A
+single presentation boundary keeps responsive and accessibility behavior
+consistent without moving domain rendering or permission logic into a generic
+component.
+
+**Affected areas:** `AppTable`, table tokens/responsive CSS, Asset, Borrowing,
+Issue, Vendor and Administration list views, and the responsive static audit.
+
+**Verification:** Frontend production build, responsive static audit and
+`git diff --check`; runtime viewport inspection remains part of the UI handoff.
+
+### 2026-08-20 — Canonical Asset Identity presentation
+
+**Feature:** Asset identity consistency across inventory, borrowing, approval,
+handover/return, history, dashboard and issue screens.
+
+**Decision:** Frontend renderers normalize asset responses to one canonical
+shape: `modelName`, `assetCode`, `serialNumber` and optional `imageUrl`.
+Shared formatters and `AssetIdentity.vue` render the ordered presentation
+`Model`, `Code`, `Seri`; missing values use `—`. QR is reserved for scan,
+lookup, generation/drawer and other explicit QR interactions, and is never a
+textual identity fallback. Asset List intentionally keeps Category, Brand and
+Serial Number as separate comparison columns, so its Asset cell shows only
+Model and Code. Asset Detail retains its dedicated metadata fields and does
+not add a duplicate identity block. Dashboard keeps its existing columns and
+only normalizes the values within them.
+
+**Contract:** Borrow lifecycle read mappers and Asset Issue read projection
+add `assetCode` only where the backend previously discarded it. Existing
+`qrCode` fields, routes, permissions, database schema and business behavior
+remain unchanged.
+
+**Affected areas:** Asset identity normalizer/formatters, shared identity
+component, asset and borrowing renderers, dashboard and issue renderers,
+borrow/issue DTO mappers, OpenAPI and related contract documentation.
+
+**Verification:** Backend typecheck/build and unit tests, frontend production
+build, responsive static audit, runtime checks for desktop with persistent
+sidebar, tablet drawer, mobile stacked rows and `git diff --check`.
+
+### 2026-08-20 — Full-width list surfaces and intentional table scroll
+
+**Decision:** Authenticated list/table screens use the available workspace
+content width instead of a centered page cap that leaves large desktop gutters.
+Page padding remains the responsive gutter. `AppTable` keeps its responsive
+default; `max-content` scrolling is opt-in only for genuinely data-dense
+tables whose important comparison fields or workflow actions cannot fit.
+
+**Reason:** A centered `max-width` on list screens reduced the usable table
+surface on wide laptop/desktop viewports, while broad use of intentional
+scroll made modest tables feel unnecessarily difficult to scan. Full-width
+list surfaces preserve the table foundation without hiding data.
+
+**Affected areas:** Administration, catalog, issue, borrowing, vendor and
+notification list shells, plus the modest-width Users, Registration Requests,
+Approval Queue, My Borrow Requests and Asset Issues tables that now use the
+default responsive table mode. Asset List, Vendor, Handover/Return and other
+genuinely dense tables retain intentional scroll where required.
+
+**Verification:** Runtime width/overflow checks at 1920×1080 and 1280×800,
+frontend production build, responsive static audit and `git diff --check`.
+
 ### 2026-08-18 — Active S3/CloudFront media and evidence core
 
 **Feature:** F02 asset images, F05 handover/return evidence, F06 successful
@@ -155,6 +244,56 @@ commands, active requirements and API contracts.
 frontend production build, OpenAPI YAML parse, repository verification script
 and `git diff --check`. AWS S3/CloudFront smoke testing remains a deployment
 gate requiring the real configured infrastructure.
+
+### 2026-08-20 — Native capture and race-safe media compensation
+
+**Decision:** Avatar/asset remain immediate single-image uploads with separate
+native capture and library inputs. Handover, normal/damaged return and successful
+Complete Repair keep up to ten processed images locally and upload the full
+batch sequentially only on Confirm. Shared orchestration tracks every media ID,
+compensates unlinked attempts after upload/business failures, never blindly
+deletes a 412 collision key and requires reconciliation after linked or unknown
+cleanup outcomes. `Complete` means READY, not linked; only the committed
+business claim establishes `linked_at` and its typed/FK relation.
+
+**Cancel hardening:** `MediaService` owns a Prisma transaction with 2-second
+max wait and 8-second timeout. `PrismaMediaRepository` locks and rechecks the
+media row and all relations; DeleteObject uses a 5-second AWS abort signal while
+the row lock is held. Delete/storage/transaction timeout returns retryable
+`MEDIA_STORAGE_UNAVAILABLE` and DB rollback preserves the row. S3 and DB remain
+non-atomic, so timeout cleanup is explicitly unknown and clients must not infer
+deletion. Logs include media ID, phase and error code only.
+
+**Operational gotcha:** stale PENDING/never-linked READY cleanup remains a
+manual command fallback. No scheduler or worker currently runs it automatically.
+
+**Verification:** Frontend unit/component/state-machine tests, frontend build,
+backend media cancel unit tests, backend typecheck/build/tests, OpenAPI parse and
+repository diff checks. Native camera preview/device lifecycle and MIME/
+orientation behavior still require real iOS/Android device coverage.
+
+### 2026-08-20 — Shared native camera preview and lease coordination
+
+**Decision:** Replace the browser capture-file hint with one shared native
+`getUserMedia` preview modal for avatar, asset image and evidence capture. A
+global camera session coordinator grants one lease to `media-capture` or
+`qr-scanner`; owner teardown owns hardware/resource cleanup, while `release`
+only performs token-checked bookkeeping. Coordinator `forceStop` is the only
+preemption path and waits for pending startup before releasing. Page lifecycle,
+camera switching and unexpected track-ended events use this same path.
+
+**Review rule:** Successful frame encoding stops tracks, clears
+`video.srcObject`, releases the lease and only then enters review. Review keeps
+only a local File/object URL. Retake acquires a new lease before
+`getUserMedia`; failed acquisition/readiness preserves the review. Mirroring is
+derived from actual track `facingMode` settings and applies only to CSS preview;
+canvas output is never mirrored.
+
+**Verification:** Frontend tests cover lease idempotency, pending startup,
+review/retake ordering, actual-facing mirroring, track-ended cleanup, modal
+actions, QR lease lifecycle and existing upload/evidence regression behavior.
+Real iPhone Safari, Android Chrome and desktop camera/permission/busy/device
+switch checks remain required because jsdom cannot validate hardware behavior.
 
 ### 2026-08-16 — Future image evidence proposal (superseded)
 
@@ -228,8 +367,11 @@ inheritance.
 `>=992px` breakpoints. Below 992px the permission-aware sidebar is a
 closed-by-default overlay drawer sized `min(296px, 82vw)`, with a backdrop,
 Escape/route-close behavior, dynamic viewport sizing, and body scroll lock.
-Data-dense Ant tables own their horizontal scrolling through
-`x: 'max-content'`; the shared wrapper never owns a second horizontal scroll.
+Before the shared table foundation migration, data-dense Ant tables owned
+their horizontal scrolling through `x: 'max-content'`; the shared wrapper
+never owned a second horizontal scroll. The active list/table behavior is now
+refined by the 2026-08-19 `AppTable` decision: no page-default horizontal
+scroll, with intentional scroll only where grouping cannot preserve context.
 Approval Detail keeps its custom 960px header and rows inside one scroll
 container with identical grid columns.
 

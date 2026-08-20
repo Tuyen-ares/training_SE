@@ -111,3 +111,20 @@ The media must be READY, owned by the actor and purpose `ASSET_IMAGE`; claim and
 the `assets.image_media_id` FK update commit with the asset mutation. Only one
 primary image is allowed. Reads prefer the CloudFront URL resolved from the FK
 and fall back to `imageUrl` for legacy rows.
+
+## Asset issue response identity
+
+Asset Issue list/detail responses expose the nested asset summary as:
+
+```ts
+{
+  id: number
+  assetCode: string
+  serialNumber: string | null
+  status: string
+  modelName: string
+}
+```
+
+`assetCode` is additive and immutable. Existing issue routes, permissions,
+status transitions and the QR fields on asset read responses are unchanged.

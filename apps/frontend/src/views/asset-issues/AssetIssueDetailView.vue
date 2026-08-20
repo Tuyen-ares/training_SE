@@ -12,7 +12,7 @@ import { message, Modal } from 'ant-design-vue'
 import { useRoute, useRouter } from 'vue-router'
 
 import StatusTag from '../../components/common/StatusTag.vue'
-import MediaUploader from '../../components/common/MediaUploader.vue'
+import EvidenceMediaPicker from '../../components/common/EvidenceMediaPicker.vue'
 import WorkspaceLayout from '../../components/layout/WorkspaceLayout.vue'
 import { statusTimelineColor } from '../../constants/status-meta'
 import {
@@ -25,7 +25,9 @@ import {
   updateAssetRepair,
 } from '../../services/asset-issues/asset-issue.service'
 import { listVendors } from '../../services/vendors/vendor.service'
+import { EvidenceBatchError, submitEvidenceBatch } from '../../services/evidence-batch.service'
 import { useAuthStore } from '../../stores/auth'
+import { displayAssetValue, normalizeAssetIdentity } from '../../utils/asset-identity'
 
 const route = useRoute()
 const router = useRouter()
@@ -42,7 +44,11 @@ const vendors = ref([])
 const vendorLoading = ref(false)
 const vendorSearch = ref('')
 const vendorTouched = ref(false)
-const repairMediaId = ref(null)
+const repairEvidence = ref([])
+const repairPicker = ref(null)
+const evidenceProcessing = ref(false)
+const retryBlocked = ref(false)
+const assetIdentity = computed(() => normalizeAssetIdentity(issue.value?.asset))
 let vendorSearchRequestId = 0
 
 const canReview = computed(() => authStore.hasPermission('asset_issue.update'))
@@ -133,11 +139,13 @@ async function runTransition(action, successMessage) {
   try {
     issue.value = await action()
     message.success(successMessage)
+    return true
   } catch (error) {
     if (error.status === 409) {
       conflictMessage.value = 'This issue changed or is no longer in a valid state for that action. The latest data has been reloaded.'
       await load()
     } else message.error(error.message || 'The action could not be completed.')
+    return false
   } finally { busy.value = false }
 }
 
@@ -163,7 +171,8 @@ function resetForm() {
     result: issue.value?.result || '',
     note: issue.value?.note || '',
   })
-  repairMediaId.value = null
+  repairPicker.value?.reset()
+  retryBlocked.value = false
   vendorTouched.value = false
 }
 function openWorkflow(type) {
@@ -181,20 +190,61 @@ function payload() {
   if (form.cost !== null && form.cost !== '') body.cost = Number(form.cost)
   if (workflow.value !== 'start' && form.result.trim()) body.result = form.result.trim()
   if (form.note.trim()) body.note = form.note.trim()
-  if (workflow.value === 'complete' && repairMediaId.value) body.mediaIds = [repairMediaId.value]
   return body
+}
+
+function closeWorkflow() {
+  if (busy.value || evidenceProcessing.value) return
+  modalOpen.value = false
+  repairPicker.value?.reset()
 }
 
 async function submitWorkflow() {
   if (requiresResult.value && !form.result.trim()) return message.warning('Enter a repair result.')
+  if (workflow.value === 'complete') {
+    busy.value = true
+    conflictMessage.value = ''
+    try {
+      issue.value = await submitEvidenceBatch({
+        api: authStore.api,
+        items: repairEvidence.value,
+        purpose: 'AFTER_REPAIR',
+        submitBusiness: (mediaIds) => completeAssetRepair(authStore.api, issue.value.id, {
+          ...payload(),
+          ...(mediaIds.length ? { mediaIds } : {}),
+        }),
+      })
+      repairPicker.value?.reset()
+      modalOpen.value = false
+      message.success('Complete Repair saved.')
+    } catch (error) {
+      if (error instanceof EvidenceBatchError) {
+        retryBlocked.value = error.retryBlocked
+        message.error(error.message)
+        if (error.reconcileRequired) {
+          await load()
+          if (issue.value?.status === 'COMPLETED') {
+            repairPicker.value?.reset()
+            modalOpen.value = false
+            message.success('Repair completion was already recorded.')
+          } else retryBlocked.value = true
+        }
+      } else if (error.status === 409) {
+        conflictMessage.value = 'This issue changed or is no longer in a valid state for that action. The latest data has been reloaded.'
+        await load()
+      } else message.error(error.message || 'The action could not be completed.')
+    } finally {
+      busy.value = false
+    }
+    return
+  }
   const actions = {
     start: () => startAssetRepair(authStore.api, issue.value.id, payload()),
     update: () => updateAssetRepair(authStore.api, issue.value.id, payload()),
-    complete: () => completeAssetRepair(authStore.api, issue.value.id, payload()),
     fail: () => failAssetRepair(authStore.api, issue.value.id, payload()),
   }
-  await runTransition(actions[workflow.value], `${modalTitle.value} saved.`)
-  if (!conflictMessage.value) modalOpen.value = false
+  const succeeded = await runTransition(actions[workflow.value], `${modalTitle.value} saved.`)
+  if (succeeded) modalOpen.value = false
 }
 
 onMounted(load)
@@ -211,7 +261,7 @@ onMounted(load)
       </a-result>
       <template v-else-if="issue">
         <header class="detail-header">
-          <div><div class="detail-header__title"><h1>Issue #ISS-{{ String(issue.id).padStart(4, '0') }}</h1><StatusTag :status="issue.status" /></div><p>{{ issue.asset?.modelName || `Asset ${issue.assetId}` }} · {{ issue.asset?.serialNumber || `Asset ID ${issue.assetId}` }}</p></div>
+          <div><div class="detail-header__title"><h1>Issue #ISS-{{ String(issue.id).padStart(4, '0') }}</h1><StatusTag :status="issue.status" /></div><p>{{ displayAssetValue(assetIdentity.modelName) }} · Code: {{ displayAssetValue(assetIdentity.assetCode) }} · Seri: {{ displayAssetValue(assetIdentity.serialNumber) }}</p></div>
           <a-space class="bigin-mobile-action-stack" wrap>
             <a-button class="bigin-touch-target" v-if="issue.status === 'REPORTED' && canReview" danger :disabled="busy" :icon="h(CloseCircleOutlined)" @click="rejectIssue">Reject</a-button>
             <a-button class="bigin-touch-target" v-if="issue.status === 'REPORTED' && canReview" type="primary" :loading="busy" :icon="h(CheckCircleOutlined)" @click="confirmIssue">Confirm Issue</a-button>
@@ -227,7 +277,7 @@ onMounted(load)
           <section class="panel overview-panel">
             <h2>Issue Information</h2>
             <a-descriptions bordered :column="{ xs: 1, sm: 2 }" size="small">
-              <a-descriptions-item label="Asset"><RouterLink :to="{ name: 'asset-detail', params: { id: issue.assetId } }">{{ issue.asset?.modelName || `Asset ${issue.assetId}` }}</RouterLink></a-descriptions-item>
+              <a-descriptions-item label="Asset"><RouterLink :to="{ name: 'asset-detail', params: { id: issue.assetId } }">{{ displayAssetValue(assetIdentity.modelName) }}</RouterLink></a-descriptions-item>
               <a-descriptions-item label="Asset status"><StatusTag :status="issue.asset?.status" /></a-descriptions-item>
               <a-descriptions-item label="Reported by">{{ issue.reporter?.name || 'Unknown user' }}</a-descriptions-item>
               <a-descriptions-item label="Reported at">{{ formatDate(issue.createdAt) }}</a-descriptions-item>
@@ -272,7 +322,7 @@ onMounted(load)
         </div>
       </template>
 
-      <a-modal v-model:open="modalOpen" wrap-class-name="bigin-modal-content" :title="modalTitle" :confirm-loading="busy" :ok-text="modalTitle" :ok-type="workflow === 'fail' ? 'danger' : 'primary'" width="620px" @ok="submitWorkflow">
+      <a-modal :open="modalOpen" wrap-class-name="bigin-modal-content" :title="modalTitle" :confirm-loading="busy" :ok-text="modalTitle" :ok-type="workflow === 'fail' ? 'danger' : 'primary'" :ok-button-props="{ disabled: evidenceProcessing || retryBlocked }" :closable="!busy && !evidenceProcessing" :keyboard="!busy && !evidenceProcessing" :mask-closable="!busy && !evidenceProcessing" width="620px" @cancel="closeWorkflow" @ok="submitWorkflow">
         <a-form layout="vertical">
           <div class="form-grid">
             <a-form-item label="Repair provider" :required="authStore.hasPermission('vendor.view')">
@@ -303,12 +353,13 @@ onMounted(load)
           </div>
           <a-form-item v-if="workflow !== 'start'" :label="requiresResult ? 'Repair result *' : 'Repair result'"><a-textarea v-model:value="form.result" :rows="3" :maxlength="300" show-count placeholder="Describe the repair result (max 300 characters)" /></a-form-item>
           <a-form-item :label="workflow === 'start' ? 'Diagnosis / Initial notes' : 'Notes'"><a-textarea v-model:value="form.note" :rows="3" :maxlength="300" show-count :placeholder="workflow === 'start' ? 'Describe the initial diagnosis or planned repair (max 300 characters).' : 'Add operational notes (max 300 characters)'" /></a-form-item>
-          <MediaUploader
+          <EvidenceMediaPicker
             v-if="workflow === 'complete'"
-            purpose="AFTER_REPAIR"
+            ref="repairPicker"
+            v-model="repairEvidence"
             label="Optional after-repair evidence"
-            :model-value="repairMediaId"
-            @update:model-value="repairMediaId = $event"
+            :disabled="busy"
+            @processing-change="evidenceProcessing = $event"
           />
         </a-form>
       </a-modal>

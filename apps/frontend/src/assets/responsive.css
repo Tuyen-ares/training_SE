@@ -4,24 +4,6 @@
   width: 100%;
 }
 
-.bigin-table-scroll-wrapper {
-  min-width: 0;
-  width: 100%;
-}
-
-.bigin-table-scroll-wrapper > .ant-table-wrapper,
-.bigin-table-scroll-wrapper > .ant-table-wrapper > .ant-spin-nested-loading,
-.bigin-table-scroll-wrapper .ant-table {
-  min-width: 0;
-}
-
-/* Ant Design owns horizontal table scrolling. This wrapper must not become a
-   second scroll owner because that breaks header, fixed-column, and row sync. */
-.bigin-table-scroll-wrapper .ant-table-content,
-.bigin-table-scroll-wrapper .ant-table-body {
-  overscroll-behavior-inline: contain;
-}
-
 .bigin-mobile-action-stack {
   align-items: center;
   display: flex;
@@ -73,6 +55,15 @@
   z-index: var(--bigin-z-modal) !important;
 }
 
+.bigin-table-action-link.ant-btn-link {
+  color: var(--bigin-color-info-text);
+}
+
+.bigin-table-action-link.ant-btn-link:hover,
+.bigin-table-action-link.ant-btn-link:focus-visible {
+  color: var(--bigin-color-info);
+}
+
 @media (pointer: coarse) and (max-width: 991px) {
   .bigin-touch-target,
   .bigin-mobile-action-stack > .ant-btn {
@@ -80,17 +71,17 @@
     min-width: 44px;
   }
 
-  .bigin-table-scroll-wrapper .ant-btn-link,
-  .bigin-table-scroll-wrapper .ant-btn-text,
-  .bigin-table-scroll-wrapper .ant-pagination-item,
-  .bigin-table-scroll-wrapper .ant-pagination-prev,
-  .bigin-table-scroll-wrapper .ant-pagination-next {
+  .bigin-app-table .ant-btn-link,
+  .bigin-app-table .ant-btn-text,
+  .bigin-app-table .ant-pagination-item,
+  .bigin-app-table .ant-pagination-prev,
+  .bigin-app-table .ant-pagination-next {
     min-height: 44px;
   }
 
-  .bigin-table-scroll-wrapper .ant-pagination-item,
-  .bigin-table-scroll-wrapper .ant-pagination-prev,
-  .bigin-table-scroll-wrapper .ant-pagination-next {
+  .bigin-app-table .ant-pagination-item,
+  .bigin-app-table .ant-pagination-prev,
+  .bigin-app-table .ant-pagination-next {
     min-width: 44px;
   }
 

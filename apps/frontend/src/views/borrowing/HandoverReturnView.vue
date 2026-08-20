@@ -4,7 +4,8 @@ import { CheckCircleOutlined, SwapOutlined, WarningOutlined } from '@ant-design/
 import { message } from 'ant-design-vue'
 import { useRoute } from 'vue-router'
 import WorkspaceLayout from '../../components/layout/WorkspaceLayout.vue'
-import MediaUploader from '../../components/common/MediaUploader.vue'
+import AppTable from '../../components/common/AppTable.vue'
+import EvidenceMediaPicker from '../../components/common/EvidenceMediaPicker.vue'
 import {
   handoverBorrowDetail,
   listHandoverQueue,
@@ -14,6 +15,9 @@ import {
 } from '../../services/borrowing/borrowing.service'
 import { useAuthStore } from '../../stores/auth'
 import { DEFAULT_ASSET_IMAGE } from '../../constants/media'
+import { actionWidth } from '../../utils/table'
+import { displayAssetValue, normalizeAssetIdentity } from '../../utils/asset-identity'
+import { EvidenceBatchError, submitEvidenceBatch } from '../../services/evidence-batch.service'
 
 const route = useRoute()
 const authStore = useAuthStore()
@@ -36,13 +40,19 @@ const busy = ref(null)
 const damagedOpen = ref(false)
 const damagedHistory = ref(null)
 const damagedDescription = ref('')
-const damagedMediaId = ref(null)
+const damagedEvidence = ref([])
+const damagedPicker = ref(null)
 const handoverOpen = ref(false)
 const handoverItem = ref(null)
-const handoverMediaId = ref(null)
+const handoverEvidence = ref([])
+const handoverPicker = ref(null)
 const normalReturnOpen = ref(false)
 const normalReturnHistory = ref(null)
-const normalReturnMediaId = ref(null)
+const normalReturnEvidence = ref([])
+const normalReturnPicker = ref(null)
+const evidenceProcessing = ref(false)
+const retryBlocked = ref(false)
+const queueLoadGenerations = { handover: 0, return: 0 }
 
 const formatDate = (value) => value
   ? new Intl.DateTimeFormat('en-GB', { dateStyle: 'medium' }).format(new Date(`${value}T00:00:00`))
@@ -53,22 +63,39 @@ const formatDateTime = (value) => value
 const busyKey = (type, id) => `${type}-${id}`
 
 async function load(tab = activeTab.value) {
+  if (tab !== 'handover' && tab !== 'return') return null
   if ((tab === 'handover' && !canHandover.value) || (tab === 'return' && !canReturn.value)) return
 
-  loading.value = true
-  errorMessage.value = ''
+  const generation = ++queueLoadGenerations[tab]
+  const requestedPage = page.value
+  const requestedPageSize = pageSize.value
+  const isCurrentLoad = () => generation === queueLoadGenerations[tab] && tab === activeTab.value
+
+  if (tab === activeTab.value) {
+    loading.value = true
+    errorMessage.value = ''
+    items.value = []
+    total.value = 0
+  }
+
   try {
     const result = tab === 'handover'
-      ? await listHandoverQueue(authStore.api, { page: page.value, pageSize: pageSize.value })
-      : await listReturnQueue(authStore.api, { page: page.value, pageSize: pageSize.value })
+      ? await listHandoverQueue(authStore.api, { page: requestedPage, pageSize: requestedPageSize })
+      : await listReturnQueue(authStore.api, { page: requestedPage, pageSize: requestedPageSize })
+    if (!isCurrentLoad()) return null
+
     items.value = result?.items || []
-    page.value = result?.page || page.value
-    pageSize.value = result?.pageSize || pageSize.value
+    page.value = result?.page || requestedPage
+    pageSize.value = result?.pageSize || requestedPageSize
     total.value = result?.total || 0
+    return result
   } catch (error) {
-    errorMessage.value = error.message || `${tab === 'handover' ? 'Handover' : 'Return'} queue could not be loaded.`
+    if (isCurrentLoad()) {
+      errorMessage.value = error.message || `${tab === 'handover' ? 'Handover' : 'Return'} queue could not be loaded.`
+    }
+    return null
   } finally {
-    loading.value = false
+    if (isCurrentLoad()) loading.value = false
   }
 }
 
@@ -86,14 +113,61 @@ function pageChange(nextPage) {
 
 function confirmHandover(item) {
   handoverItem.value = item
-  handoverMediaId.value = null
+  retryBlocked.value = false
   handoverOpen.value = true
 }
 
 function confirmNormalReturn(history) {
   normalReturnHistory.value = history
-  normalReturnMediaId.value = null
+  retryBlocked.value = false
   normalReturnOpen.value = true
+}
+
+function handleEvidenceFailure(error) {
+  if (!(error instanceof EvidenceBatchError)) return false
+  retryBlocked.value = error.retryBlocked
+  message.error(error.message)
+  return true
+}
+
+function closeHandover() {
+  if (busy.value || evidenceProcessing.value) return
+  handoverOpen.value = false
+  handoverPicker.value?.reset()
+}
+
+function closeNormalReturn() {
+  if (busy.value || evidenceProcessing.value) return
+  normalReturnOpen.value = false
+  normalReturnPicker.value?.reset()
+}
+
+function closeDamagedReturn() {
+  if (busy.value || evidenceProcessing.value) return
+  damagedOpen.value = false
+  damagedPicker.value?.reset()
+}
+
+async function reconcileLinkedAttempt(tab, targetId, type) {
+  const result = await load(tab)
+  if (!result || activeTab.value !== tab) return
+
+  const stillPending = result.items?.some((item) => (type === 'handover' ? item.detailId : item.id) === targetId)
+  if (stillPending) {
+    retryBlocked.value = true
+    return
+  }
+  if (type === 'handover') {
+    handoverOpen.value = false
+    handoverPicker.value?.reset()
+  } else if (type === 'normal-return') {
+    normalReturnOpen.value = false
+    normalReturnPicker.value?.reset()
+  } else {
+    damagedOpen.value = false
+    damagedPicker.value?.reset()
+  }
+  message.success('The previous request was already recorded.')
 }
 
 async function submitHandover() {
@@ -101,12 +175,20 @@ async function submitHandover() {
   if (!item) return
   busy.value = busyKey('handover', item.detailId)
   try {
-    await handoverBorrowDetail(authStore.api, item.detailId, handoverMediaId.value ? [handoverMediaId.value] : [])
+    await submitEvidenceBatch({
+      api: authStore.api,
+      items: handoverEvidence.value,
+      purpose: 'HANDOVER',
+      submitBusiness: (mediaIds) => handoverBorrowDetail(authStore.api, item.detailId, mediaIds),
+    })
     handoverOpen.value = false
+    handoverPicker.value?.reset()
     message.success('Handover confirmed.')
-    await load('handover')
+    if (activeTab.value === 'handover') await load('handover')
   } catch (error) {
-    message.error(error.status === 409
+    if (handleEvidenceFailure(error)) {
+      if (error.reconcileRequired) await reconcileLinkedAttempt('handover', item.detailId, 'handover')
+    } else message.error(error.status === 409
       ? 'This asset has already been processed or is no longer reserved.'
       : error.message || 'Handover could not be confirmed.')
   } finally {
@@ -119,12 +201,20 @@ async function submitNormalReturn() {
   if (!history) return
   busy.value = busyKey('return', history.id)
   try {
-    await receiveNormalReturn(authStore.api, history.id, normalReturnMediaId.value ? [normalReturnMediaId.value] : [])
+    await submitEvidenceBatch({
+      api: authStore.api,
+      items: normalReturnEvidence.value,
+      purpose: 'RETURN',
+      submitBusiness: (mediaIds) => receiveNormalReturn(authStore.api, history.id, mediaIds),
+    })
     normalReturnOpen.value = false
+    normalReturnPicker.value?.reset()
     message.success('Return recorded.')
-    await load('return')
+    if (activeTab.value === 'return') await load('return')
   } catch (error) {
-    message.error(error.status === 409
+    if (handleEvidenceFailure(error)) {
+      if (error.reconcileRequired) await reconcileLinkedAttempt('return', history.id, 'normal-return')
+    } else message.error(error.status === 409
       ? 'This return has already been processed or the asset is no longer borrowed.'
       : error.message || 'Return could not be recorded.')
   } finally {
@@ -135,7 +225,7 @@ async function submitNormalReturn() {
 function openDamagedReturn(history) {
   damagedHistory.value = history
   damagedDescription.value = ''
-  damagedMediaId.value = null
+  retryBlocked.value = false
   damagedOpen.value = true
 }
 
@@ -150,12 +240,20 @@ async function confirmDamagedReturn() {
   if (!history) return
   busy.value = busyKey('return', history.id)
   try {
-    const result = await receiveDamagedReturn(authStore.api, history.id, description, damagedMediaId.value ? [damagedMediaId.value] : [])
+    const result = await submitEvidenceBatch({
+      api: authStore.api,
+      items: damagedEvidence.value,
+      purpose: 'RETURN',
+      submitBusiness: (mediaIds) => receiveDamagedReturn(authStore.api, history.id, description, mediaIds),
+    })
     damagedOpen.value = false
+    damagedPicker.value?.reset()
     message.success(`Damaged return recorded. Issue #${result.issueId} created.`)
-    await load('return')
+    if (activeTab.value === 'return') await load('return')
   } catch (error) {
-    message.error(error.status === 409
+    if (handleEvidenceFailure(error)) {
+      if (error.reconcileRequired) await reconcileLinkedAttempt('return', history.id, 'damaged-return')
+    } else message.error(error.status === 409
       ? 'This return has already been processed or the asset is no longer borrowed.'
       : error.message || 'Damaged return could not be recorded.')
   } finally {
@@ -196,187 +294,122 @@ onMounted(() => {
         </a-tabs>
 
         <a-alert v-if="errorMessage" type="error" show-icon :message="errorMessage">
-          <template #action><a-button size="small" @click="load">Retry</a-button></template>
+          <template #action><a-button size="small" @click="load()">Retry</a-button></template>
         </a-alert>
-        <a-skeleton v-else-if="loading" class="queue-loading" active :paragraph="{ rows: 6 }" />
+        <AppTable
+          v-if="activeTab === 'handover'"
+          key="handover"
+          :data-source="items"
+          :loading="loading"
+          row-key="detailId"
+          scroll-mode="intentional"
+          empty-description="No assets are pending handover."
+          :pagination="{ current: page, pageSize, total, label: 'records' }"
+          @page-change="pageChange"
+        >
+          <a-table-column title="Asset" key="asset" :width="300">
+            <template #default="{ record }">
+              <div class="asset-cell"><a-avatar shape="square" size="small" :src="record.asset.imageUrl || DEFAULT_ASSET_IMAGE">{{ displayAssetValue(normalizeAssetIdentity(record.asset).modelName).slice(0, 1) }}</a-avatar><div><strong>{{ displayAssetValue(normalizeAssetIdentity(record.asset).modelName) }}</strong><span>Code: {{ displayAssetValue(normalizeAssetIdentity(record.asset).assetCode) }}</span><span>Seri: {{ displayAssetValue(normalizeAssetIdentity(record.asset).serialNumber) }}</span></div></div>
+            </template>
+          </a-table-column>
+          <a-table-column title="Request" key="request" :width="260">
+            <template #default="{ record }"><div class="person-cell"><strong>REQ-{{ String(record.requestId).padStart(4, '0') }} · {{ record.requester.name }}</strong><span>{{ record.requester.department?.name || 'No department' }}</span></div></template>
+          </a-table-column>
+          <a-table-column title="Expected return" key="expected-return" :width="170"><template #default="{ record }">{{ formatDate(record.expectedReturnDate) }}</template></a-table-column>
+          <a-table-column title="Approved by" key="approved-by" :width="190"><template #default="{ record }"><div class="person-cell"><strong>{{ record.approvedBy?.name || '—' }}</strong><span>{{ formatDateTime(record.approvedAt) }}</span></div></template></a-table-column>
+          <a-table-column title="Action" key="action" fixed="right" :width="actionWidth('wide')" align="right">
+            <template #default="{ record }"><a-button class="action-button bigin-touch-target" type="primary" :loading="busy === busyKey('handover', record.detailId)" :disabled="busy !== null" :icon="h(SwapOutlined)" @click="confirmHandover(record)">Confirm handover</a-button></template>
+          </a-table-column>
+          <template #mobileRow="{ record }">
+            <div class="fulfillment-mobile-row"><div class="asset-cell"><a-avatar shape="square" size="small" :src="record.asset.imageUrl || DEFAULT_ASSET_IMAGE">{{ displayAssetValue(normalizeAssetIdentity(record.asset).modelName).slice(0, 1) }}</a-avatar><div><strong>{{ displayAssetValue(normalizeAssetIdentity(record.asset).modelName) }}</strong><span>REQ-{{ String(record.requestId).padStart(4, '0') }} · {{ record.requester.name }}</span><small>Code: {{ displayAssetValue(normalizeAssetIdentity(record.asset).assetCode) }} · Seri: {{ displayAssetValue(normalizeAssetIdentity(record.asset).serialNumber) }} · {{ formatDate(record.expectedReturnDate) }}</small></div></div><div class="fulfillment-mobile-meta"><span>Approved by {{ record.approvedBy?.name || '—' }}</span><span>{{ record.requester.department?.name || 'No department' }}</span></div><a-button class="action-button bigin-touch-target" type="primary" :loading="busy === busyKey('handover', record.detailId)" :disabled="busy !== null" :icon="h(SwapOutlined)" @click="confirmHandover(record)">Confirm handover</a-button></div>
+          </template>
+        </AppTable>
 
-        <div v-else class="bigin-table-scroll-wrapper">
-          <a-table
-            v-if="activeTab === 'handover'"
-            class="queue-table"
-            :data-source="items"
-            row-key="detailId"
-            :pagination="false"
-            :scroll="{ x: 'max-content' }"
-          >
-            <a-table-column title="Asset" key="asset" :width="270">
-              <template #default="{ record }">
-                <div class="asset-cell">
-                  <a-avatar shape="square" size="small" :src="record.asset.imageUrl || DEFAULT_ASSET_IMAGE">
-                    {{ record.asset.model.name.slice(0, 1) }}
-                  </a-avatar>
-                  <div>
-                    <strong>{{ record.asset.model.name }}</strong>
-                    <span>{{ record.asset.serialNumber || record.asset.qrCode }}</span>
-                    <small>QR {{ record.asset.qrCode }}</small>
-                  </div>
-                </div>
-              </template>
-            </a-table-column>
-            <a-table-column title="Request" key="request" :width="150">
-              <template #default="{ record }">REQ-{{ String(record.requestId).padStart(4, '0') }}</template>
-            </a-table-column>
-            <a-table-column title="Requester" key="requester" :width="210">
-              <template #default="{ record }">
-                <div class="person-cell">
-                  <strong>{{ record.requester.name }}</strong>
-                  <span>{{ record.requester.department?.name || 'No department' }}</span>
-                </div>
-              </template>
-            </a-table-column>
-            <a-table-column title="Expected return" key="expected-return" :width="170">
-              <template #default="{ record }">{{ formatDate(record.expectedReturnDate) }}</template>
-            </a-table-column>
-            <a-table-column title="Approved by" key="approved-by" :width="210">
-              <template #default="{ record }">
-                <div class="person-cell">
-                  <strong>{{ record.approvedBy?.name || '—' }}</strong>
-                  <span>{{ formatDateTime(record.approvedAt) }}</span>
-                </div>
-              </template>
-            </a-table-column>
-            <a-table-column title="" key="action" :width="180" align="right">
-              <template #default="{ record }">
-                <a-button
-                  class="action-button bigin-touch-target"
-                  type="primary"
-                  :loading="busy === busyKey('handover', record.detailId)"
-                  :disabled="busy !== null"
-                  :icon="h(SwapOutlined)"
-                  @click="confirmHandover(record)"
-                >Confirm handover</a-button>
-              </template>
-            </a-table-column>
-            <template #emptyText><a-empty description="No assets are pending handover." /></template>
-          </a-table>
-
-          <a-table
-            v-else
-            class="queue-table"
-            :data-source="items"
-            row-key="id"
-            :pagination="false"
-            :scroll="{ x: 'max-content' }"
-          >
-            <a-table-column title="Asset" key="asset" :width="270">
-              <template #default="{ record }">
-                <div class="asset-cell">
-                  <a-avatar shape="square" size="small" :src="record.asset.imageUrl || DEFAULT_ASSET_IMAGE">
-                    {{ record.asset.model.name.slice(0, 1) }}
-                  </a-avatar>
-                  <div>
-                    <strong>{{ record.asset.model.name }}</strong>
-                    <span>{{ record.asset.serialNumber || record.asset.qrCode }}</span>
-                    <small>QR {{ record.asset.qrCode }}</small>
-                  </div>
-                </div>
-              </template>
-            </a-table-column>
-            <a-table-column title="Borrower" key="borrower" :width="210">
-              <template #default="{ record }">
-                <div class="person-cell">
-                  <strong>{{ record.borrower.name }}</strong>
-                  <span>{{ record.borrower.userCode }}</span>
-                </div>
-              </template>
-            </a-table-column>
-            <a-table-column title="Borrowed at" key="borrowed-at" :width="180">
-              <template #default="{ record }">{{ formatDateTime(record.borrowedAt) }}</template>
-            </a-table-column>
-            <a-table-column title="Expected return" key="expected-return" :width="170">
-              <template #default="{ record }">{{ formatDate(record.expectedReturnDate) }}</template>
-            </a-table-column>
-            <a-table-column title="" key="action" :width="240" align="right">
-              <template #default="{ record }">
-                <div class="return-actions">
-                  <a-button
-                    class="action-button bigin-touch-target"
-                    type="primary"
-                    :loading="busy === busyKey('return', record.id)"
-                    :disabled="busy !== null"
-                    :icon="h(CheckCircleOutlined)"
-                    @click="confirmNormalReturn(record)"
-                  >Confirm Normal Return</a-button>
-                  <a-button
-                    class="action-button bigin-touch-target"
-                    danger
-                    :disabled="busy !== null"
-                    :icon="h(WarningOutlined)"
-                    @click="openDamagedReturn(record)"
-                  >Confirm Damaged Return</a-button>
-                </div>
-              </template>
-            </a-table-column>
-            <template #emptyText><a-empty description="No assets are awaiting return." /></template>
-          </a-table>
-        </div>
-
-        <footer v-if="!loading && !errorMessage" class="queue-footer bigin-responsive-footer">
-          <span>Showing {{ items.length }} of {{ total }} records</span>
-          <a-pagination
-            class="bigin-touch-target"
-            :current="page"
-            :page-size="pageSize"
-            :total="total"
-            :show-size-changer="false"
-            @change="pageChange"
-          />
-        </footer>
+        <AppTable
+          v-else
+          key="return"
+          :data-source="items"
+          :loading="loading"
+          row-key="id"
+          scroll-mode="intentional"
+          empty-description="No assets are awaiting return."
+          :pagination="{ current: page, pageSize, total, label: 'records' }"
+          @page-change="pageChange"
+        >
+          <a-table-column title="Asset" key="asset" :width="300">
+            <template #default="{ record }"><div class="asset-cell"><a-avatar shape="square" size="small" :src="record.asset.imageUrl || DEFAULT_ASSET_IMAGE">{{ displayAssetValue(normalizeAssetIdentity(record.asset).modelName).slice(0, 1) }}</a-avatar><div><strong>{{ displayAssetValue(normalizeAssetIdentity(record.asset).modelName) }}</strong><span>Code: {{ displayAssetValue(normalizeAssetIdentity(record.asset).assetCode) }}</span><span>Seri: {{ displayAssetValue(normalizeAssetIdentity(record.asset).serialNumber) }}</span></div></div></template>
+          </a-table-column>
+          <a-table-column title="Borrower" key="borrower" :width="210"><template #default="{ record }"><div class="person-cell"><strong>{{ record.borrower.name }}</strong><span>{{ record.borrower.userCode }}</span></div></template></a-table-column>
+          <a-table-column title="Borrowing" key="borrowing" :width="220"><template #default="{ record }"><div class="person-cell"><strong>{{ formatDateTime(record.borrowedAt) }}</strong><span>Expected {{ formatDate(record.expectedReturnDate) }}</span></div></template></a-table-column>
+          <a-table-column title="Action" key="action" fixed="right" :width="actionWidth('wide')" align="right">
+            <template #default="{ record }"><div class="return-actions"><a-button class="action-button bigin-touch-target" type="primary" :loading="busy === busyKey('return', record.id)" :disabled="busy !== null" :icon="h(CheckCircleOutlined)" @click="confirmNormalReturn(record)">Confirm Normal Return</a-button><a-button class="action-button bigin-touch-target" danger :disabled="busy !== null" :icon="h(WarningOutlined)" @click="openDamagedReturn(record)">Confirm Damaged Return</a-button></div></template>
+          </a-table-column>
+          <template #mobileRow="{ record }">
+            <div class="fulfillment-mobile-row"><div class="asset-cell"><a-avatar shape="square" size="small" :src="record.asset.imageUrl || DEFAULT_ASSET_IMAGE">{{ displayAssetValue(normalizeAssetIdentity(record.asset).modelName).slice(0, 1) }}</a-avatar><div><strong>{{ displayAssetValue(normalizeAssetIdentity(record.asset).modelName) }}</strong><span>{{ record.borrower.name }} · {{ record.borrower.userCode }}</span><small>Code: {{ displayAssetValue(normalizeAssetIdentity(record.asset).assetCode) }} · Seri: {{ displayAssetValue(normalizeAssetIdentity(record.asset).serialNumber) }} · Expected {{ formatDate(record.expectedReturnDate) }}</small></div></div><div class="fulfillment-mobile-meta"><span>Borrowed {{ formatDateTime(record.borrowedAt) }}</span></div><div class="return-actions"><a-button class="action-button bigin-touch-target" type="primary" :loading="busy === busyKey('return', record.id)" :disabled="busy !== null" :icon="h(CheckCircleOutlined)" @click="confirmNormalReturn(record)">Confirm Normal Return</a-button><a-button class="action-button bigin-touch-target" danger :disabled="busy !== null" :icon="h(WarningOutlined)" @click="openDamagedReturn(record)">Confirm Damaged Return</a-button></div></div>
+          </template>
+        </AppTable>
       </section>
 
       <a-empty v-else description="You do not have access to a fulfillment queue." />
 
       <a-modal
-        v-model:open="handoverOpen"
+        :open="handoverOpen"
         title="Confirm handover"
         ok-text="Confirm handover"
         cancel-text="Cancel"
         :confirm-loading="busy === busyKey('handover', handoverItem?.detailId)"
+        :ok-button-props="{ disabled: evidenceProcessing || retryBlocked }"
+        :closable="!busy && !evidenceProcessing"
+        :keyboard="!busy && !evidenceProcessing"
+        :mask-closable="!busy && !evidenceProcessing"
+        @cancel="closeHandover"
         @ok="submitHandover"
       >
-        <p>{{ handoverItem?.asset.model.name }} will move from RESERVED to BORROWED and a borrow history will be created.</p>
-        <MediaUploader
-          purpose="HANDOVER"
+        <p>{{ displayAssetValue(normalizeAssetIdentity(handoverItem?.asset).modelName) }} will move from RESERVED to BORROWED and a borrow history will be created.</p>
+        <EvidenceMediaPicker
+          ref="handoverPicker"
+          v-model="handoverEvidence"
           label="Optional handover evidence"
-          :model-value="handoverMediaId"
-          @update:model-value="handoverMediaId = $event"
+          :disabled="busy !== null"
+          @processing-change="evidenceProcessing = $event"
         />
       </a-modal>
 
       <a-modal
-        v-model:open="normalReturnOpen"
+        :open="normalReturnOpen"
         title="Confirm asset return"
         ok-text="Confirm normal return"
         cancel-text="Cancel"
         :confirm-loading="busy === busyKey('return', normalReturnHistory?.id)"
+        :ok-button-props="{ disabled: evidenceProcessing || retryBlocked }"
+        :closable="!busy && !evidenceProcessing"
+        :keyboard="!busy && !evidenceProcessing"
+        :mask-closable="!busy && !evidenceProcessing"
+        @cancel="closeNormalReturn"
         @ok="submitNormalReturn"
       >
-        <p>{{ normalReturnHistory?.asset.model.name }} will become AVAILABLE.</p>
-        <MediaUploader
-          purpose="RETURN"
+        <p>{{ displayAssetValue(normalizeAssetIdentity(normalReturnHistory?.asset).modelName) }} will become AVAILABLE.</p>
+        <EvidenceMediaPicker
+          ref="normalReturnPicker"
+          v-model="normalReturnEvidence"
           label="Optional return evidence"
-          :model-value="normalReturnMediaId"
-          @update:model-value="normalReturnMediaId = $event"
+          :disabled="busy !== null"
+          @processing-change="evidenceProcessing = $event"
         />
       </a-modal>
 
       <a-modal
-        v-model:open="damagedOpen"
+        :open="damagedOpen"
         wrap-class-name="bigin-modal-content"
         title="Confirm damaged return"
         ok-text="Confirm Damaged Return"
         cancel-text="Cancel"
         :confirm-loading="busy === busyKey('return', damagedHistory?.id)"
+        :ok-button-props="{ disabled: evidenceProcessing || retryBlocked }"
+        :closable="!busy && !evidenceProcessing"
+        :keyboard="!busy && !evidenceProcessing"
+        :mask-closable="!busy && !evidenceProcessing"
+        @cancel="closeDamagedReturn"
         @ok="confirmDamagedReturn"
       >
         <p>The asset will be marked DAMAGED and a confirmed issue will be created.</p>
@@ -389,11 +422,12 @@ onMounted(() => {
             placeholder="Describe the damage found during return inspection."
           />
         </a-form-item>
-        <MediaUploader
-          purpose="RETURN"
+        <EvidenceMediaPicker
+          ref="damagedPicker"
+          v-model="damagedEvidence"
           label="Optional return evidence"
-          :model-value="damagedMediaId"
-          @update:model-value="damagedMediaId = $event"
+          :disabled="busy !== null"
+          @processing-change="evidenceProcessing = $event"
         />
       </a-modal>
     </main>
@@ -401,7 +435,7 @@ onMounted(() => {
 </template>
 
 <style scoped>
-.fulfillment-page { max-width: 1320px; min-width: 0; margin: 0 auto; padding: 32px 36px 48px; }
+.fulfillment-page { max-width: none; min-width: 0; margin: 0; padding: 32px 36px 48px; }
 .fulfillment-header { align-items: flex-end; display: flex; gap: 24px; justify-content: space-between; margin-bottom: 28px; }
 .eyebrow { color: var(--bigin-text-tertiary); font-size: 11px; font-weight: 700; letter-spacing: .12em; margin: 0 0 8px; }
 .fulfillment-header h1 { color: var(--bigin-text-primary); font-size: 30px; letter-spacing: -.02em; line-height: 1.15; margin: 0; }
@@ -412,9 +446,6 @@ onMounted(() => {
 .fulfillment-surface { background: var(--bigin-surface-panel); border: 1px solid var(--bigin-border-subtle); border-radius: 12px; box-shadow: var(--bigin-shadow-elevated); overflow: hidden; }
 .fulfillment-tabs { border-bottom: 1px solid var(--bigin-border-secondary); padding: 0 24px; }
 .fulfillment-tabs :deep(.ant-tabs-nav) { margin: 0; }
-.queue-loading { margin: 24px; }
-.queue-table :deep(.ant-table-thead > tr > th) { background: var(--bigin-surface-subtle); color: var(--bigin-text-tertiary); font-size: 11px; font-weight: 700; letter-spacing: .06em; padding: 14px 18px; text-transform: uppercase; }
-.queue-table :deep(.ant-table-tbody > tr > td) { border-bottom: 1px solid var(--bigin-border-secondary); padding: 17px 18px; }
 .asset-cell, .person-cell, .asset-cell > div { display: grid; gap: 4px; min-width: 0; }
 .asset-cell { align-items: center; display: flex; gap: 10px; }
 .asset-cell strong, .person-cell strong { color: var(--bigin-text-primary); font-size: 13px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
@@ -422,7 +453,7 @@ onMounted(() => {
 .asset-cell small, .person-cell span { color: var(--bigin-text-tertiary); font-size: 11px; }
 .action-button { border-radius: 6px; font-size: 12px; }
 .return-actions { display: grid; gap: 8px; min-width: 215px; }
-.queue-footer { align-items: center; border-top: 1px solid var(--bigin-border-secondary); color: var(--bigin-text-tertiary); display: flex; font-size: 12px; justify-content: space-between; padding: 16px 24px; }
+.fulfillment-mobile-row { display: grid; gap: 12px; }.fulfillment-mobile-meta { align-items: center; color: var(--bigin-text-secondary); display: flex; flex-wrap: wrap; justify-content: space-between; gap: 8px; font-size: 12px; }
 @media (max-width: 780px) {
   .fulfillment-page { padding: 24px 16px 36px; }
   .fulfillment-header { align-items: flex-start; flex-direction: column; }
@@ -432,7 +463,6 @@ onMounted(() => {
 @media (max-width: 575px) {
   .fulfillment-page { padding: 16px 12px 28px; }
   .fulfillment-header h1 { font-size: 25px; }
-  .queue-footer { padding: 14px 16px; }
   .return-actions { min-width: 0; }
   .return-actions :deep(.ant-btn) { width: 100%; }
 }

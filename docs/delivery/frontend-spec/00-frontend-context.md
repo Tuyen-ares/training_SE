@@ -63,7 +63,9 @@ surface và spacing nhưng không render footer giả.
 ### Action column convention
 
 - Title luôn là `Action` (số ít), đặt ở cuối bảng.
-- Nội dung căn phải (`align="right"`).
+- Nội dung trong row căn phải (`align="right"`); label `Action` trong header căn
+  giữa ô header để thẳng hàng với vùng thao tác mà không làm thay đổi vị trí
+  các control trong row.
 - Width dùng semantic size `compact`, `normal` hoặc `wide`, được map qua token;
   page không chọn width chỉ vì một con số tùy ý.
 - `fixed="right"` chỉ dùng khi bảng có intentional horizontal scroll hoặc
@@ -117,7 +119,7 @@ Presentation order là:
 ```text
 Model name
 Code: <assetCode>
-SN: <serialNumber>
+Seri: <serialNumber>
 ```
 
 Giá trị thiếu hiển thị `—`. Không dùng `serialNumber || qrCode`, raw `qrCode`,
@@ -132,11 +134,11 @@ dùng Vue component nếu formatter/normalizer phù hợp hơn.
 
 #### Screen exceptions
 
-- **Asset List:** cell Asset chỉ hiển thị Model + Code. Category, Brand và Serial
-  Number vẫn là ba column riêng để so sánh inventory; không lặp SN trong Asset
+- **Asset List:** cell Asset chỉ hiển thị Model + Code. Category, Brand và Seri
+  vẫn là ba column riêng để so sánh inventory; không lặp Seri trong Asset
   cell.
 - **Asset Detail:** dedicated fields hiện có tiếp tục hiển thị Model, Code và
-  SN. Shared identity component không được chèn vào cùng khu vực nếu tạo lặp;
+  Seri. Shared identity component không được chèn vào cùng khu vực nếu tạo lặp;
   normalizer chỉ cấp dữ liệu cho các field hoặc context không trùng.
 - **Dashboard Recent Activity:** giữ nguyên các column hiện tại và chỉ chuẩn hóa
   giá trị identity. Không merge, remove, reorder hoặc redesign column. Loại bỏ
@@ -155,10 +157,10 @@ Runtime review phải kiểm tra độc lập các context sau:
 | --- | --- | --- |
 | Desktop rộng | 1440×900 | Table/list identity, pagination, action và toolbar không bị cắt hoặc lệch |
 | Desktop có sidebar | 1280×800 với persistent sidebar 248px (`>=992px`) | Content region còn đủ rộng; không có header/body desync, action bị đẩy khỏi khung hoặc identity bị truncate bất ngờ |
-| Tablet | 834×1112 và 768×1024 với navigation drawer (`<992px`) | Drawer/backdrop hoạt động; toolbar wrap; table chuyển renderer/scroll có chủ đích; Code/SN vẫn đọc được |
+| Tablet | 834×1112 và 768×1024 với navigation drawer (`<992px`) | Drawer/backdrop hoạt động; toolbar wrap; table chuyển renderer/scroll có chủ đích; Code/Seri vẫn đọc được |
 | Mobile | 390×844 | Stacked row/card, touch target, missing value `—` và QR action/drawer hoạt động |
 
-Mỗi context phải thử: đủ Model + Code + SN; thiếu Code; thiếu SN; thiếu cả hai;
+Mỗi context phải thử: đủ Model + Code + Seri; thiếu Code; thiếu Seri; thiếu cả hai;
 model dài; không có image; nhiều asset trong một request. Không nghiệm thu bằng
 cách che overflow; không được có `undefined`, label rỗng hoặc raw QR trong asset
 identity.

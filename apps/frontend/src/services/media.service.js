@@ -1,9 +1,6 @@
-const MEDIA_CACHE_CONTROL = 'public,max-age=31536000,immutable'
+import { MEDIA_LIMITS } from '../constants/media'
 
-export const MEDIA_LIMITS = {
-  maxImageSizeBytes: 10 * 1024 * 1024,
-  allowedMimeTypes: ['image/jpeg', 'image/png', 'image/webp'],
-}
+const MEDIA_CACHE_CONTROL = 'public,max-age=31536000,immutable'
 
 export function presignMedia(api, payload) {
   return api('/media/presign', { method: 'POST', body: payload })

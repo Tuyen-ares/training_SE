@@ -5,8 +5,10 @@ import { useRouter } from 'vue-router'
 
 import WorkspaceLayout from '../../../components/layout/WorkspaceLayout.vue'
 import AdministrationTabs from '../../../components/administration/AdministrationTabs.vue'
+import AppTable from '../../../components/common/AppTable.vue'
 import StatusTag from '../../../components/common/StatusTag.vue'
 import { useAuthStore } from '../../../stores/auth'
+import { actionWidth } from '../../../utils/table'
 
 const authStore = useAuthStore()
 const router = useRouter()
@@ -124,31 +126,25 @@ onMounted(loadPage)
       </a-alert>
 
       <section class="user-table-panel">
-        <div class="bigin-table-scroll-wrapper"><a-table
+        <AppTable
           :data-source="filteredUsers"
           :loading="loading"
           row-key="id"
-          :pagination="{ pageSize: 8, showSizeChanger: false, position: ['bottomRight'] }"
-          :locale="{ emptyText: 'No users match the current filters.' }"
-          :scroll="{ x: 'max-content' }"
+          empty-description="No users match the current filters."
+          :pagination="{ mode: 'client', pageSize: 8, label: 'users' }"
         >
-          <a-table-column title="No." key="number" :width="64">
-            <template #default="{ index }">{{ index + 1 }}</template>
-          </a-table-column>
-          <a-table-column title="Full Name" key="identity" :width="250">
+          <a-table-column title="User" key="identity" :width="330">
             <template #default="{ record }">
               <button class="identity-link bigin-touch-target" type="button" @click="router.push({ name: 'user-detail', params: { id: record.id } })">
                 <a-avatar :size="36" :src="record.avatarUrl">{{ initials(record.name) }}</a-avatar>
-                <span><strong>{{ record.name }}</strong><small>{{ record.userCode || 'User code unavailable' }}</small></span>
+                <span><strong>{{ record.name }}</strong><small>{{ record.userCode || 'User code unavailable' }}</small><small>{{ record.email }} · {{ record.phone || 'No phone' }}</small></span>
               </button>
             </template>
           </a-table-column>
-          <a-table-column title="Email" data-index="email" key="email" />
-          <a-table-column title="Phone Number" data-index="phone" key="phone" :width="150" />
           <a-table-column title="Department" key="department" :width="160">
             <template #default="{ record }">{{ record.department?.name || 'Unassigned' }}</template>
           </a-table-column>
-          <a-table-column title="Role" key="roles" :width="190">
+          <a-table-column title="Role" key="roles" :width="180">
             <template #default="{ record }">
               <a-space :size="4" wrap>
                 <a-tag v-for="role in record.roles" :key="role.id" :color="role.name === 'admin' ? 'volcano' : role.name.includes('manager') ? 'orange' : 'default'">
@@ -160,7 +156,7 @@ onMounted(loadPage)
           <a-table-column title="Status" key="status" :width="110">
             <template #default="{ record }"><StatusTag :status="record.isActive ? 'ACTIVE' : 'INACTIVE'" /></template>
           </a-table-column>
-          <a-table-column title="Actions" key="actions" align="right" :width="160">
+          <a-table-column title="Action" key="actions" align="right" fixed="right" :width="actionWidth('normal')">
             <template #default="{ record }">
               <a-space>
                   <a-button class="bigin-touch-target" type="link" size="small" @click="router.push({ name: 'user-detail', params: { id: record.id } })">View</a-button>
@@ -178,7 +174,21 @@ onMounted(loadPage)
               </a-space>
             </template>
           </a-table-column>
-        </a-table></div>
+          <template #mobileRow="{ record }">
+            <div class="user-mobile-row">
+              <button class="identity-link bigin-touch-target" type="button" @click="router.push({ name: 'user-detail', params: { id: record.id } })">
+                <a-avatar :size="36" :src="record.avatarUrl">{{ initials(record.name) }}</a-avatar>
+                <span><strong>{{ record.name }}</strong><small>{{ record.userCode || 'User code unavailable' }}</small><small>{{ record.email }} · {{ record.phone || 'No phone' }}</small></span>
+              </button>
+              <div class="user-mobile-meta"><span>{{ record.department?.name || 'Unassigned' }}</span><StatusTag :status="record.isActive ? 'ACTIVE' : 'INACTIVE'" /></div>
+              <div class="user-mobile-actions">
+                <a-button class="bigin-touch-target" type="link" @click="router.push({ name: 'user-detail', params: { id: record.id } })">View</a-button>
+                <a-button v-if="canUpdate" class="bigin-touch-target" type="link" @click="router.push({ name: 'user-edit', params: { id: record.id } })">Edit</a-button>
+                <a-button v-if="canManageStatus" class="bigin-touch-target" type="link" :danger="record.isActive" @click="changeStatus(record)">{{ record.isActive ? 'Deactivate' : 'Reactivate' }}</a-button>
+              </div>
+            </div>
+          </template>
+        </AppTable>
       </section>
     </main>
   </WorkspaceLayout>
@@ -191,8 +201,8 @@ onMounted(loadPage)
 .user-search { width: min(360px, 100%); }.toolbar-select { max-width: 100%; width: 150px; }.primary-action { background: var(--bigin-color-primary); margin-left: auto; }
 .page-alert { margin-bottom: 16px; }.user-table-panel { background: var(--bigin-surface-panel); border: 1px solid var(--bigin-border-secondary); border-radius: 8px; overflow: hidden; }
 .identity-link { align-items: center; background: transparent; border: 0; color: inherit; cursor: pointer; display: flex; gap: 10px; padding: 0; text-align: left; }
-.identity-link span { display: grid; }.identity-link small { color: var(--bigin-text-tertiary); font-size: 11px; margin-top: 2px; }
-:deep(.ant-table-thead > tr > th) { background: var(--bigin-surface-subtle); font-size: 12px; text-transform: uppercase; }
+.identity-link span { display: grid; }.identity-link small { color: var(--bigin-text-tertiary); font-size: 11px; margin-top: 2px; overflow-wrap: anywhere; }
+.user-mobile-row { display: grid; gap: 12px; }.user-mobile-meta, .user-mobile-actions { align-items: center; display: flex; flex-wrap: wrap; justify-content: space-between; gap: 8px; }.user-mobile-actions { border-top: 1px solid var(--bigin-border-secondary); justify-content: flex-end; padding-top: 8px; }
 :deep(.ant-pagination-item-active) { border-color: var(--bigin-color-primary); }:deep(.ant-pagination-item-active a) { color: var(--bigin-color-primary); }
 @media (max-width: 900px) { .user-toolbar { align-items: stretch; flex-wrap: wrap; }.primary-action { margin-left: 0; }.user-list-page { padding: 16px; } }
 @media (max-width: 575px) { .user-list-page { padding: 12px; }.user-toolbar { flex-direction: column; }.user-search, .toolbar-select, .primary-action { width: 100%; } }

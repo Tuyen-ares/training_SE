@@ -29,7 +29,7 @@ export interface IMediaStorage {
     mimeType: string;
   }): Promise<{ uploadUrl: string; expiresAt: Date }>;
   headObject(storagePath: string): Promise<MediaHeadMetadata>;
-  deleteObject(storagePath: string): Promise<'DELETED' | 'NOT_FOUND'>;
+  deleteObject(storagePath: string, options?: { abortSignal?: AbortSignal }): Promise<'DELETED' | 'NOT_FOUND'>;
 }
 
 function failureKind(error: unknown): MediaStorageFailureKind {
@@ -98,10 +98,12 @@ export class S3MediaStorage implements IMediaStorage {
     }
   }
 
-  async deleteObject(storagePath: string): Promise<'DELETED' | 'NOT_FOUND'> {
+  async deleteObject(storagePath: string, options: { abortSignal?: AbortSignal } = {}): Promise<'DELETED' | 'NOT_FOUND'> {
     const { client, bucket } = this.getClient();
     try {
-      await client.send(new DeleteObjectCommand({ Bucket: bucket, Key: storagePath }));
+      await client.send(new DeleteObjectCommand({ Bucket: bucket, Key: storagePath }), {
+        abortSignal: options.abortSignal,
+      });
       return 'DELETED';
     } catch (error) {
       if (error instanceof MediaStorageError) throw error;

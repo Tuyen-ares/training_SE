@@ -35,9 +35,25 @@ and 991/992px.
 
 ## Data-dense views
 
-- Multi-column Ant Design tables use native `scroll: { x: 'max-content' }`.
-  The shared wrapper is visual containment only; it must not become a second
-  horizontal scroll owner.
+- All production list/table screens use the shared `AppTable` foundation and
+  table tokens documented in
+  [`00-frontend-context.md`](../../delivery/frontend-spec/00-frontend-context.md).
+  This foundation owns common header/cell spacing, typography, row behavior,
+  loading/empty presentation, pagination footer and action-column semantics.
+- Tables do not receive horizontal scrolling by default. Columns first reduce
+  width through reasonable flexing, descriptive metadata grouping and
+  breakpoint-specific secondary metadata. `scroll.x = 'max-content'` (or an
+  equivalent intentional mode) is reserved for tables whose important fields
+  cannot be grouped without losing comparison or workflow context.
+- When a table intentionally scrolls, Ant Design owns the horizontal scroll;
+  the shared wrapper must not become a second scroll owner because that breaks
+  header, fixed-column and row synchronization. A sticky Action column is used
+  only for such intentional-scroll tables when it materially improves task
+  completion.
+- Tables with a suitable mobile representation render stacked rows/cards below
+  the mobile breakpoint and reuse the same cell formatter/action state. Tables
+  whose purpose is dense cross-row comparison may retain intentional mobile
+  scrolling instead of hiding important data.
 - The Approval Detail custom asset grid uses one horizontal scroll container
   for both its header and rows. Both share the same grid columns and 960px
   minimum width, preserving column alignment while scrolling.

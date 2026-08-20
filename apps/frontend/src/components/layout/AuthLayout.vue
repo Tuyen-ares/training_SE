@@ -4,6 +4,8 @@ import {
   ThunderboltFilled,
 } from '@ant-design/icons-vue'
 
+import BrandLogo from '../common/BrandLogo.vue'
+
 defineProps({
   wide: {
     type: Boolean,
@@ -19,10 +21,7 @@ defineProps({
       <a-layout-sider class="auth-layout__context" :width="512" theme="light">
         <div class="auth-layout__context-top">
           <div class="auth-layout__brand">
-            <div>
-              <div class="auth-layout__brand-name">BigIn Asset<span>.</span></div>
-              <div class="auth-layout__brand-label">Management</div>
-            </div>
+            <BrandLogo variant="lockup" :size="56" show-subtitle />
           </div>
 
           <div class="auth-layout__context-copy">
@@ -43,10 +42,7 @@ defineProps({
       <a-layout-content class="auth-layout__content">
         <section class="auth-layout__form-region" :class="{ 'auth-layout__form-region--wide': wide }">
           <div class="auth-layout__mobile-brand">
-            <div>
-              <div class="auth-layout__brand-name">BigIn Asset<span>.</span></div>
-              <div class="auth-layout__brand-label">Management</div>
-            </div>
+            <BrandLogo variant="lockup" :size="50" show-subtitle />
           </div>
           <slot />
         </section>
@@ -61,9 +57,6 @@ defineProps({
 .auth-layout__context { display: flex; flex: 0 0 45% !important; flex-direction: column; justify-content: space-between; max-width: 45% !important; min-width: 0 !important; padding: 48px 56px; width: 45% !important; background: var(--bigin-surface-primary-soft) !important; color: var(--bigin-text-primary); }
 .auth-layout__context :deep(.ant-layout-sider-children) { display: flex; flex: 1; flex-direction: column; justify-content: space-between; }
 .auth-layout__brand, .auth-layout__mobile-brand { align-items: center; display: flex; gap: 12px; }
-.auth-layout__brand-name { font-size: 18px; font-weight: 700; line-height: 24px; }
-.auth-layout__brand-name span { color: var(--ant-color-primary); }
-.auth-layout__brand-label { color: var(--bigin-text-secondary); font-size: 8px; font-weight: 700; letter-spacing: 0.16em; line-height: 12px; text-transform: uppercase; }
 .auth-layout__context-copy { margin-top: 86px; max-width: 360px; }
 .auth-layout__title { font-size: 27px; font-weight: 700; letter-spacing: -0.02em; line-height: 35px; margin: 0; }
 .auth-layout__description { color: var(--bigin-text-secondary); font-size: 13px; line-height: 20px; margin: 18px 0 0; max-width: 350px; }

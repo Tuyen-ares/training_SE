@@ -10,6 +10,7 @@ import StatusTag from '../../components/common/StatusTag.vue'
 import { statusLabel } from '../../constants/status-meta'
 import { DEFAULT_ASSET_IMAGE } from '../../constants/media'
 import { downloadAssetQr, generateAssetQr, printAssetQr } from '../../utils/asset-qr'
+import { displayAssetValue, normalizeAssetIdentity } from '../../utils/asset-identity'
 import WorkspaceLayout from '../../components/layout/WorkspaceLayout.vue'
 
 const route = useRoute()
@@ -29,6 +30,7 @@ const qrError = ref('')
 const canEdit = computed(() => authStore.hasPermission('asset.update'))
 const canRequestRetire = computed(() => authStore.hasPermission('asset.delete'))
 const canRetireStatus = computed(() => ['AVAILABLE', 'DAMAGED', 'IN_REPAIR'].includes(asset.value?.status))
+const assetIdentity = computed(() => normalizeAssetIdentity(asset.value))
 
 async function loadAsset() {
   loading.value = true
@@ -100,8 +102,8 @@ onMounted(loadAsset)
       <template v-else-if="asset">
         <div class="page-heading">
           <div>
-            <a-typography-title :level="1">{{ asset.serialNumber || asset.model.name }}</a-typography-title>
-            <a-typography-text type="secondary">{{ asset.model.name }} · {{ asset.brand.name }}</a-typography-text>
+            <a-typography-title :level="1">{{ displayAssetValue(assetIdentity.modelName) }}</a-typography-title>
+            <a-typography-text type="secondary">{{ asset.brand?.name || '—' }}</a-typography-text>
           </div>
           <a-space class="bigin-mobile-action-stack">
             <StatusTag :status="asset.status" />
@@ -122,12 +124,11 @@ onMounted(loadAsset)
                   <a-image class="asset-image" :src="asset.imageUrl || DEFAULT_ASSET_IMAGE" :fallback="DEFAULT_ASSET_IMAGE" :alt="asset.model.name" />
                 </div>
                 <a-descriptions :column="{ xs: 1, sm: 2 }" size="small">
-                  <a-descriptions-item label="Asset code">{{ asset.assetCode }}</a-descriptions-item>
-                  <a-descriptions-item label="Serial number">{{ asset.serialNumber || 'Not assigned' }}</a-descriptions-item>
-                  <a-descriptions-item label="QR code">{{ asset.qrCode }}</a-descriptions-item>
+                  <a-descriptions-item label="Asset code">{{ displayAssetValue(assetIdentity.assetCode) }}</a-descriptions-item>
+                  <a-descriptions-item label="Seri">{{ displayAssetValue(assetIdentity.serialNumber) }}</a-descriptions-item>
                   <a-descriptions-item label="Category">{{ asset.type.name }}</a-descriptions-item>
                   <a-descriptions-item label="Brand">{{ asset.brand.name }}</a-descriptions-item>
-                  <a-descriptions-item label="Model">{{ asset.model.name }}</a-descriptions-item>
+                  <a-descriptions-item label="Model">{{ displayAssetValue(assetIdentity.modelName) }}</a-descriptions-item>
                   <a-descriptions-item label="Managing department">{{ asset.department?.name || 'Unassigned' }}</a-descriptions-item>
                   <a-descriptions-item label="Current status"><StatusTag :status="asset.status" /></a-descriptions-item>
                 </a-descriptions>
@@ -148,8 +149,8 @@ onMounted(loadAsset)
           <a-alert v-else-if="qrError" type="error" show-icon :message="qrError" />
           <template v-else-if="qrImage">
             <img class="qr-drawer__image" :src="qrImage" alt="Asset QR Code" />
-            <strong>{{ asset.serialNumber || asset.model.name }}</strong>
-            <span>{{ asset.model.name }}</span>
+            <strong>{{ displayAssetValue(assetIdentity.modelName) }}</strong>
+            <span>Code: {{ displayAssetValue(assetIdentity.assetCode) }} · Seri: {{ displayAssetValue(assetIdentity.serialNumber) }}</span>
             <a-space direction="vertical" block>
               <a-button class="bigin-touch-target" type="primary" block @click="downloadQr">Download QR Label</a-button>
               <a-button class="bigin-touch-target" block @click="printQr">Print QR Label</a-button>

@@ -15,6 +15,8 @@ function toAppError(error) {
   const appError = new Error(error.response?.data?.error || 'The request could not be completed.')
   appError.status = error.response?.status
   appError.details = error.response?.data?.details
+  appError.code = error.response?.data?.code
+  appError.retryable = error.response?.data?.retryable
   return appError
 }
 

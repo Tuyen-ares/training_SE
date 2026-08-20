@@ -4,6 +4,7 @@ import { AppstoreOutlined, ArrowLeftOutlined, CheckOutlined, CloseOutlined } fro
 import { message, Modal } from 'ant-design-vue'
 import { useRoute, useRouter } from 'vue-router'
 import StatusTag from '../../components/common/StatusTag.vue'
+import AssetIdentity from '../../components/assets/AssetIdentity.vue'
 import WorkspaceLayout from '../../components/layout/WorkspaceLayout.vue'
 import {
   approveAllBorrowDetails,
@@ -12,7 +13,7 @@ import {
   rejectBorrowDetail,
 } from '../../services/borrowing/borrowing.service'
 import { useAuthStore } from '../../stores/auth'
-import { DEFAULT_ASSET_IMAGE } from '../../constants/media'
+import { normalizeAssetIdentity } from '../../utils/asset-identity'
 
 const route = useRoute()
 const router = useRouter()
@@ -195,14 +196,7 @@ onMounted(() => { if (!request.value) load() })
                 <div v-if="!requestDetails.length" class="assets-empty"><a-empty description="No assets in this request" /></div>
                 <div v-else class="asset-list">
                 <article v-for="detail in requestDetails" :key="detail.id" class="asset-row">
-              <div class="asset-identity">
-                <a-avatar shape="square" :size="48" :src="detail.asset.imageUrl || DEFAULT_ASSET_IMAGE" class="asset-avatar">{{ detail.asset.model?.name?.slice(0, 1) || 'A' }}</a-avatar>
-                <div>
-                  <strong>{{ detail.asset.model?.name || 'Asset' }}</strong>
-                  <span>{{ detail.asset.serialNumber || 'No serial number' }}</span>
-                  <small>QR {{ detail.asset.qrCode }}</small>
-                </div>
-              </div>
+              <AssetIdentity :identity="normalizeAssetIdentity(detail.asset)" variant="table" show-image />
               <div class="asset-field category-field"><span>{{ detail.asset.assetType?.name || detail.asset.model?.assetType?.name || 'Equipment' }}</span></div>
               <div class="asset-field">
                 <span class="muted-label">STOCK STATUS</span>
@@ -315,12 +309,6 @@ onMounted(() => { if (!request.value) load() })
 .asset-list { min-width: 960px; }
 .asset-row { align-items: center; border-bottom: 1px solid var(--bigin-border-secondary); display: grid; gap: 18px; grid-template-columns: minmax(260px, 1fr) 150px 125px 145px minmax(180px, auto); min-width: 960px; padding: 18px 24px; }
 .asset-row:last-child { border-bottom: 0; }
-.asset-identity { align-items: center; display: flex; gap: 12px; min-width: 0; }
-.asset-avatar { background: var(--bigin-surface-avatar); color: var(--bigin-text-secondary); flex: 0 0 auto; font-weight: 700; }
-.asset-identity > div { display: grid; gap: 4px; min-width: 0; }
-.asset-identity strong { color: var(--bigin-text-primary); font-size: 13px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-.asset-identity span, .asset-identity small { color: var(--bigin-text-secondary); font-size: 12px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-.asset-identity small { color: var(--bigin-text-tertiary); font-size: 10px; }
 .asset-field { display: grid; gap: 6px; min-width: 0; }
 .category-field { color: var(--bigin-text-secondary); font-size: 13px; }
 .asset-field > strong { color: var(--bigin-text-secondary); font-size: 12px; font-weight: 500; }

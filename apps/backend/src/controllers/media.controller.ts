@@ -24,9 +24,13 @@ function handleMediaError(error: unknown, res: Response): void {
   if (error.code === 'MEDIA_NOT_FOUND' || error.code === 'MEDIA_VERIFY_NOT_FOUND') {
     return ApiResponse.notFound(res, error.code === 'MEDIA_VERIFY_NOT_FOUND' ? 'Uploaded object could not be verified' : 'Media not found');
   }
-  if (error.code === 'MEDIA_ALREADY_LINKED') return ApiResponse.conflict(res, 'Linked media cannot be cancelled');
+  if (error.code === 'MEDIA_ALREADY_LINKED') {
+    res.status(409).json({ error: 'Linked media cannot be cancelled', code: error.code, retryable: false });
+    return;
+  }
   if (error.code === 'MEDIA_STORAGE_ACCESS' || error.code === 'MEDIA_STORAGE_UNAVAILABLE') {
-    return ApiResponse.serviceUnavailable(res, 'Media storage is temporarily unavailable');
+    res.status(503).json({ error: 'Media storage is temporarily unavailable', code: 'MEDIA_STORAGE_UNAVAILABLE', retryable: true });
+    return;
   }
   return ApiResponse.badRequest(res, { media: [error.message] });
 }

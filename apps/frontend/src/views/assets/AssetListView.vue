@@ -10,11 +10,14 @@ import { computed, h, onMounted, reactive, ref } from 'vue'
 import { useRouter } from 'vue-router'
 
 import StatusTag from '../../components/common/StatusTag.vue'
+import AssetIdentity from '../../components/assets/AssetIdentity.vue'
+import AppTable from '../../components/common/AppTable.vue'
 import WorkspaceLayout from '../../components/layout/WorkspaceLayout.vue'
 import { ASSET_STATUSES, statusLabel } from '../../constants/status-meta'
-import { DEFAULT_ASSET_IMAGE } from '../../constants/media'
 import { listAssets, listAssetLookups } from '../../services/assets/asset.service'
 import { useAuthStore } from '../../stores/auth'
+import { actionColumn } from '../../utils/table'
+import { displayAssetValue, normalizeAssetIdentity } from '../../utils/asset-identity'
 
 const router = useRouter()
 const authStore = useAuthStore()
@@ -37,13 +40,12 @@ const canCreateAsset = computed(() => authStore.hasPermission('asset.create'))
 const canUpdateAsset = computed(() => authStore.hasPermission('asset.update'))
 const columns = [
   { title: 'Asset', key: 'asset', width: 220 },
-  { title: 'Type', key: 'type', width: 150 },
-  { title: 'Model & Brand', key: 'modelBrand', width: 190 },
-  { title: 'Department', key: 'department', width: 170 },
-  { title: 'Serial Number', key: 'serial', width: 170 },
-  { title: 'QR Code', key: 'qr', width: 105 },
-  { title: 'Status', key: 'status', width: 130 },
-  { title: 'Action', key: 'actions', width: 120 },
+  { title: 'Category', key: 'category', width: 120 },
+  { title: 'Brand', key: 'brand', width: 110 },
+  { title: 'Seri', key: 'serialNumber', width: 145 },
+  { title: 'Department', key: 'department', width: 150, responsive: ['xxl'] },
+  { title: 'Status', key: 'status', width: 100 },
+  actionColumn({ key: 'actions', size: 'wide', fixed: true }),
 ]
 
 const statusOptions = computed(() => ASSET_STATUSES.map((value) => ({ value, label: statusLabel(value) })))
@@ -154,41 +156,45 @@ onMounted(() => {
       </section>
 
       <section class="asset-page__table-surface" aria-label="Asset list">
-        <a-skeleton v-if="loading" active :paragraph="{ rows: 8 }" />
-        <a-result v-else-if="forbidden" status="403" title="You do not have access to the asset list." />
+        <a-result v-if="forbidden" status="403" title="You do not have access to the asset list." />
         <a-alert v-else-if="errorMessage" type="error" show-icon :message="errorMessage">
           <template #action><a-button size="small" @click="load">Retry</a-button></template>
         </a-alert>
-        <a-empty v-else-if="!result?.items?.length" description="No assets match the current filters." />
-        <template v-else>
-          <div class="bigin-table-scroll-wrapper"><a-table :columns="columns" :data-source="result.items" :pagination="false" row-key="id" :scroll="{ x: 'max-content' }">
-            <template #bodyCell="{ column, record }">
-              <template v-if="column.key === 'asset'">
-                <div class="asset-page__asset-cell">
-                  <a-avatar shape="square" :size="42" :src="record.imageUrl || DEFAULT_ASSET_IMAGE">{{ record.model.name.slice(0, 1) }}</a-avatar>
-                  <div>
-                    <a-typography-text strong>{{ record.model.name }}</a-typography-text>
-                    <br><a-typography-text type="secondary">{{ record.assetCode }}</a-typography-text>
-                  </div>
-                </div>
-              </template>
-              <a-typography-text v-else-if="column.key === 'type'">{{ record.type?.name || '—' }}</a-typography-text>
-              <a-typography-text v-else-if="column.key === 'modelBrand'">{{ record.model.name }} / {{ record.brand.name }}</a-typography-text>
-              <a-typography-text v-else-if="column.key === 'department'">{{ record.department?.name || 'Unassigned' }}</a-typography-text>
-              <a-typography-text v-else-if="column.key === 'serial'">{{ record.serialNumber || '—' }}</a-typography-text>
-              <a-tooltip v-else-if="column.key === 'qr'" :title="record.qrCode"><QrcodeOutlined class="asset-page__qr-icon" /></a-tooltip>
-              <StatusTag v-else-if="column.key === 'status'" :status="record.status" />
-              <a-space v-else-if="column.key === 'actions'" :size="2">
-                <a-tooltip title="View details"><a-button class="bigin-touch-target" type="text" :icon="h(EyeOutlined)" aria-label="View asset details" @click="openAsset(record)" /></a-tooltip>
-                <a-tooltip v-if="canUpdateAsset" title="Edit asset"><a-button class="bigin-touch-target" type="text" :icon="h(EditOutlined)" aria-label="Edit asset" @click="router.push({ name: 'asset-edit', params: { id: record.id } })" /></a-tooltip>
-              </a-space>
+        <AppTable
+          v-else
+          :columns="columns"
+          :data-source="result?.items || []"
+          :loading="loading"
+          row-key="id"
+          empty-description="No assets match the current filters."
+          :pagination="{ current: result?.page || 1, pageSize: result?.pageSize || filters.pageSize, total: result?.total || 0, label: 'assets' }"
+          @page-change="changePage"
+        >
+          <template #bodyCell="{ column, record }">
+            <template v-if="column.key === 'asset'">
+              <AssetIdentity :identity="normalizeAssetIdentity(record)" variant="inventory" show-image />
             </template>
-          </a-table></div>
-          <footer class="asset-page__footer">
-            <a-typography-text type="secondary">Showing {{ (result.page - 1) * result.pageSize + 1 }}-{{ Math.min(result.page * result.pageSize, result.total) }} of {{ result.total }} assets</a-typography-text>
-            <a-pagination class="bigin-touch-target" :current="result.page" :page-size="result.pageSize" :total="result.total" :show-size-changer="false" @change="changePage" />
-          </footer>
-        </template>
+            <a-typography-text v-else-if="column.key === 'category'">{{ record.type?.name || 'Uncategorized' }}</a-typography-text>
+            <a-typography-text v-else-if="column.key === 'brand'">{{ record.brand?.name || 'Unbranded' }}</a-typography-text>
+            <a-typography-text v-else-if="column.key === 'serialNumber'">{{ displayAssetValue(normalizeAssetIdentity(record).serialNumber) }}</a-typography-text>
+            <a-typography-text v-else-if="column.key === 'department'">{{ record.department?.name || 'Unassigned' }}</a-typography-text>
+            <StatusTag v-else-if="column.key === 'status'" :status="record.status" />
+            <a-space v-else-if="column.key === 'actions'" :size="4">
+              <a-button class="bigin-table-action-link bigin-touch-target" type="link" :icon="h(EyeOutlined)" aria-label="View asset details" @click="openAsset(record)">View</a-button>
+              <a-button v-if="canUpdateAsset" class="bigin-table-action-link bigin-touch-target" type="link" :icon="h(EditOutlined)" aria-label="Edit asset" @click="router.push({ name: 'asset-edit', params: { id: record.id } })">Edit</a-button>
+            </a-space>
+          </template>
+          <template #mobileRow="{ record }">
+            <div class="asset-page__mobile-row">
+              <AssetIdentity :identity="normalizeAssetIdentity(record)" variant="inventory" show-image />
+              <div class="asset-page__mobile-meta"><span>{{ record.type?.name || 'Uncategorized' }}</span><span>{{ record.brand?.name || 'Unbranded' }}</span><span>Seri: {{ displayAssetValue(normalizeAssetIdentity(record).serialNumber) }}</span><span>{{ record.department?.name || 'Unassigned' }}</span><StatusTag :status="record.status" /></div>
+              <div class="asset-page__mobile-actions">
+                <a-button class="bigin-table-action-link bigin-touch-target" type="link" :icon="h(EyeOutlined)" aria-label="View asset details" @click="openAsset(record)">View</a-button>
+                <a-button v-if="canUpdateAsset" class="bigin-table-action-link bigin-touch-target" type="link" :icon="h(EditOutlined)" aria-label="Edit asset" @click="router.push({ name: 'asset-edit', params: { id: record.id } })">Edit</a-button>
+              </div>
+            </div>
+          </template>
+        </AppTable>
       </section>
     </main>
   </WorkspaceLayout>
@@ -205,13 +211,9 @@ onMounted(() => {
 .asset-page__filter-grid { display: grid; gap: 14px; grid-template-columns: repeat(5, minmax(0, 1fr)); margin-top: 16px; max-width: 860px; }
 .asset-page__filter-grid label { display: grid; gap: 5px; color: var(--bigin-text-primary); font-size: 12px; font-weight: 600; }
 .asset-page__table-surface { min-height: 600px; overflow: hidden; }
-.asset-page__table-surface :deep(.ant-table) { font-size: 13px; }
-.asset-page__table-surface :deep(.ant-table-thead > tr > th) { color: var(--bigin-text-secondary); font-size: 11px; font-weight: 700; letter-spacing: .02em; text-transform: uppercase; }
-.asset-page__table-surface :deep(.ant-table-tbody > tr > td) { padding-block: 14px; }
-.asset-page__asset-cell { align-items: center; display: flex; gap: 10px; }
-.asset-page__asset-cell :deep(.ant-avatar) { flex: 0 0 auto; background: var(--bigin-surface-primary-soft); border: 1px solid var(--bigin-border-secondary); }
-.asset-page__qr-icon { color: var(--bigin-icon-default); font-size: 16px; }
-.asset-page__footer { align-items: center; display: flex; justify-content: space-between; padding: 12px 14px; }
+.asset-page__mobile-row { display: grid; gap: 12px; }
+.asset-page__mobile-meta, .asset-page__mobile-actions { align-items: center; display: flex; justify-content: space-between; gap: 8px; }
+.asset-page__mobile-actions { border-top: 1px solid var(--bigin-border-secondary); justify-content: flex-end; padding-top: 8px; }
 @media (max-width: 900px) { .asset-page__filter-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); max-width: none; }.asset-page__filter-topline { align-items: stretch; flex-wrap: wrap; }.asset-page__toolbar-actions { margin-left: 0; }.asset-page__search { flex: 1 1 220px; } }
-@media (max-width: 640px) { .asset-page { padding: 12px; }.asset-page__filter-grid { grid-template-columns: 1fr; }.asset-page__toolbar-actions { width: 100%; }.asset-page__toolbar-actions :deep(.ant-btn) { flex: 1; }.asset-page__footer { align-items: flex-start; flex-direction: column; gap: 12px; } }
+@media (max-width: 640px) { .asset-page { padding: 12px; }.asset-page__filter-grid { grid-template-columns: 1fr; }.asset-page__toolbar-actions { width: 100%; }.asset-page__toolbar-actions :deep(.ant-btn) { flex: 1; } }
 </style>

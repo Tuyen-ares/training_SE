@@ -182,19 +182,21 @@ User có dữ liệu lịch sử thực tế từ borrow histories, không suy r
 
 ## Optional image evidence
 
-Handover and both return actions expose a shared optional image uploader. The
-client validates image MIME/size, calls `POST /api/media/presign`, sends a
-native `PUT` with the exact `Content-Type`, immutable `Cache-Control` and
-`If-None-Match: *` headers, then calls `complete` and keeps the returned
-`mediaId`. The business request sends `mediaIds`; no percentage progress is
-shown. PUT failure/412 uses a new presign/key, while a transient complete
-failure retries complete with the same media ID. History detail renders saved
-evidence through the canonical CloudFront URL.
+Handover and both return actions expose the shared evidence picker. `Chụp ảnh`
+opens the shared native environment preview and returns one reviewed File;
+`Chọn ảnh` accepts multiple files. The picker processes JPEG/PNG/WebP
+sequentially, keeps at most ten processed local files and uploads nothing before
+Confirm. Confirm locks the modal and runs sequential presign → conditional PUT
+→ complete for the whole batch before sending `mediaIds` to the business API.
+Upload/business failure compensates every cancellable attempt ID and keeps local
+files for a full retry with new IDs. Unknown cleanup blocks duplicate submission
+until refresh/reconciliation. History detail renders saved evidence through the
+canonical CloudFront URL.
 
 ## Asset identity presentation
 
 Handover, Return và Borrowing Activity dùng chung presentation order Model, Code,
-SN ở desktop và mobile. Missing value là `—`; QR không xuất hiện trong
+Seri ở desktop và mobile. Missing value là `—`; QR không xuất hiện trong
 operational list hoặc history summary dạng text. Borrowing Activity Detail cũng
 không render dòng QR code, nhưng QR workflow chuyên biệt ngoài flow này vẫn giữ
 nguyên. Mobile có thể dùng stacked row/card hoặc intentional scroll theo table

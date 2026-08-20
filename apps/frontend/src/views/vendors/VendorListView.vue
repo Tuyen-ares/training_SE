@@ -3,9 +3,11 @@ import { EditOutlined, PlusOutlined, ReloadOutlined } from '@ant-design/icons-vu
 import { computed, h, onMounted, reactive, ref } from 'vue'
 import { message } from 'ant-design-vue'
 
+import AppTable from '../../components/common/AppTable.vue'
 import WorkspaceLayout from '../../components/layout/WorkspaceLayout.vue'
 import { createVendor, listVendors, updateVendor, updateVendorStatus } from '../../services/vendors/vendor.service'
 import { useAuthStore } from '../../stores/auth'
+import { actionWidth } from '../../utils/table'
 
 const authStore = useAuthStore()
 const loading = ref(true)
@@ -105,21 +107,26 @@ onMounted(load)
           <a-button @click="resetFilters">Clear</a-button>
           <a-button :icon="h(ReloadOutlined)" :loading="loading" @click="load">Refresh</a-button>
         </div>
-        <a-skeleton v-if="loading" active :paragraph="{ rows: 7 }" />
-        <a-empty v-else-if="!result.items.length" description="No vendors found." />
-        <div v-else class="bigin-table-scroll-wrapper">
-          <a-table :data-source="result.items" row-key="id" :pagination="false" :scroll="{ x: 'max-content' }">
-            <a-table-column title="Name" data-index="name" :width="230" />
-            <a-table-column title="Contact" :width="180"><template #default="{ record }">{{ displayValue(record.contactName) }}</template></a-table-column>
-            <a-table-column title="Phone" :width="150"><template #default="{ record }">{{ displayValue(record.phone) }}</template></a-table-column>
-            <a-table-column title="Email" :width="230"><template #default="{ record }">{{ displayValue(record.email) }}</template></a-table-column>
-            <a-table-column title="Status" :width="120"><template #default="{ record }"><a-tag :color="record.isActive ? 'green' : 'default'">{{ record.isActive ? 'Active' : 'Inactive' }}</a-tag></template></a-table-column>
-            <a-table-column title="Actions" fixed="right" :width="100"><template #default="{ record }"><a-space wrap>
-              <a-button v-if="canUpdate || canManageStatus" type="link" class="bigin-touch-target" @click="openDialog(record)"><template #icon><EditOutlined /></template>Edit</a-button>
-            </a-space></template></a-table-column>
-          </a-table>
-        </div>
-        <footer class="responsive-footer"><span>Showing {{ result.items.length }} of {{ result.total }} vendors</span><a-pagination :current="result.page" :page-size="result.pageSize" :total="result.total" :show-size-changer="false" @change="changePage" /></footer>
+        <AppTable
+          :loading="loading"
+          :data-source="result.items"
+          row-key="id"
+          scroll-mode="intentional"
+          empty-description="No vendors found."
+          :pagination="{ current: result.page, pageSize: result.pageSize, total: result.total, label: 'vendors' }"
+          @page-change="changePage"
+        >
+          <a-table-column title="Vendor" key="vendor" :width="220"><template #default="{ record }"><strong>{{ record.name }}</strong></template></a-table-column>
+          <a-table-column title="Contact name" key="contactName" :width="180"><template #default="{ record }">{{ displayValue(record.contactName) }}</template></a-table-column>
+          <a-table-column title="Phone" key="phone" :width="160"><template #default="{ record }">{{ displayValue(record.phone) }}</template></a-table-column>
+          <a-table-column title="Email" key="email" :width="240"><template #default="{ record }">{{ displayValue(record.email) }}</template></a-table-column>
+          <a-table-column title="Address" key="address" :width="260"><template #default="{ record }">{{ displayValue(record.address) }}</template></a-table-column>
+          <a-table-column title="Status" :width="130"><template #default="{ record }"><a-tag :color="record.isActive ? 'green' : 'default'">{{ record.isActive ? 'Active' : 'Inactive' }}</a-tag></template></a-table-column>
+          <a-table-column title="Action" fixed="right" :width="actionWidth('normal')" align="right"><template #default="{ record }"><a-button v-if="canUpdate || canManageStatus" type="link" class="bigin-touch-target" @click="openDialog(record)"><template #icon><EditOutlined /></template>Edit</a-button></template></a-table-column>
+          <template #mobileRow="{ record }">
+            <div class="vendor-mobile-row"><div class="vendor-cell"><strong>{{ record.name }}</strong><span>Contact: {{ displayValue(record.contactName) }}</span><span>Phone: {{ displayValue(record.phone) }}</span><span>Email: {{ displayValue(record.email) }}</span><small>Address: {{ displayValue(record.address) }}</small></div><div class="vendor-mobile-meta"><a-tag :color="record.isActive ? 'green' : 'default'">{{ record.isActive ? 'Active' : 'Inactive' }}</a-tag><a-button v-if="canUpdate || canManageStatus" type="link" class="bigin-touch-target" @click="openDialog(record)">Edit</a-button></div></div>
+          </template>
+        </AppTable>
       </section>
     </main>
     <a-modal v-model:open="dialog.open" wrap-class-name="bigin-modal-content" :title="dialog.item ? 'Edit vendor' : 'Create vendor'" :confirm-loading="dialog.saving" ok-text="Save" @ok="saveDialog">
@@ -136,12 +143,12 @@ onMounted(load)
 </template>
 
 <style scoped>
-.vendor-page { margin: 0 auto; max-width: 1320px; padding: 28px 32px 48px; }
+.vendor-page { margin: 0; max-width: none; padding: 28px 32px 48px; }
 .vendor-page__header { align-items: flex-start; display: flex; justify-content: space-between; gap: 20px; margin-bottom: 18px; }
 .vendor-page h1 { font-size: 28px; margin: 0; }
 .vendor-page__header p { color: var(--bigin-text-secondary); margin: 6px 0 0; }
 .table-panel { background: var(--bigin-surface-panel); border: 1px solid var(--bigin-border-secondary); border-radius: 8px; padding: 16px; }
 .filter-panel { align-items: center; display: flex; flex-wrap: wrap; gap: 12px; margin-bottom: 16px; }
-.responsive-footer { align-items: center; color: var(--bigin-text-tertiary); display: flex; justify-content: space-between; padding-top: 16px; }
-@media (max-width: 700px) { .vendor-page { padding: 18px 14px 32px; } .vendor-page__header { flex-direction: column; } .vendor-page__header :deep(.ant-btn) { width: 100%; } .filter-panel { align-items: stretch; flex-direction: column; } .filter-panel :deep(.ant-input), .filter-panel :deep(.ant-select), .filter-panel :deep(.ant-btn) { width: 100% !important; } .responsive-footer { align-items: flex-start; flex-direction: column; gap: 12px; } }
+.vendor-cell { display: grid; gap: 3px; min-width: 0; }.vendor-cell strong, .vendor-cell span, .vendor-cell small { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }.vendor-cell span { color: var(--bigin-text-secondary); font-size: 12px; }.vendor-cell small { color: var(--bigin-text-tertiary); font-size: 11px; }.vendor-mobile-row { display: grid; gap: 12px; }.vendor-mobile-meta { align-items: center; display: flex; justify-content: space-between; gap: 8px; }
+@media (max-width: 700px) { .vendor-page { padding: 18px 14px 32px; } .vendor-page__header { flex-direction: column; } .vendor-page__header :deep(.ant-btn) { width: 100%; } .filter-panel { align-items: stretch; flex-direction: column; } .filter-panel :deep(.ant-input), .filter-panel :deep(.ant-select), .filter-panel :deep(.ant-btn) { width: 100% !important; } }
 </style>

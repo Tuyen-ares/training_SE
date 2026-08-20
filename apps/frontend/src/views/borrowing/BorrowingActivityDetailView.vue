@@ -7,6 +7,7 @@ import WorkspaceLayout from "../../components/layout/WorkspaceLayout.vue";
 import { getBorrowHistoryDetail } from "../../services/borrowing/borrowing.service";
 import { useAuthStore } from "../../stores/auth";
 import { DEFAULT_ASSET_IMAGE } from "../../constants/media";
+import { displayAssetValue, normalizeAssetIdentity } from "../../utils/asset-identity";
 
 const route = useRoute();
 const router = useRouter();
@@ -14,6 +15,7 @@ const authStore = useAuthStore();
 const history = ref(null);
 const loading = ref(true);
 const errorMessage = ref("");
+const assetIdentity = computed(() => normalizeAssetIdentity(history.value?.asset));
 
 const isReturned = computed(() => Boolean(history.value?.returnedAt));
 
@@ -70,9 +72,9 @@ onMounted(load);
         <header class="page-heading">
           <div>
             <p class="eyebrow">Borrowing Activity Details</p>
-            <h1>{{ history.asset.model.name }}</h1>
+            <h1>{{ displayAssetValue(assetIdentity.modelName) }}</h1>
             <p class="subtitle">
-              {{ history.asset.serialNumber || history.asset.qrCode }}
+              Code: {{ displayAssetValue(assetIdentity.assetCode) }} · Seri: {{ displayAssetValue(assetIdentity.serialNumber) }}
               <span aria-hidden="true"> · </span>
               Request REQ-{{ String(history.request.id).padStart(4, '0') }}
             </p>
@@ -123,12 +125,12 @@ onMounted(load);
               <h2>Borrowed Asset</h2>
               <div class="asset-summary">
                 <a-avatar shape="square" :size="72" :src="history.asset.imageUrl || DEFAULT_ASSET_IMAGE">
-                  {{ history.asset.model.name.slice(0, 1) }}
+                  {{ displayAssetValue(assetIdentity.modelName).slice(0, 1) }}
                 </a-avatar>
                 <div>
-                  <h3>{{ history.asset.model.name }}</h3>
-                  <p>Serial number: {{ history.asset.serialNumber || '—' }}</p>
-                  <p>QR code: {{ history.asset.qrCode }}</p>
+                  <h3>{{ displayAssetValue(assetIdentity.modelName) }}</h3>
+                  <p>Code: {{ displayAssetValue(assetIdentity.assetCode) }}</p>
+                  <p>Seri: {{ displayAssetValue(assetIdentity.serialNumber) }}</p>
                 </div>
               </div>
               <a-descriptions bordered :column="2" size="small">

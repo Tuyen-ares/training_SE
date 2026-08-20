@@ -127,7 +127,7 @@ Detail REJECTED có lý do; asset không bị giữ do thao tác từ chối.
 
 Approval Queue giữ request-level semantics và không bắt buộc thêm asset
 identity vào bảng nếu bảng không render asset. Approval Detail hiển thị Model,
-Code và SN theo canonical order với missing value `—`; không render raw QR hoặc
+Code và Seri theo canonical order với missing value `—`; không render raw QR hoặc
 dùng QR làm fallback. Dữ liệu identity chỉ phục vụ presentation, không thay đổi
 quyết định approve/reject, permission hoặc reservation transition.
 

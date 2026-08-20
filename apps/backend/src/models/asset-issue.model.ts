@@ -17,6 +17,7 @@ export interface AssetIssue {
   note: string | null;
   asset: {
     id: number;
+    assetCode: string;
     serialNumber: string | null;
     status: string;
     modelName: string;

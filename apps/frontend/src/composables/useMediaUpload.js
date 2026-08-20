@@ -15,6 +15,8 @@ export function useMediaUpload(api) {
   const media = ref(null)
   const previewUrl = ref('')
   const selectedFile = ref(null)
+  const retryMode = ref('fresh')
+  const selectedPurpose = ref('')
 
   function clearPreview() {
     if (previewUrl.value) URL.revokeObjectURL(previewUrl.value)
@@ -33,12 +35,11 @@ export function useMediaUpload(api) {
 
   async function upload(file, purpose) {
     validateMediaFile(file)
-    if (mediaId.value) await bestEffortCancel(mediaId.value)
     selectedFile.value = file
+    selectedPurpose.value = purpose
     setPreview(file)
     error.value = ''
     media.value = null
-    mediaId.value = null
     loading.value = true
 
     try {
@@ -48,6 +49,7 @@ export function useMediaUpload(api) {
         sizeBytes: file.size,
       })
       mediaId.value = presigned.mediaId
+      retryMode.value = 'fresh'
       try {
         await putMediaObject(presigned, file)
       } catch (putError) {
@@ -58,12 +60,15 @@ export function useMediaUpload(api) {
           await bestEffortCancel(presigned.mediaId)
         }
         mediaId.value = null
+        retryMode.value = 'fresh'
         throw putError
       }
 
       // Keep this media ID when complete fails: a transient verification error
       // is retried with POST /complete, never with another PUT to the same key.
+      retryMode.value = 'complete'
       media.value = await completeMedia(api, presigned.mediaId)
+      retryMode.value = 'fresh'
       return media.value
     } catch (uploadError) {
       error.value = uploadError.message || 'The image could not be uploaded.'
@@ -73,12 +78,19 @@ export function useMediaUpload(api) {
     }
   }
 
+  async function retry() {
+    if (retryMode.value === 'complete' && mediaId.value) return retryComplete()
+    if (!selectedFile.value || !selectedPurpose.value) throw new Error('Không có ảnh để thử lại.')
+    return upload(selectedFile.value, selectedPurpose.value)
+  }
+
   async function retryComplete() {
     if (!mediaId.value) throw new Error('There is no upload waiting for verification.')
     loading.value = true
     error.value = ''
     try {
       media.value = await completeMedia(api, mediaId.value)
+      retryMode.value = 'fresh'
       return media.value
     } catch (completeError) {
       error.value = completeError.message || 'The upload could not be verified.'
@@ -93,6 +105,7 @@ export function useMediaUpload(api) {
     mediaId.value = null
     media.value = null
     selectedFile.value = null
+    retryMode.value = 'fresh'
     clearPreview()
   }
 
@@ -100,6 +113,8 @@ export function useMediaUpload(api) {
     mediaId.value = null
     media.value = null
     selectedFile.value = null
+    retryMode.value = 'fresh'
+    selectedPurpose.value = ''
     error.value = ''
     clearPreview()
   }
@@ -114,8 +129,10 @@ export function useMediaUpload(api) {
     previewUrl,
     selectedFile,
     upload,
+    retry,
     retryComplete,
     cancel,
     reset,
+    bestEffortCancel,
   }
 }

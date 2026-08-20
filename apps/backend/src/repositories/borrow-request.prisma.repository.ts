@@ -162,6 +162,7 @@ function mapHistory(history: any): BorrowHistoryDto {
     detailId: detail.id,
     asset: {
       id: detail.assets.id,
+      assetCode: detail.assets.asset_code,
       serialNumber: detail.assets.serial_number,
       qrCode: detail.assets.qr_code,
       imageUrl: mediaUrl(detail.assets.image_media) ?? detail.assets.image_url,
@@ -209,6 +210,7 @@ function mapHistoryDetail(history: any): BorrowHistoryDetailDto {
     },
     asset: {
       id: asset.id,
+      assetCode: asset.asset_code,
       serialNumber: asset.serial_number,
       qrCode: asset.qr_code,
       imageUrl: mediaUrl(asset.image_media) ?? asset.image_url,
@@ -250,6 +252,7 @@ function mapHandoverQueueItem(detail: any): HandoverQueueItemDto {
     },
     asset: {
       id: detail.assets.id,
+      assetCode: detail.assets.asset_code,
       serialNumber: detail.assets.serial_number,
       qrCode: detail.assets.qr_code,
       imageUrl: mediaUrl(detail.assets.image_media) ?? detail.assets.image_url,
@@ -284,6 +287,7 @@ function mapRequest(request: any): BorrowRequestDto {
       id: detail.id,
       asset: {
         id: detail.assets.id,
+        assetCode: detail.assets.asset_code,
         serialNumber: detail.assets.serial_number,
         qrCode: detail.assets.qr_code,
       imageUrl: mediaUrl(detail.assets.image_media) ?? detail.assets.image_url,

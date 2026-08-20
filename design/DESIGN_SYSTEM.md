@@ -661,7 +661,7 @@ Trailing content
 | Border | `#F0F0F0` |
 | Numeric column | Căn phải |
 | Status | Tag/badge + text |
-| Action column | Căn phải, width ổn định |
+| Action column | Nội dung row căn phải, label header căn giữa, width ổn định |
 
 Column order:
 
@@ -737,20 +737,20 @@ Asset identity trong frontend dùng một presentation contract chung:
 ```text
 Model name
 Code: <assetCode>
-SN: <serialNumber>
+Seri: <serialNumber>
 ```
 
 - Giá trị thiếu luôn hiển thị `—`; không render label rỗng hoặc `undefined`.
 - Không dùng `serialNumber || qrCode`, asset id nội bộ hoặc model name làm
-  fallback cho Code/SN.
+  fallback cho Code/Seri.
 - `qrCode` không phải asset identity text. QR chỉ xuất hiện trong scan, lookup,
   generate, QR drawer hoặc interaction chuyên biệt liên quan đến QR.
 - Renderer có thể dùng shared normalizer, formatter hoặc `AssetIdentity`
   component tùy context; không bắt buộc mọi surface phải dùng cùng một Vue
   component.
 - Asset List là inventory comparison exception: cell Asset chỉ có Model + Code;
-  Category, Brand và Serial Number giữ thành column riêng.
-- Asset Detail không được lặp Model/Code/SN. Nếu dedicated metadata fields đã
+  Category, Brand và Seri giữ thành column riêng.
+- Asset Detail không được lặp Model/Code/Seri. Nếu dedicated metadata fields đã
   hiển thị các giá trị này, chỉ dùng shared primitive để cấp dữ liệu hoặc ở một
   khu vực khác không gây duplicate.
 
@@ -763,11 +763,11 @@ desktop hoặc mobile:
 | --- | --- | --- |
 | Desktop rộng | 1440×900 | Identity không bị cắt; table/header/action alignment và primary actions ổn định |
 | Desktop có sidebar | 1280×800, persistent sidebar 248px (`>=992px`) | Content width sau sidebar không làm vỡ table; action column, fixed/intentional scroll và page header vẫn thẳng hàng |
-| Tablet | 834×1112 và 768×1024, drawer navigation (`<992px`) | Drawer/backdrop, table-to-mobile-row transition, wrapped toolbar và Code/SN không bị mất hoặc tràn |
+| Tablet | 834×1112 và 768×1024, drawer navigation (`<992px`) | Drawer/backdrop, table-to-mobile-row transition, wrapped toolbar và Code/Seri không bị mất hoặc tràn |
 | Mobile | 390×844 | Stacked row/card, label `—`, touch target và QR action/drawer vẫn dùng được |
 
-Các trường hợp data phải bao gồm đủ Model/Code/SN, thiếu từng field, thiếu cả
-Code và SN, model dài, asset không có image và request có nhiều asset. Không coi
+Các trường hợp data phải bao gồm đủ Model/Code/Seri, thiếu từng field, thiếu cả
+Code và Seri, model dài, asset không có image và request có nhiều asset. Không coi
 `overflow-x: hidden` là nghiệm thu responsive.
 
 ### 13.2 Description data

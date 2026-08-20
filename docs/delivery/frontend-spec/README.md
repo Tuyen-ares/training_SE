@@ -11,9 +11,9 @@ Tài liệu này mô tả **cách người dùng đi qua giao diện** để th�
 
 ## Nguồn sự thật
 
-1. User Story, Acceptance Criteria và Business Rule trong [`../mvp-requirements/`](../mvp-requirements/README.md).
+1. User Story, Acceptance Criteria và Business Rule trong [`../../mvp-requirements/`](../../mvp-requirements/README.md).
 2. Bộ Frontend Specification này.
-3. [`../../design/DESIGN_SYSTEM.md`](../../design/DESIGN_SYSTEM.md) và [`../../design/DESIGN.md`](../../design/DESIGN.md).
+3. [`../../../design/DESIGN_SYSTEM.md`](../../../design/DESIGN_SYSTEM.md) và [`../../../design/DESIGN.md`](../../../design/DESIGN.md).
 4. Stitch mockup.
 5. Frontend hiện có.
 

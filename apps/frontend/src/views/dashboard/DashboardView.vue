@@ -12,12 +12,15 @@ import {
 import { computed, onMounted, ref } from 'vue'
 import { useRouter } from 'vue-router'
 
+import AppTable from '../../components/common/AppTable.vue'
 import WorkspaceLayout from '../../components/layout/WorkspaceLayout.vue'
 import StatusTag from '../../components/common/StatusTag.vue'
 import { statusColor } from '../../constants/status-meta'
 import { listAssets } from '../../services/assets/asset.service'
 import { listCurrentBorrowing, listMyBorrowHistory } from '../../services/borrowing/borrowing.service'
 import { useAuthStore } from '../../stores/auth'
+import { actionColumn } from '../../utils/table'
+import { displayAssetValue, normalizeAssetIdentity } from '../../utils/asset-identity'
 
 const router = useRouter()
 const authStore = useAuthStore()
@@ -67,7 +70,7 @@ const activityColumns = [
   { title: 'Asset Name', key: 'assetName' },
   { title: 'Borrowed on', key: 'borrowedOn', width: 160 },
   { title: 'Status', key: 'status', width: 140 },
-  { title: 'Action', key: 'action', width: 120 },
+  actionColumn({ key: 'action', size: 'compact' }),
 ]
 
 const assetMetrics = computed(() => [
@@ -150,10 +153,12 @@ function toDate(value) {
 
 function activityAsset(history) {
   const asset = history.asset
+  const identity = normalizeAssetIdentity(asset)
   return {
     id: asset?.id,
-    serialNumber: asset?.serialNumber || `Asset #${history.detailId}`,
-    name: asset?.model?.name || 'Unknown model',
+    assetCode: identity.assetCode,
+    serialNumber: identity.serialNumber,
+    name: identity.modelName,
   }
 }
 
@@ -327,15 +332,16 @@ onMounted(() => {
           <a-button type="link" @click="openRoute()">View all</a-button>
         </div>
         <a-card :bordered="false" class="dashboard-page__activity-card">
-          <div class="bigin-table-scroll-wrapper"><a-table :columns="activityColumns" :data-source="personalSummary.activity" :pagination="false" row-key="id" size="middle" :scroll="{ x: 'max-content' }">
+          <AppTable :columns="activityColumns" :data-source="personalSummary.activity" :loading="isLoadingPersonalSummary" row-key="id" size="middle" empty-description="No recent activity.">
             <template #bodyCell="{ column, record }">
-              <a-typography-text v-if="column.key === 'assetId'" strong>{{ activityAsset(record).serialNumber }}</a-typography-text>
-              <a-typography-text v-else-if="column.key === 'assetName'">{{ activityAsset(record).name }}</a-typography-text>
+              <a-typography-text v-if="column.key === 'assetId'" strong>{{ displayAssetValue(activityAsset(record).assetCode) }}</a-typography-text>
+              <a-typography-text v-else-if="column.key === 'assetName'">{{ displayAssetValue(activityAsset(record).name) }}</a-typography-text>
               <a-typography-text v-else-if="column.key === 'borrowedOn'">{{ toDate(record.borrowedAt) }}</a-typography-text>
               <StatusTag v-else-if="column.key === 'status'" :status="record.returnedAt ? 'RETURNED' : 'CURRENT'" />
               <a-button v-else-if="column.key === 'action'" class="bigin-touch-target" size="small" @click="openActivityAsset(record)">Details</a-button>
             </template>
-          </a-table></div>
+            <template #mobileRow="{ record }"><div class="dashboard-activity-mobile-row"><div><strong>{{ displayAssetValue(activityAsset(record).name) }}</strong><span>Code: {{ displayAssetValue(activityAsset(record).assetCode) }} · Seri: {{ displayAssetValue(activityAsset(record).serialNumber) }} · {{ toDate(record.borrowedAt) }}</span></div><div class="dashboard-activity-mobile-meta"><StatusTag :status="record.returnedAt ? 'RETURNED' : 'CURRENT'" /><a-button class="bigin-touch-target" size="small" @click="openActivityAsset(record)">Details</a-button></div></div></template>
+          </AppTable>
         </a-card>
       </section>
 
@@ -366,6 +372,7 @@ onMounted(() => {
 .dashboard-page__personal-metric :deep(.ant-statistic-content) { font-size: 28px; }
 .dashboard-page__alert { margin-bottom: 16px; }
 .dashboard-page__activity-card { overflow: hidden; border: 1px solid var(--bigin-border-default); }
+.dashboard-activity-mobile-row { display: grid; gap: 12px; }.dashboard-activity-mobile-row > div:first-child { display: grid; gap: 4px; }.dashboard-activity-mobile-row span { color: var(--bigin-text-secondary); font-size: 12px; }.dashboard-activity-mobile-meta { align-items: center; display: flex; justify-content: space-between; gap: 8px; }
 .dashboard-page__work-card, .dashboard-page__shortcut { height: 100%; min-height: 184px; }
 .dashboard-page__work-card :deep(.ant-card-body), .dashboard-page__shortcut :deep(.ant-card-body) { align-items: flex-start; display: flex; flex-direction: column; }
 .dashboard-page__work-card :deep(.ant-typography-title), .dashboard-page__shortcut :deep(.ant-typography-title) { margin: 12px 0 4px; }

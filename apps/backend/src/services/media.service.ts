@@ -31,6 +31,18 @@ const PURPOSE_PERMISSIONS: Record<MediaPurpose, string[]> = {
   USER_AVATAR: [],
 };
 
+export const MEDIA_CANCEL_LIMITS = {
+  transactionMaxWaitMs: 2_000,
+  transactionTimeoutMs: 8_000,
+  deleteTimeoutMs: 5_000,
+} as const;
+
+type MediaCancelLimits = {
+  transactionMaxWaitMs: number;
+  transactionTimeoutMs: number;
+  deleteTimeoutMs: number;
+};
+
 function toStorageError(error: unknown): MediaError {
   if (error instanceof MediaError) return error;
   if (!(error instanceof MediaStorageError)) {
@@ -67,6 +79,7 @@ export class MediaService {
     private readonly repository: IMediaRepository,
     private readonly storage: IMediaStorage,
     private readonly prisma: PrismaClient,
+    private readonly cancelLimits: MediaCancelLimits = MEDIA_CANCEL_LIMITS,
   ) {}
 
   canPresign(purpose: MediaPurpose, permissionCodes: string[]): boolean {
@@ -160,18 +173,52 @@ export class MediaService {
   }
 
   async cancel(mediaId: number, uploaderId: number): Promise<void> {
-    const row = await this.repository.findById(mediaId);
-    if (!row) throw new MediaError('MEDIA_NOT_FOUND', 'Media not found');
-    if (row.uploaded_by !== uploaderId) throw new MediaError('MEDIA_FORBIDDEN', 'You do not own this media');
-    if (row.linked_at) throw new MediaError('MEDIA_ALREADY_LINKED', 'Linked media cannot be cancelled');
-
-    let result: 'DELETED' | 'NOT_FOUND';
     try {
-      result = await this.storage.deleteObject(row.storage_path);
+      await this.prisma.$transaction(async (transaction) => {
+        const row = await this.repository.lockById(mediaId, transaction);
+        if (!row) throw new MediaError('MEDIA_NOT_FOUND', 'Media not found');
+        if (row.uploaded_by !== uploaderId) throw new MediaError('MEDIA_FORBIDDEN', 'You do not own this media');
+        if (row.linked_at || row.has_current_reference) {
+          throw new MediaError('MEDIA_ALREADY_LINKED', 'Linked media cannot be cancelled');
+        }
+
+        let result: 'DELETED' | 'NOT_FOUND';
+        try {
+          result = await this.storage.deleteObject(row.storage_path, {
+            abortSignal: AbortSignal.timeout(this.cancelLimits.deleteTimeoutMs),
+          });
+        } catch (error) {
+          const mapped = toStorageError(error);
+          console.error(JSON.stringify({
+            event: 'media_cancel_failed',
+            mediaId,
+            phase: 'delete_object',
+            errorCode: mapped.code,
+          }));
+          throw mapped;
+        }
+        if (result === 'DELETED' || result === 'NOT_FOUND') {
+          await this.repository.delete(mediaId, transaction);
+        }
+      }, {
+        maxWait: this.cancelLimits.transactionMaxWaitMs,
+        timeout: this.cancelLimits.transactionTimeoutMs,
+      });
     } catch (error) {
-      throw toStorageError(error);
+      if (error instanceof MediaError) throw error;
+      const code = (error as { code?: string } | null)?.code;
+      const message = error instanceof Error ? error.message.toLowerCase() : '';
+      if (code === 'P2028' || message.includes('transaction') && message.includes('timeout')) {
+        console.error(JSON.stringify({
+          event: 'media_cancel_failed',
+          mediaId,
+          phase: 'transaction',
+          errorCode: 'MEDIA_STORAGE_UNAVAILABLE',
+        }));
+        throw new MediaError('MEDIA_STORAGE_UNAVAILABLE', 'Media cancel transaction timed out');
+      }
+      throw error;
     }
-    if (result === 'DELETED' || result === 'NOT_FOUND') await this.repository.delete(mediaId);
   }
 
   async claimForPurpose(

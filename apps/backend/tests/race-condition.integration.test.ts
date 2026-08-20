@@ -7,15 +7,18 @@ import { PrismaAuthRepository } from '../src/repositories/auth.prisma.repository
 import { PrismaRbacRepository } from '../src/repositories/rbac.prisma.repository.js';
 import { PrismaRefreshTokenRepository } from '../src/repositories/refresh-token.prisma.repository.js';
 import { PrismaUserRepository } from '../src/repositories/user.prisma.repository.js';
+import { PrismaMediaRepository } from '../src/repositories/media.prisma.repository.js';
 import { AssetService } from '../src/services/assets.service.js';
 import { AuthService } from '../src/services/auth.service.js';
 import { RbacService } from '../src/services/rbac.service.js';
+import { MediaService } from '../src/services/media.service.js';
 import { SessionService } from '../src/services/session.service.js';
 import { TokenService } from '../src/services/token.service.js';
 import {
   AuthError,
   ConflictError,
   InvalidStateTransitionError,
+  MediaError,
   UserError,
 } from '../src/shared/app-error.js';
 import { hashPassword } from '../src/shared/security/password-hasher.js';
@@ -53,6 +56,8 @@ test('database constraints and conditional updates resolve races in User, Auth, 
   assert.ok(department, 'A department seed is required');
   assert.ok(employeeRole, 'The employee role seed is required');
   assert.ok(managerRole, 'The asset_manager role seed is required');
+  const mediaUploader = await prisma.users.findFirst({ select: { id: true } });
+  assert.ok(mediaUploader, 'A user seed is required for media race tests');
 
   const createdUserIds: number[] = [];
   const createdAssetIds: number[] = [];
@@ -60,6 +65,7 @@ test('database constraints and conditional updates resolve races in User, Auth, 
   const createdBrandIds: number[] = [];
   const createdAssetTypeIds: number[] = [];
   const cleanupEmails: string[] = [];
+  const createdMediaIds: number[] = [];
 
   try {
     await context.test(
@@ -229,8 +235,9 @@ test('database constraints and conditional updates resolve races in User, Auth, 
           select: { id: true },
         });
         createdBrandIds.push(brand.id);
+        const normalizedPrefix = `RACE${suffix}`;
         const assetType = await prisma.asset_types.create({
-          data: { name: `RaceType-${suffix}`, normalized_prefix: `RACE${suffix}` },
+          data: { name: `RaceType-${suffix}`, normalized_prefix: normalizedPrefix },
           select: { id: true },
         });
         createdAssetTypeIds.push(assetType.id);
@@ -245,7 +252,7 @@ test('database constraints and conditional updates resolve races in User, Auth, 
         createdAssetModelIds.push(assetModel.id);
         const asset = await prisma.assets.create({
           data: {
-            asset_code: `${assetType.normalized_prefix}0001`,
+            asset_code: `${normalizedPrefix}0001`,
             asset_model_id: assetModel.id,
             serial_number: `RACE-${suffix}`,
             qr_code: randomUUID(),
@@ -262,14 +269,14 @@ test('database constraints and conditional updates resolve races in User, Auth, 
         const duplicateRepository = new PrismaAssetRepository(prisma);
         const duplicateResults = await Promise.allSettled([
           duplicateRepository.create({
-            asset_code: `${assetType.normalized_prefix}0002`,
+            asset_code: `${normalizedPrefix}0002`,
             asset_model_id: assetModel.id,
             serial_number: duplicateSerial,
             qr_code: randomUUID(),
             status: 'available',
           }),
           duplicateRepository.create({
-            asset_code: `${assetType.normalized_prefix}0003`,
+            asset_code: `${normalizedPrefix}0003`,
             asset_model_id: assetModel.id,
             serial_number: duplicateSerial,
             qr_code: randomUUID(),
@@ -325,6 +332,77 @@ test('database constraints and conditional updates resolve races in User, Auth, 
           ).status,
           'reserved',
         );
+      },
+    );
+
+    await context.test(
+      'Media: cancel and business claim serialize on the media row lock',
+      async () => {
+        const repository = new PrismaMediaRepository(prisma);
+        const createReady = async (label: string) => {
+          const row = await prisma.media_files.create({
+            data: {
+              storage_path: `evidence/return/race-${label}-${randomUUID()}.jpg`,
+              mime_type: 'image/jpeg',
+              size_bytes: 3,
+              purpose: 'return',
+              upload_status: 'ready',
+              uploaded_by: mediaUploader.id,
+              uploaded_at: new Date(),
+            },
+          });
+          createdMediaIds.push(row.id);
+          return row;
+        };
+
+        const cancelFirst = await createReady('cancel-first');
+        let releaseDelete!: () => void;
+        const deleteGate = new Promise<void>((resolve) => { releaseDelete = resolve; });
+        let deleteStarted!: () => void;
+        const deleteStartedGate = new Promise<void>((resolve) => { deleteStarted = resolve; });
+        const cancelFirstService = new MediaService(repository, {
+          deleteObject: async () => {
+            deleteStarted();
+            await deleteGate;
+            return 'DELETED';
+          },
+        } as any, prisma);
+
+        const cancelPromise = cancelFirstService.cancel(cancelFirst.id, mediaUploader.id);
+        await deleteStartedGate;
+        const blockedClaim = prisma.$transaction((transaction) =>
+          repository.claimReady(cancelFirst.id, mediaUploader.id, 'RETURN', transaction),
+        );
+        releaseDelete();
+        await cancelPromise;
+        assert.equal(await blockedClaim, false, 'claim must fail after cancel deletes the locked row');
+
+        const claimFirst = await createReady('claim-first');
+        let releaseClaim!: () => void;
+        const claimGate = new Promise<void>((resolve) => { releaseClaim = resolve; });
+        let claimLocked!: () => void;
+        const claimLockedGate = new Promise<void>((resolve) => { claimLocked = resolve; });
+        let storageDeleteCalls = 0;
+        const claimFirstService = new MediaService(repository, {
+          deleteObject: async () => {
+            storageDeleteCalls += 1;
+            return 'DELETED';
+          },
+        } as any, prisma);
+
+        const claimPromise = prisma.$transaction(async (transaction) => {
+          const claimed = await repository.claimReady(claimFirst.id, mediaUploader.id, 'RETURN', transaction);
+          claimLocked();
+          await claimGate;
+          return claimed;
+        });
+        await claimLockedGate;
+        const blockedCancel = claimFirstService.cancel(claimFirst.id, mediaUploader.id);
+        releaseClaim();
+        assert.equal(await claimPromise, true);
+        await assert.rejects(blockedCancel, (error: unknown) =>
+          error instanceof MediaError && error.code === 'MEDIA_ALREADY_LINKED');
+        assert.equal(storageDeleteCalls, 0, 'linked media object must be preserved');
       },
     );
 
@@ -385,6 +463,9 @@ test('database constraints and conditional updates resolve races in User, Auth, 
       },
     );
   } finally {
+    await prisma.media_files.deleteMany({
+      where: { id: { in: createdMediaIds } },
+    });
     await prisma.users.deleteMany({
       where: {
         OR: [

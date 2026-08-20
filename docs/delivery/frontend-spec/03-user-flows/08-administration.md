@@ -21,7 +21,7 @@ User đang đăng nhập và có từng capability cần thiết.
 1. User mở User List từ navigation/Dashboard.
 2. User search/filter user theo user code và các thông tin được hỗ trợ; danh sách luôn hiển thị user code.
 3. User mở User Form ở create hoặc edit mode.
-4. User nhập thông tin/department/avatar URL hợp lệ và lưu; user code do hệ thống cấp và chỉ hiển thị, không có ô chỉnh sửa.
+4. User nhập thông tin/department và avatar tùy chọn bằng uploader hoặc legacy URL rồi lưu; user code do hệ thống cấp và chỉ hiển thị, không có ô chỉnh sửa.
 5. Từ User List/Form, user thực hiện activate/deactivate khi có `user.manage_status`; UI yêu cầu xác nhận trạng thái có tác động truy cập và giữ nguyên user code.
 
 ## Alternative Flows
@@ -138,7 +138,7 @@ Cho phép user cập nhật thông tin cá nhân và mật khẩu của chính m
 
 1. User click avatar ở header và chọn `Profile`; không có Profile item trong sidebar.
 2. Hệ thống hiển thị user code, email, department, roles và status ở chế độ chỉ đọc.
-3. User cập nhật name, phone hoặc avatar URL rồi lưu qua self-service API.
+3. User cập nhật name, phone hoặc avatar bằng uploader/legacy URL rồi lưu qua self-service API.
 4. User nhập mật khẩu hiện tại và mật khẩu mới để đổi mật khẩu.
 5. Sau khi đổi mật khẩu thành công, refresh sessions bị thu hồi và user đăng nhập lại.
 
@@ -160,3 +160,10 @@ never includes a target user ID. Preview uses a local object URL, the canonical
 CloudFront URL is only rendered after complete, and a replacement always uses a
 new media/key. If media configuration is unavailable, the form shows the
 backend error and the legacy URL field remains available for compatibility.
+The uploader exposes `Chụp ảnh` through the shared native camera preview with a
+user-facing preference and a separate single-file `Chọn ảnh` fallback; the UI
+does not promise a front camera. Review completes before the camera lease is
+released, while `Chụp lại` acquires a new lease. Validation/orientation/resize/
+compression run before the immediate upload. A failed replacement keeps the
+previous media ID and processed local file for retry; the previous media is
+only best-effort cancelled after the replacement completes.

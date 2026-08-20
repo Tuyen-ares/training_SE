@@ -117,6 +117,7 @@ onMounted(load)
           </a-form-item>
           <MediaUploader
             purpose="ASSET_IMAGE"
+            capture-facing="environment"
             label="Upload primary asset image"
             :model-value="form.imageMediaId"
             @update:model-value="form.imageMediaId = $event; form.imageUrl = ''"

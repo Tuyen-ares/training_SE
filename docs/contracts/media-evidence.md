@@ -2,7 +2,9 @@
 
 This contract defines the Phase 1 media core used by F02, F05, F06 and F08.
 All successful API responses use `{ "data": ... }`; errors use the existing
-`{ "error": string, "details"?: object }` envelope.
+`{ "error": string, "details"?: object }` envelope. Media cancel additionally
+returns a stable `code` and `retryable` flag for linked and storage-unavailable
+outcomes.
 
 ## Storage boundary
 
@@ -54,6 +56,11 @@ used only when the new FK is absent. No polymorphic target, `targetId`,
 Claim updates and the business mutation/FK or typed relation insert must commit
 in one transaction. Cross-purpose validation happens at the business link;
 `Complete` only verifies ownership, state and object metadata.
+
+Therefore `Complete` does not mean linked. A completed media remains READY and
+unlinked until the business API claims it and commits its relation and
+`linked_at` update in the same transaction. If that transaction rolls back,
+the completed media is still unlinked and the client must compensate it.
 
 ## Permission matrix
 
@@ -127,12 +134,23 @@ verification/not-found failure, not as permission to delete the row.
 
 ## Cancel and retry
 
-`DELETE /api/media/:mediaId` is only for the authenticated uploader while
-`linked_at IS NULL`. The backend calls `DeleteObject`; it deletes the DB row
-only after a successful delete or a confirmed object-not-found result. A
-transient storage error keeps the row and storage path for later cleanup. A
-linked media cannot be cancelled. The endpoint follows the existing project
-not-found/idempotency convention and never exposes AWS details.
+`DELETE /api/media/:mediaId` is only for the authenticated uploader and supports
+both `PENDING` and `READY` while the media is unlinked. The coordinating service
+opens one Prisma transaction (`maxWait=2s`, `timeout=8s`); the repository uses
+that transaction to lock the row with `SELECT ... FOR UPDATE`. Ownership,
+`linked_at` and every typed/FK relation are rechecked under the lock. The
+service then calls `DeleteObject` with an AWS SDK abort signal capped at 5
+seconds and without an application retry. It deletes the DB row only after a
+successful delete or a confirmed object-not-found result.
+
+`409 MEDIA_ALREADY_LINKED` means the client must not repeat the business action
+until it reloads canonical workflow state. Delete abort, storage timeout and
+transaction timeout return retryable `503 MEDIA_STORAGE_UNAVAILABLE`; the DB
+transaction rolls back so its row delete does not commit. Storage and database
+cannot be atomic, so a timeout may occur after S3 received the request. The
+client must treat that cleanup as unknown rather than assuming either outcome.
+Logs contain only media ID, phase and error code, never an image or presigned
+URL.
 
 - Failed/expired PUT: best-effort cancel, then presign a new media/key. Never
   reuse the old key when the browser cannot prove no object was created.
@@ -143,6 +161,55 @@ not-found/idempotency convention and never exposes AWS details.
   new ID/key.
 - Metadata mismatch: use a new presign/key after best-effort invalid-upload
   cleanup. This is distinct from user cancel and orphan cleanup.
+
+## Frontend camera session, capture and batch compensation
+
+Avatar, asset image and evidence expose a shared `CameraCaptureModal`.
+`Chụp ảnh` acquires the global `media-capture` camera lease and uses native
+`getUserMedia` preview; `Chọn ảnh` remains a separate file-picker fallback.
+The QR scanner owns the `qr-scanner` lease, so only one camera workflow can be
+active at a time. A forced preemption calls the current owner's teardown once,
+waits for pending startup to settle, then releases the lease. Normal cleanup is
+owner teardown followed by `release`; `release` never stops tracks or the QR
+scanner itself. Pagehide, hidden visibility, camera switch and unexpected
+track-ended events use the same teardown boundary.
+
+After a frame is encoded, all tracks and the preview element are cleared and
+the lease is released before the modal enters review. Review holds only the
+local File/object URL; `Chụp lại` acquires a new lease before requesting a new
+stream and preserves the old review when acquisition or readiness fails.
+Preview mirroring is derived only from `videoTrack.getSettings().facingMode`:
+`user` mirrors CSS preview, `environment` and unknown values do not. Canvas
+capture always draws the untransformed video source.
+
+The camera API remains a browser/OS capability and can fail for unsupported,
+insecure, denied, busy, missing or not-ready devices. The modal shows a safe
+error with `Thử lại`, `Chọn ảnh` and `Hủy`; it never opens the picker
+automatically. No workflow sends a camera stream or local object URL to the
+backend.
+
+The client accepts JPEG, PNG and WebP up to 10 MB, validates MIME and file
+signature, decodes with browser orientation once, preserves aspect ratio,
+never upscales and caps the long edge at 1920 px. JPEG/WebP use quality 0.85;
+PNG stays PNG. Output MIME/extension must match and output size is rechecked.
+HEIC/HEIF is rejected with an actionable message. Multiple files are processed
+sequentially and only processed files plus object-URL previews enter reactive
+state.
+
+Evidence is optional and limited to ten. Camera capture selects one image;
+the library input may select multiple. Lightweight duplicates use
+name/size/lastModified/type. Duplicates are removed before the slot check; a
+selection exceeding remaining slots is rejected as a whole. Evidence is not
+uploaded until Confirm. At Confirm the form is locked, uploads run sequentially
+through presign → PUT → complete, and the business request runs only after the
+whole batch is READY.
+
+Each attempt tracks every created and completed media ID. Any upload or
+business failure cancels every cancellable ID and keeps all processed local
+files for retry; a new attempt always presigns new IDs for the full batch. A
+412 collision ID is not blindly cancelled. Cleanup continues after individual
+errors. A cancel 404 is idempotent, 409 requires canonical workflow reload, and
+503/network failure blocks repeat submission until refresh/reconciliation.
 
 ## Business request shapes
 
@@ -167,7 +234,8 @@ legacy URL. No target ID is passed to presign.
 
 ## Cleanup and audit
 
-Phase 1 has no worker or Render Cron. Operators run:
+Phase 1 has no scheduler, worker or Render Cron in the codebase. Operators run
+the following commands manually as an operational fallback:
 
 ```text
 media:cleanup --dry-run

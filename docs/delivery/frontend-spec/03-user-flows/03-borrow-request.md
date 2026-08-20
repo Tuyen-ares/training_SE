@@ -88,12 +88,12 @@ User biết detail nào PENDING, APPROVED hoặc REJECTED mà không suy ra bàn
 khác nhau: option selector dùng `model.name · (serialNumber || qrCode)`; asset
 đã chọn dùng `model + brand + (serialNumber || "Not assigned")` và chưa hiển
 thị Code. Implementation phải thay cả hai bằng canonical normalizer/formatter:
-Model, Code và SN theo cùng thứ tự, thiếu value hiển thị `—`, tuyệt đối không
+Model, Code và Seri theo cùng thứ tự, thiếu value hiển thị `—`, tuyệt đối không
 fallback sang QR. Selection id, validation, expected return date và submit
 payload không thay đổi.
 
 Request Detail dùng cùng identity contract cho từng detail; không render raw QR
-hoặc suy ra Code/SN từ QR.
+hoặc suy ra Code/Seri từ QR.
 
 # FLOW-06 – Thu hồi phiếu hợp lệ
 

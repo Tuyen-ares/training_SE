@@ -1,0 +1,13 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 360 360" role="img" aria-labelledby="title">
+  <title id="title">BigIn Asset Management</title>
+  <rect x="10" y="10" width="340" height="340" rx="66" fill="#fff" stroke="#ff6b00" stroke-width="8"/>
+  <g transform="translate(83.25 33) scale(.875)">
+    <path fill="#ff6b00" fill-rule="evenodd" d="M0 122 60 99C31 100 49 66 84 43c15-14 23-29 24-43 9 25-4 48-22 67-11 11-36 23-12 28 8-6 24-17 34-28 11-11 17-25 15-38 14 20-13 47 6 56l92 37v68c0 64-37 109-110 145C37 300 0 254 0 190Zm111-23 91 36v55c0 51-29 90-91 123-63-33-92-72-92-123v-55Z"/>
+    <path fill="#087ff5" d="M101 130q10-6 20 0l50 34q9 6 9 17v58q0 12-10 19l-49 28q-10 6-20 0l-49-28q-10-6-10-18v-59q0-11 9-17Z"/>
+    <path fill="none" stroke="#fff" stroke-linecap="round" stroke-width="5.5" d="M68 218c-2-19-2-37 0-51m86 51c2-20 3-38 5-51"/>
+    <path fill="#fff" d="M69 219v-17c0-21 18-34 42-34s42 13 42 34v17c0 28-16 44-42 44s-42-16-42-44Z"/>
+    <rect x="55" y="212" width="18" height="44" rx="9" fill="#fff"/>
+    <rect x="151" y="212" width="18" height="44" rx="9" fill="#fff"/>
+    <path fill="#087ff5" d="M78 214h66c5 0 8 4 8 10v7c0 11-7 19-17 19h-6c-9 0-11-11-18-11s-9 11-18 11h-6c-10 0-17-8-17-19v-7c0-6 3-10 8-10Z"/>
+  </g>
+</svg>

@@ -1,9 +1,10 @@
-import type { Prisma, PrismaClient } from '../../generated/prisma/index.js';
+import { Prisma, type PrismaClient } from '../../generated/prisma/index.js';
 import type { MediaFileRecord } from '@/models/media.model.js';
 import type { MediaPurpose } from '@/shared/media-config.js';
 import type {
   CreatePendingMediaData,
   IMediaRepository,
+  LockedMediaRecord,
   MediaTransaction,
 } from '@/repositories/media.repository.js';
 
@@ -60,6 +61,30 @@ export class PrismaMediaRepository implements IMediaRepository {
   async findById(id: number, transaction?: MediaTransaction): Promise<MediaFileRecord | null> {
     const row = await this.database(transaction).media_files.findUnique({ where: { id } });
     return row ? mapMedia(row) : null;
+  }
+
+  async lockById(id: number, transaction: MediaTransaction): Promise<LockedMediaRecord | null> {
+    const locked = await transaction.$queryRaw<Array<{ id: number }>>(
+      Prisma.sql`SELECT id FROM media_files WHERE id = ${id} FOR UPDATE`,
+    );
+    if (!locked.length) return null;
+    const row = await transaction.media_files.findUnique({
+      where: { id },
+      include: {
+        asset_image: { select: { id: true } },
+        user_avatar: { select: { id: true } },
+        handover_evidence: { select: { media_file_id: true } },
+        return_evidence: { select: { media_file_id: true } },
+        repair_evidence: { select: { media_file_id: true } },
+      },
+    });
+    if (!row) return null;
+    return {
+      ...mapMedia(row),
+      has_current_reference: Boolean(
+        row.asset_image || row.user_avatar || row.handover_evidence || row.return_evidence || row.repair_evidence,
+      ),
+    };
   }
 
   async markReady(id: number, uploadedAt: Date, transaction?: MediaTransaction): Promise<MediaFileRecord | null> {

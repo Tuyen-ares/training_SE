@@ -3,9 +3,11 @@ import { computed, onMounted, reactive, ref } from 'vue'
 import { EditOutlined, PlusOutlined } from '@ant-design/icons-vue'
 import { message } from 'ant-design-vue'
 
+import AppTable from '../../components/common/AppTable.vue'
 import WorkspaceLayout from '../../components/layout/WorkspaceLayout.vue'
 import { createCatalogItem, listCatalog, updateCatalogItem } from '../../services/assets/asset-catalog.service'
 import { useAuthStore } from '../../stores/auth'
+import { actionWidth } from '../../utils/table'
 
 const authStore = useAuthStore()
 const loading = ref(true)
@@ -83,19 +85,17 @@ onMounted(load)
     <main class="catalog-page bigin-page-container">
       <header class="catalog-page__header"><div><a-typography-title :level="1">Asset Catalog</a-typography-title><a-typography-paragraph type="secondary">Manage brands, asset types and models. Catalog deletion is not available in this MVP.</a-typography-paragraph></div><a-button v-if="canCreate" class="bigin-touch-target" type="primary" @click="openDialog()"><template #icon><PlusOutlined /></template>Add {{ currentTab?.label.slice(0, -1) }}</a-button></header>
       <a-alert v-if="errorMessage" type="error" show-icon :message="errorMessage"><template #action><a-button size="small" @click="load">Retry</a-button></template></a-alert>
-      <a-card v-else :bordered="false">
+      <a-card v-else class="catalog-card" :bordered="false">
         <a-tabs v-model:active-key="activeTab">
           <a-tab-pane v-for="tab in tabs" :key="tab.key" :tab="tab.label" />
         </a-tabs>
-        <a-skeleton v-if="loading" active :paragraph="{ rows: 7 }" />
-        <a-empty v-else-if="!currentItems.length" description="No catalog items yet." />
-        <div v-else class="bigin-table-scroll-wrapper"><a-table :data-source="currentItems" row-key="id" :pagination="false" :scroll="{ x: 'max-content' }">
+        <AppTable :data-source="currentItems" :loading="loading" row-key="id" empty-description="No catalog items yet.">
           <a-table-column title="ID" data-index="id" width="90" />
           <a-table-column title="Name" data-index="name" :width="240" />
           <a-table-column v-if="currentTab?.key === 'models'" title="Brand" :width="180"><template #default="{ record }">{{ brandName(record.brandId) }}</template></a-table-column>
           <a-table-column v-if="currentTab?.key === 'models'" title="Asset Type" :width="180"><template #default="{ record }">{{ typeName(record.assetTypeId) }}</template></a-table-column>
-          <a-table-column title="Action" width="120"><template #default="{ record }"><a-button v-if="canUpdate(currentTab)" class="bigin-touch-target" type="link" @click="openDialog(record)"><template #icon><EditOutlined /></template>Edit</a-button></template></a-table-column>
-        </a-table></div>
+          <a-table-column title="Action" :width="actionWidth('normal')" align="right"><template #default="{ record }"><a-button v-if="canUpdate(currentTab)" class="bigin-touch-target" type="link" @click="openDialog(record)"><template #icon><EditOutlined /></template>Edit</a-button></template></a-table-column>
+        </AppTable>
       </a-card>
     </main>
 
@@ -112,5 +112,7 @@ onMounted(load)
 </template>
 
 <style scoped>
-.catalog-page { margin: 0 auto; max-width: 1160px; min-width: 0; padding: 24px 16px 40px; }.catalog-page__header { align-items: flex-start; display: flex; justify-content: space-between; gap: 20px; margin-bottom: 20px; }.catalog-page__header > div { min-width: 0; }.catalog-page__header :deep(.ant-typography) { margin-bottom: 4px; overflow-wrap: anywhere; }@media (max-width: 767px) { .catalog-page { padding: 16px 12px 32px; }.catalog-page__header { flex-direction: column; }.catalog-page__header :deep(.ant-btn) { width: 100%; } }
+.catalog-page { margin: 0; max-width: none; min-width: 0; padding: 24px 16px 40px; }.catalog-page__header { align-items: flex-start; display: flex; justify-content: space-between; gap: 20px; margin-bottom: 20px; }.catalog-page__header > div { min-width: 0; }.catalog-page__header :deep(.ant-typography) { margin-bottom: 4px; overflow-wrap: anywhere; }@media (max-width: 767px) { .catalog-page { padding: 16px 12px 32px; }.catalog-page__header { flex-direction: column; }.catalog-page__header :deep(.ant-btn) { width: 100%; } }
+.catalog-card :deep(.ant-card-body) { padding: 0; }.catalog-card :deep(.ant-tabs-nav) { padding-inline: 24px; }.catalog-card :deep(.ant-tabs-content-holder) { min-width: 0; }
+@media (max-width: 575px) { .catalog-card :deep(.ant-tabs-nav) { padding-inline: 12px; } }
 </style>

@@ -103,7 +103,14 @@ paths:
     delete:
       tags: [Media Core]
       summary: Hủy media chưa claim
-      description: Chỉ uploader được hủy khi linked_at còn null; backend tự DeleteObject và xóa row khi storage state an toàn.
+      description: >-
+        Hỗ trợ cả PENDING và READY chưa linked của chính uploader. Backend mở
+        transaction (maxWait 2 giây, timeout 8 giây), khóa media row bằng
+        SELECT FOR UPDATE, kiểm tra lại linked_at và mọi typed/FK relation, rồi
+        gọi DeleteObject với abort timeout 5 giây khi row vẫn đang khóa. Row chỉ
+        bị xóa khi storage trả deleted/not-found. Storage/transaction timeout
+        rollback DB và trả lỗi retryable; do DB và storage không atomic tuyệt đối,
+        client phải coi timeout là trạng thái cleanup chưa xác định.
       operationId: cancelMedia
       parameters:
         - $ref: '#/components/parameters/MediaId'
@@ -112,8 +119,8 @@ paths:
         '401': { $ref: '#/components/responses/Unauthorized' }
         '403': { $ref: '#/components/responses/Forbidden' }
         '404': { description: Media không tồn tại, content: { application/json: { schema: { $ref: '#/components/schemas/Error' } } } }
-        '409': { description: Media đã linked, content: { application/json: { schema: { $ref: '#/components/schemas/Error' } } } }
-        '503': { description: Storage delete failure, content: { application/json: { schema: { $ref: '#/components/schemas/Error' } } } }
+        '409': { description: Media đã linked (`MEDIA_ALREADY_LINKED`), content: { application/json: { schema: { $ref: '#/components/schemas/MediaCancelConflictError' } } } }
+        '503': { description: Storage delete/abort hoặc cancel transaction timeout (`MEDIA_STORAGE_UNAVAILABLE`, retryable), content: { application/json: { schema: { $ref: '#/components/schemas/MediaStorageUnavailableError' } } } }
   /registration-requests:
     post:
       tags: [F01 - Authentication]
@@ -2845,6 +2852,20 @@ components:
           additionalProperties: true
       required:
         - error
+    MediaCancelConflictError:
+      type: object
+      properties:
+        error: { type: string, example: Linked media cannot be cancelled }
+        code: { type: string, enum: [MEDIA_ALREADY_LINKED] }
+        retryable: { type: boolean, enum: [false] }
+      required: [error, code, retryable]
+    MediaStorageUnavailableError:
+      type: object
+      properties:
+        error: { type: string, example: Media storage is temporarily unavailable }
+        code: { type: string, enum: [MEDIA_STORAGE_UNAVAILABLE] }
+        retryable: { type: boolean, enum: [true] }
+      required: [error, code, retryable]
     MessageResponse:
       type: object
       properties:
@@ -3288,6 +3309,8 @@ components:
                 properties:
                   id:
                     type: integer
+                  assetCode:
+                    type: string
                   serialNumber:
                     type: string
                     nullable: true
@@ -3302,6 +3325,7 @@ components:
                     $ref: '#/components/schemas/AssetSummary'
                 required:
                   - id
+                  - assetCode
                   - qrCode
                   - status
                   - model
@@ -3523,6 +3547,8 @@ components:
           properties:
             id:
               type: integer
+            assetCode:
+              type: string
             serialNumber:
               type: string
               nullable: true
@@ -3537,6 +3563,7 @@ components:
               $ref: '#/components/schemas/AssetSummary'
           required:
             - id
+            - assetCode
             - serialNumber
             - qrCode
             - imageUrl
@@ -3646,6 +3673,8 @@ components:
           properties:
             id:
               type: integer
+            assetCode:
+              type: string
             serialNumber:
               type: string
               nullable: true
@@ -3660,6 +3689,7 @@ components:
               $ref: '#/components/schemas/AssetSummary'
           required:
             - id
+            - assetCode
             - qrCode
             - status
             - model
@@ -3789,6 +3819,8 @@ components:
           properties:
             id:
               type: integer
+            assetCode:
+              type: string
             serialNumber:
               type: string
               nullable: true
@@ -3803,6 +3835,7 @@ components:
               $ref: '#/components/schemas/AssetSummary'
           required:
             - id
+            - assetCode
             - serialNumber
             - qrCode
             - imageUrl
@@ -4027,6 +4060,8 @@ components:
           properties:
             id:
               type: integer
+            assetCode:
+              type: string
             serialNumber:
               type: string
               nullable: true
@@ -4036,6 +4071,7 @@ components:
               type: string
           required:
             - id
+            - assetCode
             - status
             - modelName
           nullable: true

@@ -5,8 +5,10 @@ import { message } from 'ant-design-vue'
 
 import WorkspaceLayout from '../../../components/layout/WorkspaceLayout.vue'
 import AdministrationTabs from '../../../components/administration/AdministrationTabs.vue'
+import AppTable from '../../../components/common/AppTable.vue'
 import { createDepartment, listDepartments, updateDepartment, updateDepartmentStatus } from '../../../services/administration/department.service'
 import { useAuthStore } from '../../../stores/auth'
+import { actionWidth } from '../../../utils/table'
 
 const authStore = useAuthStore()
 const departments = ref([])
@@ -75,15 +77,12 @@ onMounted(load)
       </header>
       <a-alert v-if="errorMessage" type="error" show-icon :message="errorMessage"><template #action><a-button size="small" @click="load">Retry</a-button></template></a-alert>
       <section class="table-panel">
-        <a-skeleton v-if="loading" active :paragraph="{ rows: 6 }" />
-        <a-empty v-else-if="!departments.length" description="No departments found." />
-        <div v-else class="bigin-table-scroll-wrapper">
-          <a-table :data-source="departments" row-key="id" :loading="loading" :pagination="false" :scroll="{ x: 'max-content' }">
+        <AppTable :data-source="departments" row-key="id" :loading="loading" empty-description="No departments found.">
             <a-table-column title="Name" data-index="name" />
             <a-table-column title="Status" :width="140"><template #default="{ record }"><a-tag :color="record.isActive ? 'green' : 'default'">{{ record.isActive ? 'Active' : 'Inactive' }}</a-tag></template></a-table-column>
-            <a-table-column title="Actions" :width="120"><template #default="{ record }"><a-button v-if="canUpdate || canManageStatus" type="link" class="bigin-touch-target" @click="openDialog(record)"><template #icon><EditOutlined /></template>Edit</a-button></template></a-table-column>
-          </a-table>
-        </div>
+            <a-table-column title="Action" :width="actionWidth('compact')" align="right"><template #default="{ record }"><a-button v-if="canUpdate || canManageStatus" type="link" class="bigin-touch-target" @click="openDialog(record)"><template #icon><EditOutlined /></template>Edit</a-button></template></a-table-column>
+            <template #mobileRow="{ record }"><div class="department-mobile-row"><div><strong>{{ record.name }}</strong><span>{{ record.isActive ? 'Active' : 'Inactive' }}</span></div><a-button v-if="canUpdate || canManageStatus" type="link" class="bigin-touch-target" @click="openDialog(record)">Edit</a-button></div></template>
+        </AppTable>
         <div class="table-footer"><span>{{ departments.length }} departments</span><a-button :icon="h(ReloadOutlined)" :loading="loading" @click="load">Refresh</a-button></div>
       </section>
     </main>
@@ -97,10 +96,10 @@ onMounted(load)
 </template>
 
 <style scoped>
-.department-page { margin: 0 auto; max-width: 1100px; padding: 28px 32px 48px; }
+.department-page { margin: 0; max-width: none; padding: 28px 32px 48px; }
 .department-page__header { align-items: flex-start; display: flex; justify-content: space-between; gap: 20px; margin-bottom: 18px; }
 .department-page h1 { font-size: 28px; margin: 0; }.department-page__header p { color: var(--bigin-text-secondary); margin: 6px 0 0; }
 .table-panel { background: var(--bigin-surface-panel); border: 1px solid var(--bigin-border-secondary); border-radius: 8px; margin-top: 16px; padding: 16px; }
-.table-footer { align-items: center; color: var(--bigin-text-tertiary); display: flex; justify-content: space-between; padding-top: 16px; }
+.table-footer { align-items: center; color: var(--bigin-text-tertiary); display: flex; justify-content: space-between; padding-top: 16px; }.department-mobile-row { align-items: center; display: flex; justify-content: space-between; gap: 12px; }.department-mobile-row > div { display: grid; gap: 4px; }.department-mobile-row span { color: var(--bigin-text-secondary); font-size: 12px; }
 @media (max-width: 700px) { .department-page { padding: 18px 14px 32px; }.department-page__header { flex-direction: column; }.department-page__header :deep(.ant-btn) { width: 100%; } }
 </style>

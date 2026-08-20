@@ -134,13 +134,21 @@
 | `PATCH /api/departments/:departmentId` | Update department information | Cập nhật thông tin phòng ban | Update name only; requires `department.update`, and `isActive` is rejected. / Chỉ sửa name; cần `department.update`, `isActive` bị từ chối. | Existing |
 | `PATCH /api/departments/:departmentId/status` | Change department active status | Kích hoạt/vô hiệu hóa phòng ban | Set `isActive` to `true` or `false`; requires `department.manage_status`. Inactive departments retain links/history but cannot be selected for new assignments. / Đổi status; department inactive giữ liên kết/lịch sử nhưng không được chọn cho assignment mới. | Existing |
 
+### Asset identity response note
+
+The nested asset objects returned by borrow request detail/review detail,
+handover queue, borrow history list/detail and asset issue list/detail now expose
+the immutable `assetCode` additively. Existing `qrCode`, serial and image fields
+remain unchanged for compatibility and QR workflows; no route, permission or
+business transition changes are implied by this response-field addition.
+
 ## Media Core / Ảnh và evidence
 
 | API | English name | Tên tiếng Việt | Purpose / Mục đích | Status |
 | --- | --- | --- | --- | --- |
 | `POST /api/media/presign` | Presign media upload | Cấp presigned upload | Validate purpose/permission/MIME/size, create a PENDING media row and return a presigned PUT with signed `Content-Type`, immutable `Cache-Control` and `If-None-Match: *`; never returns AWS credentials or public URL. / Validate và cấp PUT trực tiếp S3. | Existing |
 | `POST /api/media/:mediaId/complete` | Complete media upload | Hoàn tất upload | Verify ownership and `HeadObject` metadata, transition PENDING to READY and return the CloudFront URL; READY retry is idempotent. / Verify object và chuyển READY. | Existing |
-| `DELETE /api/media/:mediaId` | Cancel media upload | Hủy upload | Uploader-only cancel while unlinked; backend deletes S3 object and then row, without exposing DeleteObject credentials. / Uploader hủy media chưa claim. | Existing |
+| `DELETE /api/media/:mediaId` | Cancel media upload | Hủy upload | Uploader-only cancel for PENDING or READY media while unlinked. The service locks/rechecks the row and typed/FK relations in a bounded transaction, aborts DeleteObject after 5 seconds, and returns `409 MEDIA_ALREADY_LINKED` or retryable `503 MEDIA_STORAGE_UNAVAILABLE` when applicable. / Uploader hủy media PENDING/READY chưa claim với row lock và timeout rõ ràng. | Existing |
 
 ## Not planned as public APIs / Không triển khai thành public API
 

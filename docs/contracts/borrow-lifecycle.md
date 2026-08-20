@@ -140,6 +140,24 @@ type BorrowRequestStatus =
 
 type BorrowDetailStatus = 'PENDING' | 'APPROVED' | 'REJECTED'
 
+type BorrowRequestDetail = {
+  id: number
+  asset: {
+    id: number
+    assetCode: string
+    serialNumber: string | null
+    qrCode: string
+    imageUrl: string | null
+    status: string
+    model: { id: number; name: string }
+  }
+  expectedReturnDate: string
+  approvalStatus: BorrowDetailStatus
+  approvedBy: { id: number; name: string } | null
+  approvedAt: string | null
+  rejectionReason: string | null
+}
+
 type HandoverQueueItem = {
   detailId: number
   requestId: number
@@ -154,6 +172,7 @@ type HandoverQueueItem = {
   }
   asset: {
     id: number
+    assetCode: string
     serialNumber: string | null
     qrCode: string
     imageUrl: string | null
@@ -170,6 +189,7 @@ type BorrowHistory = {
   detailId: number
   asset: {
     id: number
+    assetCode: string
     serialNumber: string | null
     qrCode: string
     status: string

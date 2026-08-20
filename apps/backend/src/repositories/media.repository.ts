@@ -12,9 +12,14 @@ export interface CreatePendingMediaData {
   uploadedBy: number;
 }
 
+export interface LockedMediaRecord extends MediaFileRecord {
+  has_current_reference: boolean;
+}
+
 export interface IMediaRepository {
   createPending(data: CreatePendingMediaData): Promise<MediaFileRecord>;
   findById(id: number, transaction?: MediaTransaction): Promise<MediaFileRecord | null>;
+  lockById(id: number, transaction: MediaTransaction): Promise<LockedMediaRecord | null>;
   markReady(id: number, uploadedAt: Date, transaction?: MediaTransaction): Promise<MediaFileRecord | null>;
   claimReady(
     id: number,

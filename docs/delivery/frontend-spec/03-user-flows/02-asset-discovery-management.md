@@ -46,8 +46,8 @@ User tìm được asset đúng hoặc có selection hợp lệ; QR không tạo
 ## Asset identity presentation
 
 Asset List hiển thị cell Asset theo thứ tự Model name và `Code: <assetCode>`;
-Category, Brand và Serial Number vẫn là column riêng. Asset Detail giữ các
-dedicated metadata fields cho Model, Code và SN, không thêm một summary lặp lại
+Category, Brand và Seri vẫn là column riêng. Asset Detail giữ các
+dedicated metadata fields cho Model, Code và Seri, không thêm một summary lặp lại
 các field đó. Missing value là `—`; `qrCode` chỉ dùng cho scan, lookup và Asset
 QR action/drawer, không dùng làm text identity.
 
@@ -95,3 +95,13 @@ Asset/catalog cập nhật hợp lệ hoặc giữ nguyên dữ liệu cũ khi v
 ## Related Screens
 
 `SCR-F02-01`, `SCR-F02-02`, `SCR-F02-03`, `SCR-F02-04`.
+
+## Primary asset image capture
+
+Asset create/edit keeps the single-image immediate uploader. `Chụp ảnh` opens
+the shared native camera preview with an environment preference; `Chọn ảnh`
+remains a separate single-file fallback and the UI does not promise a rear
+camera. Camera capture reaches review before the lease is released and the
+client validates, orients, resizes/compresses and previews the image before
+presign/PUT/complete. Replacement keeps the current media ID on failure and
+only best-effort cancels the old unlinked media after the new upload is READY.

@@ -9,6 +9,7 @@ import { listAssets } from '../../services/assets/asset.service'
 import { createBorrowRequest } from '../../services/borrowing/borrowing.service'
 import { useAuthStore } from '../../stores/auth'
 import { DEFAULT_ASSET_IMAGE } from '../../constants/media'
+import { displayAssetValue, formatAssetOption, normalizeAssetIdentity } from '../../utils/asset-identity'
 
 const router = useRouter()
 const authStore = useAuthStore()
@@ -23,7 +24,7 @@ const today = new Intl.DateTimeFormat('en-CA', { timeZone: 'Asia/Ho_Chi_Minh' })
 const selectedIds = computed(() => new Set(form.items.map((item) => item.asset.id)))
 const assetOptions = computed(() => availableAssets.value
   .filter((asset) => !selectedIds.value.has(asset.id))
-  .map((asset) => ({ value: asset.id, label: `${asset.model.name} · ${asset.serialNumber || asset.qrCode}` })))
+  .map((asset) => ({ value: asset.id, label: formatAssetOption(asset) })))
 
 async function loadAssets() {
   try {
@@ -92,8 +93,8 @@ onMounted(loadAssets)
             </div>
             <a-empty v-if="!form.items.length" description="No assets added yet." />
             <article v-for="(item, index) in form.items" :key="item.asset.id" class="asset-row">
-              <a-avatar shape="square" :size="52" :src="item.asset.imageUrl || DEFAULT_ASSET_IMAGE">{{ item.asset.model.name.slice(0, 1) }}</a-avatar>
-              <div class="asset-copy"><strong>{{ item.asset.model.name }}</strong><span>{{ item.asset.brand.name }} · SN: {{ item.asset.serialNumber || 'Not assigned' }}</span><StatusTag status="AVAILABLE" /></div>
+              <a-avatar shape="square" :size="52" :src="item.asset.imageUrl || DEFAULT_ASSET_IMAGE">{{ displayAssetValue(normalizeAssetIdentity(item.asset).modelName).slice(0, 1) }}</a-avatar>
+              <div class="asset-copy"><strong>{{ displayAssetValue(normalizeAssetIdentity(item.asset).modelName) }}</strong><span>{{ item.asset.brand?.name || '—' }}</span><small>Code: {{ displayAssetValue(normalizeAssetIdentity(item.asset).assetCode) }} · Seri: {{ displayAssetValue(normalizeAssetIdentity(item.asset).serialNumber) }}</small><StatusTag status="AVAILABLE" /></div>
               <label class="date-field"><span>Expected return</span><input v-model="item.expectedReturnDate" type="date" :min="today"></label>
               <a-button class="bigin-touch-target" type="text" danger aria-label="Remove asset" :icon="h(DeleteOutlined)" @click="form.items.splice(index, 1)" />
             </article>

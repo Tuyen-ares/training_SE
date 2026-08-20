@@ -39,6 +39,7 @@ export interface BorrowRequestDetailDto {
   id: number;
   asset: {
     id: number;
+    assetCode: string;
     serialNumber: string | null;
     qrCode: string;
     imageUrl: string | null;
@@ -108,6 +109,7 @@ export interface HandoverQueueItemDto {
   };
   asset: {
     id: number;
+    assetCode: string;
     serialNumber: string | null;
     qrCode: string;
     imageUrl: string | null;
@@ -136,6 +138,7 @@ export interface BorrowHistoryDto {
   detailId: number;
   asset: {
     id: number;
+    assetCode: string;
     serialNumber: string | null;
     qrCode: string;
     imageUrl: string | null;

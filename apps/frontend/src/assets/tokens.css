@@ -39,6 +39,7 @@
   --bigin-border-primary: #ffbb96;
 
   --bigin-color-primary: #ff6b00;
+  --bigin-brand-subtitle: #102a56;
   --bigin-color-primary-hover: #ff8533;
   --bigin-color-primary-active: #d95a00;
   --bigin-color-primary-strong: #d46b08;
@@ -69,6 +70,13 @@
   --bigin-focus-ring: 0 0 0 3px rgb(255 107 0 / 24%);
   --bigin-radius-control: 6px;
   --bigin-radius-panel: 8px;
+  --bigin-table-cell-padding-y: 12px;
+  --bigin-table-cell-padding-x: 16px;
+  --bigin-table-header-padding-y: 12px;
+  --bigin-table-header-padding-x: 16px;
+  --bigin-table-action-compact-width: 112px;
+  --bigin-table-action-normal-width: 144px;
+  --bigin-table-action-wide-width: 224px;
   --section-gap: 160px;
 
   --bigin-z-header: 100;
@@ -126,6 +134,7 @@
   --bigin-border-primary: #873800;
 
   --bigin-color-primary: #ff6b00;
+  --bigin-brand-subtitle: #c8d7ee;
   --bigin-color-primary-hover: #ff8533;
   --bigin-color-primary-active: #d95a00;
   --bigin-color-primary-strong: #ffa940;

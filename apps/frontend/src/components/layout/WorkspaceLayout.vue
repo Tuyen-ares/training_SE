@@ -22,6 +22,7 @@ import { useRoute, useRouter } from 'vue-router'
 import { useAuthStore } from '../../stores/auth'
 import { useAppStore } from '../../stores/app'
 import { getUnreadNotificationCount } from '../../services/notifications/notification.service'
+import BrandLogo from '../common/BrandLogo.vue'
 
 const route = useRoute()
 const router = useRouter()
@@ -182,8 +183,12 @@ watch(() => route.name, closeMobileNav)
       :trigger="null"
       @collapse="collapsed = $event"
     >
-      <RouterLink class="workspace-layout__brand" :to="{ name: 'dashboard' }">
-        <span v-if="isMobileViewport || !collapsed">BigIn Asset<span class="workspace-layout__brand-dot">.</span></span>
+      <RouterLink class="workspace-layout__brand" :to="{ name: 'dashboard' }" aria-label="BigIn Asset dashboard">
+        <BrandLogo
+          :variant="isMobileViewport || !collapsed ? 'lockup' : 'app-icon'"
+          :size="isMobileViewport || !collapsed ? 42 : 44"
+          :show-subtitle="isMobileViewport || !collapsed"
+        />
       </RouterLink>
 
       <a-menu
@@ -289,8 +294,8 @@ watch(() => route.name, closeMobileNav)
 .workspace-layout :deep(.ant-layout) { background: var(--bigin-surface-page); }
 .workspace-layout__sider { background: var(--bigin-surface-panel) !important; border-right: 1px solid var(--bigin-border-secondary); flex: 0 0 296px !important; max-width: 296px !important; min-height: 100vh; min-height: 100dvh; min-width: 296px !important; width: 296px !important; }
 .workspace-layout__sider.ant-layout-sider-collapsed { flex-basis: 72px !important; max-width: 72px !important; min-width: 72px !important; width: 72px !important; }
-.workspace-layout__brand { align-items: center; color: var(--bigin-text-primary); display: flex; font-size: 22px; font-weight: 700; height: 68px; padding: 0 28px; text-decoration: none; white-space: nowrap; }
-.workspace-layout__brand-dot { color: var(--bigin-color-primary); }
+.workspace-layout__brand { align-items: center; color: var(--bigin-text-primary); display: flex; height: 68px; padding: 0 28px; text-decoration: none; white-space: nowrap; }
+.workspace-layout__sider.ant-layout-sider-collapsed .workspace-layout__brand { justify-content: center; padding-inline: 0; }
 .workspace-layout__menu { background: transparent; border-inline-end: 0; color: var(--bigin-text-secondary); padding: 18px 12px; }
 .workspace-layout__menu :deep(.ant-menu-item) { height: 44px; line-height: 44px; margin-block: 4px; }
 .workspace-layout__menu :deep(.ant-menu-item), .workspace-layout__menu :deep(.ant-menu-submenu-title) { color: var(--bigin-text-secondary); }

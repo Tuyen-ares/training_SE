@@ -217,7 +217,7 @@ onMounted(load)
 </template>
 
 <style scoped>
-.notification-page { margin: 0 auto; max-width: 1180px; min-width: 0; padding: 28px 32px 48px; }
+.notification-page { margin: 0; max-width: none; min-width: 0; padding: 28px 32px 48px; }
 .notification-page__header { align-items: flex-start; display: flex; gap: 24px; justify-content: space-between; margin-bottom: 18px; }
 .notification-page h1 { font-size: 28px; line-height: 1.25; margin: 0; }
 .notification-page p { color: var(--bigin-text-secondary); margin: 6px 0 0; }

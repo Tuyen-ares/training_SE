@@ -180,15 +180,18 @@ Issue kết thúc và asset có state chính xác, không tự retire.
 ## Optional repair evidence
 
 Complete Repair may attach optional image evidence using purpose `AFTER_REPAIR`.
-Failed Repair does not show or submit the evidence control. The uploader uses
-presign → direct PUT with the required conditional headers → complete, shows a
-stable loading state without percentage progress, and sends `mediaIds` only
-after complete succeeds. Issue detail reads `repairEvidence[]` through
-CloudFront; legacy fields remain unchanged.
+Failed Repair does not show or submit the evidence control. Complete Repair
+uses the same local, maximum-ten evidence picker as handover/return. `Chụp ảnh`
+opens the shared native environment preview and `Chọn ảnh` remains the multiple
+file fallback; processing is sequential and there is no remote upload before
+Confirm. Confirm locks the modal, completes the full sequential upload batch,
+then submits `mediaIds`; failures compensate unlinked attempt IDs and retain
+local files for retry/reconciliation. Issue detail reads `repairEvidence[]`
+through CloudFront; legacy fields remain unchanged.
 
 ## Asset identity presentation
 
-Issue List và Issue Detail hiển thị asset bằng canonical Model, Code và SN khi
+Issue List và Issue Detail hiển thị asset bằng canonical Model, Code và Seri khi
 API cung cấp field tương ứng; missing value là `—`. Không dùng `Asset <id>`,
 `ID <id>`, raw QR hoặc bất kỳ synthetic fallback nào để thay identity. Issue
 status, repair transition, evidence, vendor và permission behavior không bị thay

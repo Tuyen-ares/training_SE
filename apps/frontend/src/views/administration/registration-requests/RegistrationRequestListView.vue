@@ -2,10 +2,12 @@
 import { computed, onMounted, onUnmounted, reactive, ref, watch } from 'vue'
 import { ReloadOutlined, SearchOutlined } from '@ant-design/icons-vue'
 import { useRouter } from 'vue-router'
+import AppTable from '../../../components/common/AppTable.vue'
 import WorkspaceLayout from '../../../components/layout/WorkspaceLayout.vue'
 import StatusTag from '../../../components/common/StatusTag.vue'
 import { listRegistrationRequests } from '../../../services/administration/registration-request.service'
 import { useAuthStore } from '../../../stores/auth'
+import { actionColumn } from '../../../utils/table'
 
 const authStore = useAuthStore()
 const router = useRouter()
@@ -17,12 +19,11 @@ const filters = reactive({ status: 'PENDING', q: '', page: 1, pageSize: 20 })
 let searchTimer
 
 const columns = [
-  { title: 'Applicant', key: 'applicant', width: 260 },
-  { title: 'Phone', dataIndex: 'phone', key: 'phone', width: 150 },
+  { title: 'Applicant', key: 'applicant', width: 300 },
   { title: 'Submitted', dataIndex: 'createdAt', key: 'createdAt', width: 190 },
   { title: 'Status', dataIndex: 'status', key: 'status', width: 125 },
   { title: 'Reviewed by', key: 'reviewer', width: 170 },
-  { title: 'Action', key: 'action', width: 110, align: 'center' },
+  actionColumn({ key: 'action', size: 'compact', fixed: true }),
 ]
 
 const statusTabs = computed(() => [
@@ -87,9 +88,19 @@ onUnmounted(() => clearTimeout(searchTimer))
           <a-tab-pane key="REJECTED" tab="Rejected" />
         </a-tabs>
         <a-alert v-if="errorMessage" class="page-alert" type="error" show-icon :message="errorMessage"><template #action><a-button size="small" @click="loadRequests">Retry</a-button></template></a-alert>
-        <div v-else class="bigin-table-scroll-wrapper"><a-table class="request-table" :columns="columns" :data-source="pageData.items" :loading="loading" row-key="id" :pagination="false" :scroll="{ x: 'max-content' }">
+        <AppTable
+          v-else
+          class="request-table"
+          :columns="columns"
+          :data-source="pageData.items"
+          :loading="loading"
+          row-key="id"
+          :empty-description="filters.status === 'PENDING' ? 'No pending registrations' : 'No requests match these filters'"
+          :pagination="{ current: pageData.page, pageSize: pageData.pageSize, total: pageData.total, label: 'requests' }"
+          @page-change="changePage"
+        >
           <template #bodyCell="{ column, record }">
-            <template v-if="column.key === 'applicant'"><div class="applicant"><strong>{{ record.name }}</strong><small>{{ record.email }}</small></div></template>
+            <template v-if="column.key === 'applicant'"><div class="applicant"><strong>{{ record.name }}</strong><small>{{ record.email }} · {{ record.phone || 'No phone' }}</small></div></template>
             <template v-else-if="column.key === 'createdAt'">{{ formatDate(record.createdAt) }}</template>
             <template v-else-if="column.key === 'status'"><StatusTag :status="record.status" /></template>
             <template v-else-if="column.key === 'reviewer'">{{ record.reviewer?.name || '—' }}</template>
@@ -106,19 +117,17 @@ onUnmounted(() => clearTimeout(searchTimer))
               </div>
             </template>
           </template>
-          <template #emptyText><a-empty :description="filters.status === 'PENDING' ? 'No pending registrations' : 'No requests match these filters'" /></template>
-        </a-table></div>
-        <footer class="table-footer bigin-responsive-footer">
-          <span>Showing {{ pageData.items.length }} of {{ pageData.total }} requests</span>
-          <a-pagination v-if="pageData.total > pageData.pageSize" class="bigin-touch-target" :current="pageData.page" :page-size="pageData.pageSize" :total="pageData.total" :show-size-changer="false" show-less-items @change="changePage" />
-        </footer>
+          <template #mobileRow="{ record }">
+            <div class="registration-mobile-row"><div class="applicant"><strong>{{ record.name }}</strong><small>{{ record.email }} · {{ record.phone || 'No phone' }}</small></div><div class="registration-mobile-meta"><StatusTag :status="record.status" /><span>{{ formatDate(record.createdAt) }}</span></div><a-button v-if="record.status === 'PENDING'" class="review-action bigin-touch-target" type="primary" @click="router.push({ name: 'registration-request-detail', params: { id: record.id } })">Review</a-button><a-button v-else class="bigin-touch-target" type="link" @click="router.push({ name: 'registration-request-detail', params: { id: record.id } })">View</a-button></div>
+          </template>
+        </AppTable>
       </section>
     </main>
   </WorkspaceLayout>
 </template>
 
 <style scoped>
-.admin-page { margin: 0 auto; max-width: 1320px; min-width: 0; padding: 28px 36px 48px; }.page-heading { margin-bottom: 24px; }.page-heading h1 { font-size: 22px; margin: 12px 0 5px; }.page-heading p { color: var(--bigin-text-muted); margin: 0; }.request-surface { background: var(--bigin-surface-panel); border: 1px solid var(--bigin-border-secondary); border-radius: 8px; overflow: hidden; }.filter-row { align-items: center; display: flex; flex-wrap: wrap; gap: 8px; padding: 14px 16px 0; }.request-search { max-width: 360px; }.pending-summary { color: var(--bigin-text-secondary); font-size: 13px; margin-left: auto; }.status-tabs { padding: 0 16px; }.status-tabs :deep(.ant-tabs-nav) { margin: 0; }.request-table { border-radius: 0; }.applicant { display: grid; gap: 2px; }.applicant small { color: var(--bigin-text-muted); font-size: 12px; overflow-wrap: anywhere; }.action-cell { align-items: center; display: flex; justify-content: center; width: 100%; }.review-action { background: var(--bigin-color-primary); border-color: var(--bigin-color-primary); }.review-action:hover { background: var(--bigin-color-primary-hover); border-color: var(--bigin-color-primary-hover); }.page-alert { margin: 16px; }.table-footer { align-items: center; border-top: 1px solid var(--bigin-border-secondary); color: var(--bigin-text-muted); display: flex; font-size: 12px; justify-content: space-between; min-height: 52px; padding: 8px 16px; }.request-table :deep(.ant-table-thead > tr > th) { background: var(--bigin-surface-subtle); color: var(--bigin-text-secondary); font-size: 12px; font-weight: 600; padding: 12px 16px; }.request-table :deep(.ant-table-tbody > tr > td) { padding: 12px 16px; }
+.admin-page { margin: 0; max-width: none; min-width: 0; padding: 28px 36px 48px; }.page-heading { margin-bottom: 24px; }.page-heading h1 { font-size: 22px; margin: 12px 0 5px; }.page-heading p { color: var(--bigin-text-muted); margin: 0; }.request-surface { background: var(--bigin-surface-panel); border: 1px solid var(--bigin-border-secondary); border-radius: 8px; overflow: hidden; }.filter-row { align-items: center; display: flex; flex-wrap: wrap; gap: 8px; padding: 14px 16px 0; }.request-search { max-width: 360px; }.pending-summary { color: var(--bigin-text-secondary); font-size: 13px; margin-left: auto; }.status-tabs { padding: 0 16px; }.status-tabs :deep(.ant-tabs-nav) { margin: 0; }.applicant { display: grid; gap: 2px; }.applicant small { color: var(--bigin-text-muted); font-size: 12px; overflow-wrap: anywhere; }.action-cell { align-items: center; display: flex; justify-content: flex-end; width: 100%; }.review-action { background: var(--bigin-color-primary); border-color: var(--bigin-color-primary); }.review-action:hover { background: var(--bigin-color-primary-hover); border-color: var(--bigin-color-primary-hover); }.page-alert { margin: 16px; }.registration-mobile-row { display: grid; gap: 12px; }.registration-mobile-meta { align-items: center; color: var(--bigin-text-secondary); display: flex; justify-content: space-between; gap: 8px; font-size: 12px; }
 @media (max-width: 767px) { .admin-page { padding: 20px 16px 36px; }.filter-row { align-items: center; }.request-search { flex: 1 1 180px; max-width: 280px; }.pending-summary { flex-basis: 100%; margin-left: 0; } }
-@media (max-width: 575px) { .admin-page { padding: 14px 12px 28px; }.request-search { max-width: 280px; width: auto; }.pending-summary { align-self: flex-start; }.status-tabs { padding-inline: 10px; }.table-footer { align-items: flex-start; flex-direction: column; gap: 8px; padding-block: 12px; } }
+@media (max-width: 575px) { .admin-page { padding: 14px 12px 28px; }.request-search { max-width: 280px; width: auto; }.pending-summary { align-self: flex-start; }.status-tabs { padding-inline: 10px; } }
 </style>

@@ -1,10 +1,12 @@
 <script setup>
 import { computed, onMounted, reactive, ref } from 'vue'
 import { useRouter } from 'vue-router'
+import AppTable from '../../components/common/AppTable.vue'
 import StatusTag from '../../components/common/StatusTag.vue'
 import WorkspaceLayout from '../../components/layout/WorkspaceLayout.vue'
 import { listReviewQueue } from '../../services/borrowing/borrowing.service'
 import { useAuthStore } from '../../stores/auth'
+import { actionWidth } from '../../utils/table'
 
 const router = useRouter()
 const authStore = useAuthStore()
@@ -79,15 +81,16 @@ onMounted(load)
         </div>
 
         <a-alert v-if="errorMessage" type="error" show-icon :message="errorMessage" />
-        <div v-else class="bigin-table-scroll-wrapper"><a-table
-          class="queue-table"
+        <AppTable
+          v-else
           :loading="loading"
           :data-source="result.items"
           row-key="id"
-          :pagination="false"
-          :scroll="{ x: 'max-content' }"
+          empty-description="No requests in this view"
+          :pagination="{ current: result.page, pageSize: result.pageSize, total: result.total, label: 'requests' }"
+          @page-change="pageChange"
         >
-          <a-table-column title="Request" key="id" :width="190">
+          <a-table-column title="Request" key="id" :width="180">
             <template #default="{ record }">
               <div class="request-cell">
                 <strong>REQ-{{ String(record.id).padStart(4, '0') }}</strong>
@@ -95,7 +98,7 @@ onMounted(load)
               </div>
             </template>
           </a-table-column>
-          <a-table-column title="Requester" key="requester" :width="240">
+          <a-table-column title="Requester" key="requester" :width="220">
             <template #default="{ record }">
               <div class="requester-cell">
                 <a-avatar size="small" :src="record.requester?.avatarUrl">
@@ -108,22 +111,22 @@ onMounted(load)
               </div>
             </template>
           </a-table-column>
-          <a-table-column title="Assets" key="qty" :width="110">
+          <a-table-column title="Assets" key="qty" :width="96">
             <template #default="{ record }">
               <span class="quantity-pill">{{ matchingDetails(record).length }}</span>
             </template>
           </a-table-column>
-          <a-table-column title="Expected return" key="return" :width="180">
+          <a-table-column title="Expected return" key="return" :width="160">
             <template #default="{ record }">
               <span class="date-value">{{ matchingDetails(record)[0]?.expectedReturnDate || '—' }}</span>
             </template>
           </a-table-column>
-          <a-table-column title="Status" key="status" :width="170">
+          <a-table-column title="Status" key="status" :width="144">
             <template #default>
               <StatusTag class="status-tag" :status="query.approvalStatus" :label="statusLabel" />
             </template>
           </a-table-column>
-          <a-table-column title="" key="actions" :width="150" align="right">
+          <a-table-column title="Action" key="actions" fixed="right" :width="actionWidth('normal')" align="right">
             <template #default="{ record }">
               <a-button
                 class="review-button bigin-touch-target"
@@ -135,26 +138,27 @@ onMounted(load)
               </a-button>
             </template>
           </a-table-column>
-          <template #emptyText><a-empty description="No requests in this view" /></template>
-        </a-table></div>
-
-        <footer class="queue-footer bigin-responsive-footer">
-          <span>Showing {{ result.items.length }} of {{ result.total }} requests</span>
-          <a-pagination class="bigin-touch-target"
-            :current="result.page"
-            :page-size="result.pageSize"
-            :total="result.total"
-            :show-size-changer="false"
-            @change="pageChange"
-          />
-        </footer>
+          <template #mobileRow="{ record }">
+            <div class="queue-mobile-row">
+              <div class="requester-cell">
+                <a-avatar size="small" :src="record.requester?.avatarUrl">{{ record.requester?.name?.slice(0, 1) || 'U' }}</a-avatar>
+                <div>
+                  <strong>{{ record.requester?.name || 'Unknown requester' }}</strong>
+                  <span>REQ-{{ String(record.id).padStart(4, '0') }} · {{ formatDate(record.createdAt) }}</span>
+                </div>
+              </div>
+              <div class="queue-mobile-meta"><span>{{ matchingDetails(record).length }} asset{{ matchingDetails(record).length === 1 ? '' : 's' }}</span><span>{{ matchingDetails(record)[0]?.expectedReturnDate || 'No return date' }}</span><StatusTag :status="query.approvalStatus" :label="statusLabel" /></div>
+              <a-button class="review-button bigin-touch-target" :type="query.approvalStatus === 'PENDING' ? 'primary' : 'default'" @click="router.push({ name: 'approval-detail', params: { id: record.id }, state: { request: record } })">{{ query.approvalStatus === 'PENDING' ? 'Review request' : 'View details' }}</a-button>
+            </div>
+          </template>
+        </AppTable>
       </section>
     </main>
   </WorkspaceLayout>
 </template>
 
 <style scoped>
-.queue-page { max-width: 1320px; margin: 0 auto; padding: 32px 36px 48px; }
+.queue-page { max-width: none; margin: 0; padding: 32px 36px 48px; }
 .queue-header { align-items: flex-end; display: flex; justify-content: space-between; margin-bottom: 28px; gap: 24px; }
 .eyebrow { color: var(--bigin-text-tertiary); font-size: 11px; font-weight: 700; letter-spacing: .12em; margin: 0 0 8px; }
 .queue-header h1 { color: var(--bigin-text-primary); font-size: 30px; letter-spacing: -.02em; line-height: 1.15; margin: 0; }
@@ -167,8 +171,6 @@ onMounted(load)
 .status-filter { align-items: center; display: flex; gap: 10px; margin-bottom: 20px; }
 .status-filter span { color: var(--bigin-text-secondary); font-size: 13px; font-weight: 600; }
 .status-filter :deep(.ant-select) { min-width: 210px; }
-.queue-table :deep(.ant-table-thead > tr > th) { background: var(--bigin-surface-subtle); color: var(--bigin-text-tertiary); font-size: 11px; font-weight: 700; letter-spacing: .06em; padding: 14px 18px; text-transform: uppercase; }
-.queue-table :deep(.ant-table-tbody > tr > td) { border-bottom: 1px solid var(--bigin-border-secondary); padding: 17px 18px; }
 .request-cell, .requester-cell, .requester-cell > div { display: grid; gap: 4px; }
 .request-cell strong, .requester-cell strong { color: var(--bigin-text-primary); font-size: 13px; }
 .request-cell span, .requester-cell span { color: var(--bigin-text-tertiary); font-size: 12px; }
@@ -177,7 +179,8 @@ onMounted(load)
 .date-value { color: var(--bigin-text-secondary); font-size: 13px; }
 .status-tag { font-size: 11px; font-weight: 600; margin: 0; text-transform: capitalize; }
 .review-button { border-radius: 6px; font-size: 12px; }
-.queue-footer { align-items: center; border-top: 1px solid var(--bigin-border-secondary); color: var(--bigin-text-tertiary); display: flex; font-size: 12px; justify-content: space-between; padding: 16px 24px; }
+.queue-mobile-row { display: grid; gap: 12px; }
+.queue-mobile-meta { align-items: center; color: var(--bigin-text-secondary); display: flex; flex-wrap: wrap; gap: 8px 12px; font-size: 12px; }
 @media (max-width: 780px) { .queue-page { padding: 24px 16px 36px; } .queue-header { align-items: flex-start; flex-direction: column; } .queue-header-meta { min-width: 110px; } .queue-toolbar { align-items: flex-start; flex-direction: column; padding-bottom: 0; } .status-filter { justify-content: space-between; width: 100%; } .status-filter :deep(.ant-select) { flex: 1; max-width: 260px; } }
-@media (max-width: 575px) { .queue-page { padding: 16px 12px 28px; } .queue-toolbar { padding-inline: 16px; } .queue-footer { padding: 14px 16px; } }
+@media (max-width: 575px) { .queue-page { padding: 16px 12px 28px; } .queue-toolbar { padding-inline: 16px; } }
 </style>

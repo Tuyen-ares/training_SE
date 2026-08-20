@@ -8,6 +8,8 @@ import {
 } from "@ant-design/icons-vue";
 import { Modal, message } from "ant-design-vue";
 import { useRoute, useRouter } from "vue-router";
+import AppTable from "../../components/common/AppTable.vue";
+import AssetIdentity from "../../components/assets/AssetIdentity.vue";
 import StatusTag from "../../components/common/StatusTag.vue";
 import WorkspaceLayout from "../../components/layout/WorkspaceLayout.vue";
 import {
@@ -15,7 +17,7 @@ import {
   withdrawBorrowRequest,
 } from "../../services/borrowing/borrowing.service";
 import { useAuthStore } from "../../stores/auth";
-import { DEFAULT_ASSET_IMAGE } from "../../constants/media";
+import { normalizeAssetIdentity } from "../../utils/asset-identity";
 const route = useRoute(),
   router = useRouter(),
   authStore = useAuthStore();
@@ -146,24 +148,14 @@ onMounted(load);
           </aside>
           <section class="panel asset-list">
             <h2>Asset List ({{ request.details.length }})</h2>
-            <div class="bigin-table-scroll-wrapper"><a-table
+            <AppTable
               :data-source="request.details"
               row-key="id"
-              :pagination="false"
-              :scroll="{ x: 'max-content' }"
+              scroll-mode="intentional"
+              empty-description="No assets in this request."
               ><a-table-column title="Asset" key="asset" :width="260"
                 ><template #default="{ record }"
-                  ><div class="asset-cell">
-                    <a-avatar shape="square" :size="40" :src="record.asset.imageUrl || DEFAULT_ASSET_IMAGE">{{
-                      record.asset.model.name.slice(0, 1)
-                    }}</a-avatar>
-                    <div>
-                      <strong>{{ record.asset.model.name }}</strong
-                      ><br /><small>{{
-                        record.asset.serialNumber || record.asset.qrCode
-                      }}</small>
-                    </div>
-                  </div></template
+                  ><AssetIdentity :identity="normalizeAssetIdentity(record.asset)" variant="table" show-image /></template
                 ></a-table-column
               ><a-table-column
                 title="Expected Return Date"
@@ -181,7 +173,7 @@ onMounted(load);
                     {{ record.rejectionReason }}
                   </p></template
                 ></a-table-column
-              ></a-table></div>
+              ></AppTable>
           </section>
         </div></template
       >
