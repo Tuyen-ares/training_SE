@@ -35,7 +35,7 @@ The two variables intentionally contain the same value for each channel but serv
 
 ## Environment Contract
 
-The RabbitMQ section will be organized into four English-commented groups.
+The RabbitMQ section will be organized into five English-commented groups.
 
 ### Connection and shared exchanges
 
@@ -75,6 +75,12 @@ RABBITMQ_EMAIL_DLQ_BINDING_KEY=notification.email.failed
 
 IN_APP uses a higher prefetch because database writes are normally faster than SMTP network calls. These are safe example defaults, not fixed runtime limits.
 
+## Future Firebase Realtime Delivery
+
+`IN_APP` remains the business channel and queue name. Firebase Cloud Messaging is a future realtime transport behind that channel, not a separate RabbitMQ channel and not a reason to rename the queue to `FIREBASE`.
+
+The database-backed in-app notification remains the source of truth. A future Firebase integration may notify the browser or device that new in-app data is available, but a Firebase outage must not remove or roll back the persisted notification.
+
 ## Future Teams Channel
 
 Teams is intentionally not enabled in this task. A future implementation adds `TEAMS` to `RABBITMQ_ENABLED_CHANNELS`, declares the corresponding `RABBITMQ_TEAMS_*` variables, adds the Teams delivery handler, and adds the required database channel enum migration.
@@ -89,6 +95,7 @@ No channel selection will be implemented as a growing `if/else` chain. Future ru
 - The main exchange must remain `topic`; the DLX must remain `direct`.
 - Each channel's dead-letter routing key must equal that channel's DLQ binding key.
 - Existing SMTP and in-app database workers remain unchanged.
+- Firebase runtime code and credentials are not added by this configuration-only task.
 
 ## Verification
 
