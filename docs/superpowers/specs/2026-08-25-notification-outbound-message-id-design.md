@@ -11,7 +11,7 @@ This change does not add Teams, RabbitMQ runtime, Firebase runtime, a public API
 Rename `notification_deliveries.smtp_message_id` to `outbound_message_id`.
 
 - `outbound_message_id` is assigned by BigIn before provider I/O. It stays stable across retries. For EMAIL, the value is used as the RFC Message-ID header.
-- `provider_message_id` remains optional and stores only a distinct identifier returned after provider I/O.
+- `provider_message_id` remains optional and keeps its current write behavior. Duplicate SMTP values are explicitly deferred to a later decision.
 - IN_APP normally leaves both fields null.
 - A future TEAMS delivery reuses these fields. It must not add `teams_message_id`.
 
@@ -42,16 +42,9 @@ ALTER TABLE notification_deliveries
   CHANGE COLUMN smtp_message_id outbound_message_id VARCHAR(255) NULL;
 ```
 
-2. Remove only legacy EMAIL provider IDs that exactly duplicate the application-assigned outbound ID:
-
-```sql
-UPDATE notification_deliveries
-SET provider_message_id = NULL
-WHERE channel = 'EMAIL'
-  AND provider_message_id = outbound_message_id;
-```
-
-Distinct provider IDs remain unchanged. Historical migration files are immutable and must not be edited.
+No data cleanup is part of this migration. Every `provider_message_id` value,
+including values equal to the renamed outbound ID, remains unchanged.
+Historical migration files are immutable and must not be edited.
 
 Applying this migration to Aiven is a separate production operation. Implementation and source verification do not authorize production deployment automatically.
 
@@ -60,8 +53,9 @@ Applying this migration to Aiven is a separate production operation. Implementat
 - Rename Prisma and repository mappings from `smtp_message_id`/`smtpMessageId` to `outbound_message_id`/`outboundMessageId`.
 - Keep the SMTP provider input property `messageId`, because that is the Nodemailer/RFC field name.
 - The EMAIL handler requires `outboundMessageId` and passes it to Nodemailer.
-- The real Nodemailer adapter must not return `providerMessageId` when `result.messageId` is the same as the requested `messageId`.
-- If an adapter returns a genuinely distinct provider identifier, the generic delivery processor continues storing it in `provider_message_id`.
+- Nodemailer and the generic delivery processor keep their existing
+  `providerMessageId` behavior. Provider-ID deduplication is outside this
+  change.
 - Retry, lease ownership, cooldown, status transitions, snapshot content and deterministic SMTP Message-ID generation remain unchanged.
 
 ## Teams Extension
@@ -75,6 +69,14 @@ provider_message_id = Teams-assigned message ID after success
 ```
 
 Teams destination data continues to use the generic recipient/destination field. Rich Teams payload requirements must be designed separately; this change does not add speculative `teams_*` columns.
+
+## Outbox Relationship
+
+`notification_deliveries.event_id` remains a logical reference to
+`outbox_events.event_id`; this change does not add a foreign key. The two
+tables intentionally support independent cleanup because outbox operational
+records may expire before delivery history. The existing unique delivery key
+and atomic materialization transaction remain the integrity controls.
 
 ## Documentation
 
