@@ -19,13 +19,14 @@ The reviewer opens the review queue.
 
 1. The reviewer opens the queue.
 2. The system checks the review-view permission.
-3. The system returns requests in the permitted scope, including their header and detail statuses.
-4. The system makes `PENDING` details identifiable.
-5. The reviewer chooses a detail for `UC-APR-02` or `UC-APR-03`.
+3. The system returns requests in the permitted scope, including their header and detail statuses, using `PENDING` by default or the selected `ALL`, `APPROVED` or `REJECTED` filter.
+4. When `ALL` is selected, requests with at least one `PENDING` detail appear first; each group is ordered oldest first.
+5. The system makes `PENDING` details identifiable.
+6. The reviewer chooses a detail for `UC-APR-02` or `UC-APR-03`.
 
 ## Alternative and exception flows
 
-- No pending detail exists: return an empty queue.
+- No request matches the selected filter: return an empty queue.
 - Permission is absent: return forbidden and disclose no other user's data.
 - Scope rules beyond permission are not yet decided; the approved API contract must define them.
 

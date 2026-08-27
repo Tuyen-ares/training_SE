@@ -7,7 +7,7 @@ import type {
 } from '@/models/asset-issue.model.js';
 import type { AssetService } from '@/services/assets.service.js';
 import type { IAssetIssueRepository, AssetIssueTransaction } from '@/repositories/asset-issue.repository.js';
-import type { NotificationService } from '@/services/notification.service.js';
+import type { DomainEventType, DomainEventWriter } from '@/notifications/domain-event.js';
 import type { VendorService } from '@/services/vendor.service.js';
 import type { VendorTransaction } from '@/repositories/vendor.repository.js';
 import type { PrismaClient } from '../../generated/prisma/index.js';
@@ -28,7 +28,7 @@ export class AssetIssueService {
     private readonly assets: AssetService,
     private readonly issueRepository: IAssetIssueRepository,
     private readonly vendors: VendorService,
-    private readonly notifications: NotificationService,
+    private readonly events: DomainEventWriter,
     private readonly prisma: PrismaClient,
     private readonly mediaService?: MediaService,
   ) {}
@@ -57,16 +57,10 @@ export class AssetIssueService {
         reportedBy: input.reporterId,
         description: input.description,
       }, transaction);
-      await this.notifications.notifyPermissionHoldersInTransaction(
-        ['asset_issue.view', 'asset_issue.update'],
-        {
-          notificationType: 'ASSET_ISSUE_REPORTED',
-          title: 'New asset issue reported',
-          message: `Asset issue #${issue.id} requires review.`,
-          relatedEntityType: 'ASSET_ISSUE',
-          relatedEntityId: issue.id,
-        },
-        [input.reporterId],
+      await this.appendIssueEvent(
+        issue,
+        'asset_issue.reported',
+        input.reporterId,
         transaction,
       );
       return issue;
@@ -110,7 +104,7 @@ export class AssetIssueService {
       );
       if (!changed) throw new AssetIssueError('INVALID_ISSUE_STATE');
       if (note) await this.issueRepository.updateRepair(id, { note }, transaction);
-      await this.notifyReporter(issue, 'ASSET_ISSUE_REJECTED', 'Asset issue rejected', transaction);
+      await this.notifyReporter(issue, 'asset_issue.rejected', actorId, transaction);
       return (await this.issueRepository.findById(id, transaction))!;
     });
   }
@@ -131,7 +125,7 @@ export class AssetIssueService {
       );
       if (!changed) throw new AssetIssueError('INVALID_ISSUE_STATE');
       if (Object.keys(data).length) await this.issueRepository.updateRepair(id, data, transaction);
-      await this.notifyReporter(issue, 'ASSET_REPAIR_STARTED', 'Asset repair started', transaction);
+      await this.notifyReporter(issue, 'asset_issue.repair_started', actorId, transaction);
       return (await this.issueRepository.findById(id, transaction))!;
     });
   }
@@ -184,8 +178,8 @@ export class AssetIssueService {
       }
       await this.notifyReporter(
         issue,
-        status === 'COMPLETED' ? 'ASSET_REPAIR_COMPLETED' : 'ASSET_REPAIR_FAILED',
-        status === 'COMPLETED' ? 'Asset repair completed' : 'Asset repair failed',
+        status === 'COMPLETED' ? 'asset_issue.repair_completed' : 'asset_issue.repair_failed',
+        actorId,
         transaction,
       );
       return updated;
@@ -208,8 +202,9 @@ export class AssetIssueService {
     await this.assets.confirmDamageInTransaction(issue.assetId, expectedAssetStatus, transaction);
     const changed = await this.issueRepository.transition(id, expected, next, actorId, transaction);
     if (!changed) throw new AssetIssueError('INVALID_ISSUE_STATE');
-    await this.notifyReporter(issue, 'ASSET_ISSUE_CONFIRMED', 'Asset issue confirmed', transaction);
-    return (await this.issueRepository.findById(id, transaction))!;
+    const updated = (await this.issueRepository.findById(id, transaction))!;
+    await this.notifyReporter(updated, 'asset_issue.confirmed', actorId, transaction);
+    return updated;
   }
 
   private async requireIssue(
@@ -250,18 +245,62 @@ export class AssetIssueService {
 
   private async notifyReporter(
     issue: AssetIssue,
-    notificationType: string,
-    title: string,
+    eventType: DomainEventType,
+    actorUserId: number,
     transaction: PrismaTransaction,
   ): Promise<void> {
     if (issue.reportedBy === null) return;
-    await this.notifications.createInTransaction({
-      recipientUserId: issue.reportedBy,
-      notificationType,
-      title,
-      message: `${title} for issue #${issue.id}.`,
-      relatedEntityType: 'ASSET_ISSUE',
-      relatedEntityId: issue.id,
+    const latest = (await this.issueRepository.findById(issue.id, transaction)) ?? issue;
+    await this.appendIssueEvent(latest, eventType, actorUserId, transaction);
+  }
+
+  private async appendIssueEvent(
+    issue: AssetIssue,
+    eventType: DomainEventType,
+    actorUserId: number,
+    transaction: PrismaTransaction,
+  ): Promise<void> {
+    if (issue.reportedBy === null) return;
+    const actorName = await this.userName(actorUserId, transaction);
+    await this.events.append({
+      eventType,
+      aggregateType: 'ASSET_ISSUE',
+      aggregateId: issue.id,
+      actorUserId,
+      payload: {
+        issueId: issue.id,
+        reporterId: issue.reportedBy,
+        ...(issue.reporter?.name
+          ? { reporterName: issue.reporter.name }
+          : {}),
+        actorName,
+        ...(issue.asset
+          ? {
+              assetId: issue.asset.id,
+              assetCode: issue.asset.assetCode,
+              assetModelName: issue.asset.modelName,
+            }
+          : {}),
+        issueDescription: issue.description,
+        issueStatus: issue.status,
+        issueResult: issue.result,
+        issueNote: issue.note,
+        deepLinkContext: {
+          entityType: 'ASSET_ISSUE',
+          entityId: issue.id,
+        },
+      },
     }, transaction);
+  }
+
+  private async userName(
+    userId: number,
+    transaction: PrismaTransaction,
+  ): Promise<string> {
+    const user = await transaction.users.findUnique({
+      where: { id: userId },
+      select: { name: true },
+    });
+    return user?.name ?? 'User #' + userId;
   }
 }

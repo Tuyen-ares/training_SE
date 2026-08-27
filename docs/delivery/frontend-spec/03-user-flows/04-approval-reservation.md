@@ -19,8 +19,9 @@ User đã đăng nhập và có permission tương ứng.
 ## Main Flow
 
 1. User mở `SCR-F04-01` từ navigation hoặc Dashboard.
-2. Hệ thống hiển thị request/detail thuộc phạm vi được phép, kèm trạng thái header và detail.
-3. User filter hoặc mở `SCR-F03-03` để xem context đầy đủ; Approval Details hiển thị mã user của requester tại trường `EMPLOYEE ID`.
+2. Hệ thống hiển thị request/detail thuộc phạm vi được phép, kèm trạng thái header và detail; mặc định filter là `PENDING`.
+3. Filter hỗ trợ `PENDING`, `ALL`, `APPROVED`, `REJECTED`; khi chọn `ALL`, request có detail `PENDING` đứng trước và mỗi nhóm sắp xếp oldest first.
+4. User mở `SCR-F03-03` để xem context đầy đủ; Approval Details hiển thị mã user của requester tại trường `EMPLOYEE ID`.
 
 ## Alternative Flows
 

@@ -3,10 +3,11 @@ import test from 'node:test';
 import type { Server } from 'node:http';
 
 test('Asset issue and notification APIs enforce lifecycle and ownership', async (context) => {
-  const [{ default: app }, { default: prisma }, { TokenService }] = await Promise.all([
+  const [{ default: app }, { default: prisma }, { TokenService }, { createNotificationRuntime }] = await Promise.all([
     import('../src/app.js'),
     import('../src/prisma.js'),
     import('../src/services/token.service.js'),
+    import('../src/notifications/composition.js'),
   ]);
   const department = await prisma.departments.findFirst({ select: { id: true } });
   assert.ok(department, 'A department seed is required');
@@ -26,7 +27,15 @@ test('Asset issue and notification APIs enforce lifecycle and ownership', async 
   };
 
   context.after(async () => {
+    const issueEvents = await prisma.outbox_events.findMany({
+      where: { aggregate_type: 'ASSET_ISSUE', aggregate_id: { in: created.issueIds } },
+      select: { event_id: true },
+    });
+    await prisma.notification_deliveries.deleteMany({ where: { recipient_user_id: { in: created.userIds } } });
+    await prisma.notification_deliveries.deleteMany({ where: { event_id: { in: issueEvents.map(row => row.event_id) } } });
     await prisma.notifications.deleteMany({ where: { recipient_user_id: { in: created.userIds } } });
+    await prisma.notification_messages.deleteMany({ where: { event_id: { in: issueEvents.map(row => row.event_id) } } });
+    await prisma.outbox_events.deleteMany({ where: { aggregate_type: 'ASSET_ISSUE', aggregate_id: { in: created.issueIds } } });
     await prisma.asset_issues.deleteMany({ where: { id: { in: created.issueIds } } });
     await prisma.assets.deleteMany({ where: { id: { in: created.assetIds } } });
     await prisma.users.deleteMany({ where: { id: { in: created.userIds } } });
@@ -155,6 +164,8 @@ test('Asset issue and notification APIs enforce lifecycle and ownership', async 
   })).status, 200);
   assert.equal((await prisma.assets.findUniqueOrThrow({ where: { id: asset.id } })).status, 'available');
 
+  const runtime = createNotificationRuntime(prisma, { SMTP_ENABLED: 'false', NOTIFICATION_CLEANUP_ENABLED: 'false' });
+  for (let index = 0; index < 10; index += 1) await runtime.runOnce();
   const ownNotifications = await request('/notifications', reporterToken);
   assert.equal(ownNotifications.status, 200);
   assert.ok(ownNotifications.body.data.unreadCount >= 3);

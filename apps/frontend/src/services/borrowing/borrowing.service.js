@@ -25,10 +25,14 @@ export const handoverBorrowDetail = (api, detailId, mediaIds = []) => api(`/borr
   body: mediaIds.length ? { mediaIds } : {},
 })
 export const listHandoverQueue = (api, params) => api(`/borrow-request-details/handover-queue${queryString(params)}`)
+export const getHandoverRequestDetail = (api, requestId) => api(`/borrow-request-details/handover-queue/${requestId}`)
+export const getReturnRequestDetail = (api, requestId) => api(`/borrow-histories/return-queue/${requestId}`)
 
 export const listCurrentBorrowing = (api, params) => api(`/borrow-histories/current${queryString(params)}`)
 export const listMyBorrowHistory = (api, params) => api(`/borrow-histories/me${queryString(params)}`)
 export const listAllBorrowHistory = (api, params) => api(`/borrow-histories${queryString(params)}`)
+export const listMyBorrowingActivity = (api, params) => api(`/borrow-histories/activity/me${queryString(params)}`)
+export const listAllBorrowingActivity = (api, params) => api(`/borrow-histories/activity${queryString(params)}`)
 export const listReturnQueue = (api, params) => api(`/borrow-histories/return-queue${queryString(params)}`)
 export const getBorrowHistoryDetail = (api, historyId) => api(`/borrow-histories/${historyId}`)
 export const receiveNormalReturn = (api, historyId, mediaIds = []) => api(`/borrow-histories/${historyId}/return`, {

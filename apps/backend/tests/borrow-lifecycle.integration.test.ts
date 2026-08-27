@@ -29,6 +29,15 @@ test('Borrow lifecycle APIs create, approve, hand over, return and cancel safely
   };
 
   context.after(async () => {
+    const outbox = await prisma.outbox_events.findMany({ where: { OR: [
+      { aggregate_type: 'BORROW_REQUEST', aggregate_id: { in: created.requests } },
+      { aggregate_type: 'BORROW_REQUEST_DETAIL', aggregate_id: { in: created.details } },
+      { aggregate_type: 'BORROW_HISTORY', aggregate_id: { in: created.histories } },
+      { aggregate_type: 'ASSET_ISSUE', aggregate_id: { in: created.issueIds } },
+    ] }, select: { event_id: true } });
+    await prisma.notification_deliveries.deleteMany({ where: { event_id: { in: outbox.map(row => row.event_id) } } });
+    await prisma.notification_messages.deleteMany({ where: { event_id: { in: outbox.map(row => row.event_id) } } });
+    await prisma.outbox_events.deleteMany({ where: { event_id: { in: outbox.map(row => row.event_id) } } });
     await prisma.notifications.deleteMany({
       where: {
         OR: [
@@ -38,6 +47,9 @@ test('Borrow lifecycle APIs create, approve, hand over, return and cancel safely
         ],
       },
     });
+    await prisma.notification_deliveries.deleteMany({ where: { recipient_user_id: { in: created.users } } });
+    await prisma.refresh_tokens.deleteMany({ where: { user_id: { in: created.users } } });
+    await prisma.user_roles.deleteMany({ where: { user_id: { in: created.users } } });
     await prisma.asset_issues.deleteMany({ where: { id: { in: created.issueIds } } });
     await prisma.borrow_histories.deleteMany({ where: { id: { in: created.histories } } });
     await prisma.borrow_request_details.deleteMany({ where: { id: { in: created.details } } });
@@ -70,6 +82,9 @@ test('Borrow lifecycle APIs create, approve, hand over, return and cancel safely
   const bulkConflictAsset = await createAsset(`BOR-BULK-CONFLICT-${suffix}`);
   const damagedReturnAsset = await createAsset(`BOR-DAMAGED-RETURN-${suffix}`);
   const queueSecondAsset = await createAsset(`BOR-QUEUE-SECOND-${suffix}`);
+  const allPendingAsset = await createAsset(`BOR-ALL-PENDING-${suffix}`);
+  const groupedAssetA = await createAsset(`BOR-GROUP-A-${suffix}`);
+  const groupedAssetB = await createAsset(`BOR-GROUP-B-${suffix}`);
 
   const createUser = async (name: string, sequence: number) => {
     const user = await prisma.users.create({ data: { user_code: `BI26${suffix}${sequence}`, department_id: department.id, name, email: `borrow.${sequence}.${suffix}@test.local`, phone: `${String(700 + sequence).padStart(3, '0')}${suffix}`, password: 'not-used-by-token-test' } });
@@ -156,11 +171,13 @@ test('Borrow lifecycle APIs create, approve, hand over, return and cancel safely
   assert.equal((await request('/borrow-request-details/review-queue', noPermissionToken)).status, 403);
   const emptyHandoverQueue = await request('/borrow-request-details/handover-queue', checkoutOnlyToken);
   assert.equal(emptyHandoverQueue.status, 200, JSON.stringify(emptyHandoverQueue.body));
-  assert.ok(!emptyHandoverQueue.body.data.items.some((item: { asset: { id: number } }) => item.asset.id === lifecycleAsset.id));
+  assert.ok(!emptyHandoverQueue.body.data.items.some((item: { items?: Array<{ asset: { id: number } }> }) =>
+    item.items?.some((detail) => detail.asset.id === lifecycleAsset.id)));
   assert.equal((await request('/borrow-request-details/handover-queue', checkinOnlyToken)).status, 403);
   const emptyReturnQueue = await request('/borrow-histories/return-queue', checkinOnlyToken);
   assert.equal(emptyReturnQueue.status, 200, JSON.stringify(emptyReturnQueue.body));
-  assert.ok(!emptyReturnQueue.body.data.items.some((item: { asset: { id: number } }) => item.asset.id === lifecycleAsset.id));
+  assert.ok(!emptyReturnQueue.body.data.items.some((item: { items?: Array<{ asset: { id: number } }> }) =>
+    item.items?.some((history) => history.asset.id === lifecycleAsset.id)));
   assert.equal((await request('/borrow-histories/return-queue', checkoutOnlyToken)).status, 403);
   const approved = await request(
     `/borrow-request-details/${lifecycleDetailId}/approve`,
@@ -169,7 +186,7 @@ test('Borrow lifecycle APIs create, approve, hand over, return and cancel safely
   );
   assert.equal(approved.status, 200, JSON.stringify(approved.body));
   assert.equal((await prisma.assets.findUniqueOrThrow({ where: { id: lifecycleAsset.id } })).status, 'reserved');
-  const approvedQueue = await request('/borrow-request-details/review-queue?approvalStatus=APPROVED', reviewerToken);
+  const approvedQueue = await request('/borrow-request-details/review-queue?approvalStatus=APPROVED&page=1&pageSize=100', reviewerToken);
   assert.equal(approvedQueue.status, 200, JSON.stringify(approvedQueue.body));
   assert.ok(approvedQueue.body.data.items.some((item: { id: number }) => item.id === lifecycleRequestId));
   const approvedDetail = await request(`/borrow-request-details/review-queue/${lifecycleRequestId}`, reviewerToken);
@@ -188,6 +205,48 @@ test('Borrow lifecycle APIs create, approve, hand over, return and cancel safely
   created.details.push(queueSecondDetailId);
   assert.equal((await request(`/borrow-request-details/${queueSecondDetailId}/approve`, reviewerToken, { method: 'POST' })).status, 200);
 
+  const allPendingRequest = await request('/borrow-requests', borrowerToken, {
+    method: 'POST',
+    body: JSON.stringify({ note: 'ALL filter pending-first integration test', items: [{ assetId: allPendingAsset.id, expectedReturnDate: '2099-01-05' }] }),
+  });
+  assert.equal(allPendingRequest.status, 201, JSON.stringify(allPendingRequest.body));
+  const allPendingRequestId = allPendingRequest.body.data.id as number;
+  const allPendingDetailId = allPendingRequest.body.data.details[0].id as number;
+  created.requests.push(allPendingRequestId);
+  created.details.push(allPendingDetailId);
+
+  const allQueue = await request('/borrow-request-details/review-queue?approvalStatus=ALL&page=1&pageSize=100', reviewerToken);
+  assert.equal(allQueue.status, 200, JSON.stringify(allQueue.body));
+  assert.equal(allQueue.body.data.approvalStatus, 'ALL');
+  const allQueueItems = allQueue.body.data.items as Array<{ id: number; details: Array<{ approvalStatus: string }> }>;
+  const firstNonPendingIndex = allQueueItems.findIndex((item) =>
+    !item.details.some((detail) => detail.approvalStatus === 'PENDING'));
+  assert.ok(firstNonPendingIndex >= 0);
+  assert.ok(allQueueItems
+    .slice(0, firstNonPendingIndex)
+    .every((item) => item.details.some((detail) => detail.approvalStatus === 'PENDING')));
+  assert.ok(allQueueItems
+    .slice(firstNonPendingIndex)
+    .every((item) => !item.details.some((detail) => detail.approvalStatus === 'PENDING')));
+  assert.ok(allQueueItems.some((item) => item.id === allPendingRequestId));
+  assert.ok(allQueueItems.some((item) => item.id === queueSecondRequestId));
+
+  const groupedRequest = await request('/borrow-requests', borrowerToken, {
+    method: 'POST',
+    body: JSON.stringify({ note: 'Multi-asset handover group', items: [
+      { assetId: groupedAssetA.id, expectedReturnDate: '2099-01-03' },
+      { assetId: groupedAssetB.id, expectedReturnDate: '2099-01-04' },
+    ] }),
+  });
+  assert.equal(groupedRequest.status, 201, JSON.stringify(groupedRequest.body));
+  const groupedRequestId = groupedRequest.body.data.id as number;
+  const groupedDetailAId = groupedRequest.body.data.details[0].id as number;
+  const groupedDetailBId = groupedRequest.body.data.details[1].id as number;
+  created.requests.push(groupedRequestId);
+  created.details.push(groupedDetailAId, groupedDetailBId);
+  assert.equal((await request(`/borrow-request-details/${groupedDetailAId}/approve`, reviewerToken, { method: 'POST' })).status, 200);
+  assert.equal((await request(`/borrow-request-details/${groupedDetailBId}/approve`, reviewerToken, { method: 'POST' })).status, 200);
+
   const handoverQueuePage = await request('/borrow-request-details/handover-queue?page=1&pageSize=1', checkoutOnlyToken);
   assert.equal(handoverQueuePage.status, 200, JSON.stringify(handoverQueuePage.body));
   assert.equal(handoverQueuePage.body.data.page, 1);
@@ -197,15 +256,35 @@ test('Borrow lifecycle APIs create, approve, hand over, return and cancel safely
   assert.equal(handoverQueueAll.status, 200, JSON.stringify(handoverQueueAll.body));
   assert.equal(handoverQueueAll.body.data.page, 1);
   assert.equal(handoverQueueAll.body.data.pageSize, 100);
-  const lifecycleQueueItem = handoverQueueAll.body.data.items.find((item: { detailId: number }) => item.detailId === lifecycleDetailId);
-  const secondQueueItem = handoverQueueAll.body.data.items.find((item: { detailId: number }) => item.detailId === queueSecondDetailId);
-  assert.ok(lifecycleQueueItem);
-  assert.ok(secondQueueItem);
-  assert.equal(lifecycleQueueItem.requestId, lifecycleRequestId);
-  assert.equal(lifecycleQueueItem.requester.id, borrower.id);
-  assert.equal(lifecycleQueueItem.asset.status, 'RESERVED');
-  assert.equal(lifecycleQueueItem.approvedBy.id, operator.id);
-  assert.ok(handoverQueueAll.body.data.items.indexOf(lifecycleQueueItem) < handoverQueueAll.body.data.items.indexOf(secondQueueItem));
+  const lifecycleQueueGroup = handoverQueueAll.body.data.items.find((item: { requestId: number }) => item.requestId === lifecycleRequestId);
+  const secondQueueGroup = handoverQueueAll.body.data.items.find((item: { requestId: number }) => item.requestId === queueSecondRequestId);
+  const groupedQueueGroup = handoverQueueAll.body.data.items.find((item: { requestId: number }) => item.requestId === groupedRequestId);
+  assert.ok(lifecycleQueueGroup);
+  assert.ok(secondQueueGroup);
+  assert.ok(groupedQueueGroup);
+  assert.equal(lifecycleQueueGroup.requester.id, borrower.id);
+  assert.equal(lifecycleQueueGroup.pendingCount, 1);
+  assert.equal(lifecycleQueueGroup.items[0].detailId, lifecycleDetailId);
+  assert.equal(lifecycleQueueGroup.items[0].asset.status, 'RESERVED');
+  assert.equal(lifecycleQueueGroup.items[0].approvedBy.id, operator.id);
+  assert.equal(groupedQueueGroup.pendingCount, 2);
+  assert.deepEqual(groupedQueueGroup.items.map((item: { detailId: number }) => item.detailId), [groupedDetailAId, groupedDetailBId]);
+  assert.ok(handoverQueueAll.body.data.items.indexOf(lifecycleQueueGroup) < handoverQueueAll.body.data.items.indexOf(secondQueueGroup));
+  const groupedHandoverDetail = await request(
+    `/borrow-request-details/handover-queue/${groupedRequestId}`,
+    checkoutOnlyToken,
+  );
+  assert.equal(groupedHandoverDetail.status, 200, JSON.stringify(groupedHandoverDetail.body));
+  assert.equal(groupedHandoverDetail.body.data.requestId, groupedRequestId);
+  assert.equal(groupedHandoverDetail.body.data.pendingCount, 2);
+  assert.deepEqual(
+    groupedHandoverDetail.body.data.items.map((item: { detailId: number }) => item.detailId),
+    [groupedDetailAId, groupedDetailBId],
+  );
+  assert.equal(
+    (await request(`/borrow-request-details/handover-queue/${groupedRequestId}`, noPermissionToken)).status,
+    403,
+  );
   assert.equal((await request(`/borrow-request-details/${lifecycleDetailId}/approve`, reviewerToken, { method: 'POST' })).status, 409);
 
   const handover = await request(`/borrow-request-details/${lifecycleDetailId}/handover`, reviewerToken, { method: 'POST' });
@@ -213,10 +292,20 @@ test('Borrow lifecycle APIs create, approve, hand over, return and cancel safely
   const historyId = handover.body.data.historyId as number;
   created.histories.push(historyId);
   assert.equal((await prisma.assets.findUniqueOrThrow({ where: { id: lifecycleAsset.id } })).status, 'borrowed');
+  const groupedHandoverA = await request(`/borrow-request-details/${groupedDetailAId}/handover`, checkoutOnlyToken, { method: 'POST' });
+  assert.equal(groupedHandoverA.status, 200, JSON.stringify(groupedHandoverA.body));
+  const groupedHistoryAId = groupedHandoverA.body.data.historyId as number;
+  created.histories.push(groupedHistoryAId);
+  const groupedHandoverB = await request(`/borrow-request-details/${groupedDetailBId}/handover`, checkoutOnlyToken, { method: 'POST' });
+  assert.equal(groupedHandoverB.status, 200, JSON.stringify(groupedHandoverB.body));
+  const groupedHistoryBId = groupedHandoverB.body.data.historyId as number;
+  created.histories.push(groupedHistoryBId);
   const handoverQueueAfterHandover = await request('/borrow-request-details/handover-queue', checkoutOnlyToken);
   assert.equal(handoverQueueAfterHandover.status, 200, JSON.stringify(handoverQueueAfterHandover.body));
-  assert.ok(!handoverQueueAfterHandover.body.data.items.some((item: { detailId: number }) => item.detailId === lifecycleDetailId));
-  assert.ok(handoverQueueAfterHandover.body.data.items.some((item: { detailId: number }) => item.detailId === queueSecondDetailId));
+  assert.ok(!handoverQueueAfterHandover.body.data.items.some((item: { requestId: number }) => item.requestId === lifecycleRequestId));
+  assert.ok(handoverQueueAfterHandover.body.data.items.some((item: { requestId: number; items: Array<{ detailId: number }> }) =>
+    item.requestId === queueSecondRequestId && item.items.some((detail) => detail.detailId === queueSecondDetailId)));
+  assert.ok(!handoverQueueAfterHandover.body.data.items.some((item: { requestId: number }) => item.requestId === groupedRequestId));
   assert.equal((await request(`/borrow-request-details/${lifecycleDetailId}/handover`, reviewerToken, { method: 'POST' })).status, 409);
   const secondHandover = await request(`/borrow-request-details/${queueSecondDetailId}/handover`, checkoutOnlyToken, { method: 'POST' });
   assert.equal(secondHandover.status, 200, JSON.stringify(secondHandover.body));
@@ -226,6 +315,21 @@ test('Borrow lifecycle APIs create, approve, hand over, return and cancel safely
   assert.equal(current.status, 200);
   assert.ok(current.body.data.items.some((item: { id: number; expectedReturnDate: string; borrower: { id: number } }) =>
     item.id === historyId && item.expectedReturnDate === '2099-01-01' && item.borrower.id === borrower.id));
+  const currentActivity = await request('/borrow-histories/activity/me?state=CURRENT&page=1&pageSize=100', borrowerToken);
+  assert.equal(currentActivity.status, 200, JSON.stringify(currentActivity.body));
+  const groupedCurrentActivity = currentActivity.body.data.items.find((item: { requestId: number }) => item.requestId === groupedRequestId);
+  assert.ok(groupedCurrentActivity);
+  assert.equal(groupedCurrentActivity.itemCount, 2);
+  assert.deepEqual(
+    groupedCurrentActivity.items.map((item: { id: number }) => item.id),
+    [groupedHistoryAId, groupedHistoryBId],
+  );
+  assert.equal(Object.hasOwn(groupedCurrentActivity, 'status'), false);
+  const allCurrentActivity = await request('/borrow-histories/activity?state=CURRENT&page=1&pageSize=100', reviewerToken);
+  assert.equal(allCurrentActivity.status, 200, JSON.stringify(allCurrentActivity.body));
+  assert.ok(allCurrentActivity.body.data.items.some((item: { requestId: number }) => item.requestId === groupedRequestId));
+  assert.equal((await request('/borrow-histories/activity', borrowerToken)).status, 403);
+  assert.equal((await request('/borrow-histories/activity/me?state=CURRENT', operatorOwnHistoryToken)).status, 200);
   const ownHistoryDetail = await request(`/borrow-histories/${historyId}`, borrowerToken);
   assert.equal(ownHistoryDetail.status, 200, JSON.stringify(ownHistoryDetail.body));
   assert.equal(ownHistoryDetail.body.data.request.id, lifecycleRequestId);
@@ -243,13 +347,37 @@ test('Borrow lifecycle APIs create, approve, hand over, return and cancel safely
   assert.equal(returnQueueAll.status, 200, JSON.stringify(returnQueueAll.body));
   assert.equal(returnQueueAll.body.data.page, 1);
   assert.equal(returnQueueAll.body.data.pageSize, 100);
-  const lifecycleReturnItem = returnQueueAll.body.data.items.find((item: { id: number }) => item.id === historyId);
-  const secondReturnItem = returnQueueAll.body.data.items.find((item: { id: number }) => item.id === secondHistoryId);
-  assert.ok(lifecycleReturnItem);
-  assert.ok(secondReturnItem);
-  assert.equal(lifecycleReturnItem.expectedReturnDate, '2099-01-01');
-  assert.equal(lifecycleReturnItem.borrower.id, borrower.id);
-  assert.ok(returnQueueAll.body.data.items.indexOf(lifecycleReturnItem) < returnQueueAll.body.data.items.indexOf(secondReturnItem));
+  const lifecycleReturnGroup = returnQueueAll.body.data.items.find((item: { requestId: number }) => item.requestId === lifecycleRequestId);
+  const secondReturnGroup = returnQueueAll.body.data.items.find((item: { requestId: number }) => item.requestId === queueSecondRequestId);
+  const groupedReturnGroup = returnQueueAll.body.data.items.find((item: { requestId: number }) => item.requestId === groupedRequestId);
+  assert.ok(lifecycleReturnGroup);
+  assert.ok(secondReturnGroup);
+  assert.ok(groupedReturnGroup);
+  assert.equal(lifecycleReturnGroup.pendingCount, 1);
+  assert.equal(lifecycleReturnGroup.items[0].id, historyId);
+  assert.equal(lifecycleReturnGroup.items[0].expectedReturnDate, '2099-01-01');
+  assert.equal(lifecycleReturnGroup.items[0].borrower.id, borrower.id);
+  assert.equal(groupedReturnGroup.pendingCount, 2);
+  assert.deepEqual(
+    groupedReturnGroup.items.map((item: { detailId: number }) => item.detailId),
+    [groupedDetailAId, groupedDetailBId],
+  );
+  assert.ok(returnQueueAll.body.data.items.indexOf(lifecycleReturnGroup) < returnQueueAll.body.data.items.indexOf(secondReturnGroup));
+  const groupedReturnDetail = await request(
+    `/borrow-histories/return-queue/${groupedRequestId}`,
+    checkinOnlyToken,
+  );
+  assert.equal(groupedReturnDetail.status, 200, JSON.stringify(groupedReturnDetail.body));
+  assert.equal(groupedReturnDetail.body.data.requestId, groupedRequestId);
+  assert.equal(groupedReturnDetail.body.data.pendingCount, 2);
+  assert.deepEqual(
+    groupedReturnDetail.body.data.items.map((item: { detailId: number }) => item.detailId),
+    [groupedDetailAId, groupedDetailBId],
+  );
+  assert.equal(
+    (await request(`/borrow-histories/return-queue/${groupedRequestId}`, noPermissionToken)).status,
+    403,
+  );
   const reviewerHistoryDetail = await request(`/borrow-histories/${historyId}`, reviewerToken);
   assert.equal(reviewerHistoryDetail.status, 200, JSON.stringify(reviewerHistoryDetail.body));
   assert.equal(reviewerHistoryDetail.body.data.request.requester.id, borrower.id);
@@ -276,6 +404,13 @@ test('Borrow lifecycle APIs create, approve, hand over, return and cancel safely
   const returnedTab = await request('/borrow-histories/me?state=RETURNED', borrowerToken);
   assert.equal(returnedTab.status, 200, JSON.stringify(returnedTab.body));
   assert.ok(returnedTab.body.data.items.some((item: { id: number; returnedAt: string | null }) => item.id === historyId && item.returnedAt));
+  const returnedActivity = await request('/borrow-histories/activity/me?state=RETURNED&page=1&pageSize=100', borrowerToken);
+  assert.equal(returnedActivity.status, 200, JSON.stringify(returnedActivity.body));
+  const lifecycleReturnedActivity = returnedActivity.body.data.items.find((item: { requestId: number }) => item.requestId === lifecycleRequestId);
+  assert.ok(lifecycleReturnedActivity);
+  assert.equal(lifecycleReturnedActivity.itemCount, 1);
+  assert.equal(lifecycleReturnedActivity.items[0].id, historyId);
+  assert.equal(Object.hasOwn(lifecycleReturnedActivity, 'status'), false);
   const returnedHistoryDetail = await request(`/borrow-histories/${historyId}`, borrowerToken);
   assert.equal(returnedHistoryDetail.status, 200, JSON.stringify(returnedHistoryDetail.body));
   assert.equal(returnedHistoryDetail.body.data.receivedBy.id, operator.id);
@@ -284,8 +419,9 @@ test('Borrow lifecycle APIs create, approve, hand over, return and cancel safely
   assert.ok(!currentTabAfterReturn.body.data.items.some((item: { id: number }) => item.id === historyId));
   const returnQueueAfterReturn = await request('/borrow-histories/return-queue', checkinOnlyToken);
   assert.equal(returnQueueAfterReturn.status, 200, JSON.stringify(returnQueueAfterReturn.body));
-  assert.ok(!returnQueueAfterReturn.body.data.items.some((item: { id: number }) => item.id === historyId));
-  assert.ok(returnQueueAfterReturn.body.data.items.some((item: { id: number }) => item.id === secondHistoryId));
+  assert.ok(!returnQueueAfterReturn.body.data.items.some((item: { requestId: number }) => item.requestId === lifecycleRequestId));
+  assert.ok(returnQueueAfterReturn.body.data.items.some((item: { requestId: number; items: Array<{ id: number }> }) =>
+    item.requestId === queueSecondRequestId && item.items.some((history) => history.id === secondHistoryId)));
   assert.equal((await request(`/borrow-histories/${secondHistoryId}/return`, checkinOnlyToken, { method: 'POST' })).status, 200);
   const allHistory = await request('/borrow-histories?page=1&pageSize=20', reviewerToken);
   assert.equal(allHistory.status, 200);
@@ -336,6 +472,16 @@ test('Borrow lifecycle APIs create, approve, hand over, return and cancel safely
   assert.equal(damagedIssue.status, 'CONFIRMED');
   assert.equal(damagedIssue.reported_by, operator.id);
   assert.equal(damagedIssue.handled_by, operator.id);
+  const damagedEvents = await prisma.outbox_events.findMany({
+    where: { OR: [
+      { event_type: 'borrow_history.returned_damaged', aggregate_id: damagedHistoryId },
+      { event_type: 'asset_issue.created_from_damaged_return', aggregate_id: damagedIssueId },
+    ] },
+    select: { event_type: true },
+  });
+  assert.deepEqual(damagedEvents.map(row => row.event_type).sort(), [
+    'asset_issue.created_from_damaged_return', 'borrow_history.returned_damaged',
+  ]);
   assert.equal((await request(`/borrow-histories/${damagedHistoryId}/return-damaged`, reviewerToken, {
     method: 'POST',
     body: JSON.stringify({ description: 'Duplicate return attempt.' }),
@@ -440,6 +586,35 @@ test('Borrow lifecycle APIs create, approve, hand over, return and cancel safely
   assert.equal(
     (await prisma.assets.findUniqueOrThrow({ where: { id: bulkAvailableAsset.id } })).status,
     'reserved',
+  );
+  assert.equal(await prisma.outbox_events.count({ where: {
+    event_type: 'borrow_request_detail.approved', aggregate_id: bulkOkDetailId,
+  } }), 1);
+  assert.equal(await prisma.outbox_events.count({ where: {
+    event_type: 'borrow_request_detail.approved', aggregate_id: bulkConflictDetailId,
+  } }), 0);
+  assert.equal(await prisma.outbox_events.count({ where: {
+    event_type: 'borrow_request.approval_summary', aggregate_id: bulkRequestId,
+  } }), 1);
+  const approvalSummary = await prisma.outbox_events.findFirstOrThrow({
+    where: { event_type: 'borrow_request.approval_summary', aggregate_id: bulkRequestId },
+  });
+  assert.deepEqual((approvalSummary.payload as any).approvalItems.map((item: any) => item.outcome), [
+    'APPROVED', 'SKIPPED',
+  ]);
+  assert.equal((approvalSummary.payload as any).approvalItems[1].reason, 'ASSET_NOT_AVAILABLE');
+
+  const bulkHandover = await request(
+    `/borrow-request-details/${bulkOkDetailId}/handover`,
+    checkoutOnlyToken,
+    { method: 'POST' },
+  );
+  assert.equal(bulkHandover.status, 200, JSON.stringify(bulkHandover.body));
+  assert.ok(bulkHandover.body.data.historyId);
+  created.histories.push(bulkHandover.body.data.historyId as number);
+  assert.equal(
+    (await prisma.assets.findUniqueOrThrow({ where: { id: bulkAvailableAsset.id } })).status,
+    'borrowed',
   );
 
   const cancelRequest = await request('/borrow-requests', borrowerToken, { method: 'POST', body: JSON.stringify({ note: 'Cancellation integration test', items: [{ assetId: cancelAsset.id, expectedReturnDate: '2099-01-01' }] }) });

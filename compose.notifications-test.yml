@@ -1,0 +1,15 @@
+services:
+  rabbitmq-notifications:
+    image: rabbitmq:4-management
+    hostname: rabbitmq-notifications
+    ports:
+      - "5673:5672"
+      - "15673:15672"
+    environment:
+      RABBITMQ_DEFAULT_USER: bigin
+      RABBITMQ_DEFAULT_PASS: bigin-test-only
+    healthcheck:
+      test: ["CMD", "rabbitmq-diagnostics", "-q", "ping"]
+      interval: 5s
+      timeout: 3s
+      retries: 20

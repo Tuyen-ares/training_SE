@@ -5,11 +5,13 @@
 Giao asset đã RESERVED cho người mượn và tạo lịch sử thực tế.
 
 `SCR-F05-01` dùng một route `/handover-return` với hai tab logic:
-`Pending Handover` và `Pending Return`. Tab bàn giao yêu cầu `asset.checkout`,
-tab nhận trả yêu cầu `asset.checkin`; tab không có quyền không render và không
-gọi API tương ứng. Khi có cả hai quyền, màn hình mặc định mở `Pending Handover`.
-Mỗi asset là một dòng riêng, queue có loading/empty/error/retry/pagination và
-mutation loading theo dòng.
+`Pending Handover` và `Pending Return` theo capability.
+Tab bàn giao yêu cầu `asset.checkout`, tab nhận trả yêu cầu
+`asset.checkin`; tab không có quyền không render và không gọi API
+tương ứng. Khi có cả hai quyền, màn hình mặc định mở `Pending Handover`.
+Top-level queue là một group cho mỗi borrow request, bên trong có các asset/history
+con; queue có loading/empty/error/retry/pagination. Handover group chỉ mở
+`SCR-F05-03`; confirm và evidence không nằm ở queue.
 
 ## Actor
 
@@ -26,14 +28,15 @@ Detail APPROVED, asset RESERVED cho đúng detail và chưa có borrow history.
 ## Main Flow
 
 1. User mở entry `Handover & Return` và chọn tab `Pending Handover`.
-2. Hệ thống gọi `GET /api/borrow-request-details/handover-queue` và hiển thị mỗi asset một dòng với request, requester/department, asset, expected return date và approved by.
-3. User chọn `Confirm handover`, xem confirmation modal nêu rõ asset sẽ chuyển sang `BORROWED`, rồi xác nhận.
-4. Hệ thống tạo borrow history, ghi handed_over_by/borrow_date và chuyển asset RESERVED sang BORROWED.
-5. UI hiển thị success message và reload queue để dòng đã bàn giao biến mất.
+2. Hệ thống gọi `GET /api/borrow-request-details/handover-queue` và hiển thị mỗi request một group với requester/department, request date, tiến độ approved/handed over và danh sách asset đủ điều kiện.
+3. User mở Handover Detail. Hệ thống gọi `GET /api/borrow-request-details/handover-queue/:requestId` và hiển thị toàn bộ context của request cùng các asset còn chờ bàn giao.
+4. User kiểm tra asset, chụp/upload evidence tùy chọn cho đúng asset rồi chọn `Confirm handover` trên từng detail.
+5. Hệ thống gọi `POST /api/borrow-request-details/:detailId/handover`, tạo một borrow history, ghi handed_over_by/borrow_date và chuyển asset RESERVED sang BORROWED.
+6. UI hiển thị success hoặc conflict, reload detail; asset đã bàn giao biến mất khỏi actionable list và progress được cập nhật.
 
 ## Alternative Flows
 
-- Approval Detail không thực hiện handover trực tiếp; với detail `APPROVED` + asset `RESERVED`, user có `asset.checkout` chỉ thấy link `Open in Handover & Return` để điều hướng sang tab bàn giao.
+- Approval Detail không thực hiện handover trực tiếp; với detail `APPROVED` + asset `RESERVED`, user có `asset.checkout` thấy link mở Handover Detail của request tương ứng.
 
 ## Error / Invalid States
 
@@ -45,7 +48,7 @@ Asset được ghi nhận là đang mượn; borrower được truy qua request.
 
 ## Related Screens
 
-`SCR-F05-01`, `SCR-F03-03`.
+`SCR-F05-01`, `SCR-F03-03`, `SCR-F05-03`.
 
 # FLOW-12 – Xác nhận hoàn trả bình thường
 
@@ -68,10 +71,11 @@ Borrow history chưa có return date; asset đang BORROWED.
 ## Main Flow
 
 1. User mở entry `Handover & Return` và chọn tab `Pending Return`.
-2. Hệ thống gọi `GET /api/borrow-histories/return-queue` và hiển thị các history chưa có `return_date`.
-3. User xác nhận return.
-4. Hệ thống ghi received_by, return_date, return_condition và chuyển asset BORROWED sang AVAILABLE.
-5. Nếu mọi detail được duyệt/bàn giao đã trả và không còn PENDING, header chuyển COMPLETED.
+2. Hệ thống gọi `GET /api/borrow-histories/return-queue` và hiển thị mỗi request một summary group với số history đang chờ trả; pagination/total tính theo request, không render toàn bộ history/action trong queue.
+3. User mở Return Detail. Hệ thống gọi `GET /api/borrow-histories/return-queue/:requestId` và hiển thị context của request cùng các history chưa trả.
+4. User chọn normal return hoặc damaged return trên từng history; có thể chụp/upload evidence cho đúng history.
+5. Hệ thống gọi API return tương ứng, ghi received_by, return_date, return_condition và chuyển asset BORROWED sang AVAILABLE/DAMAGED.
+6. Nếu mọi detail được duyệt/bàn giao đã trả và không còn PENDING, header chuyển COMPLETED; UI reload detail sau success/conflict.
 
 ## Alternative Flows
 
@@ -88,7 +92,7 @@ Lượt mượn hoàn tất bình thường và asset sẵn sàng cho workflow m
 
 ## Related Screens
 
-`SCR-F05-01`, `SCR-F05-02`, `SCR-F03-03`.
+`SCR-F05-01`, `SCR-F05-02`, `SCR-F03-03`, `SCR-F05-04`.
 
 # FLOW-13 – Xác nhận hoàn trả asset hỏng
 
@@ -111,11 +115,12 @@ Borrow history chưa trả; asset BORROWED; người nhận xác nhận conditio
 ## Main Flow
 
 1. User mở tab `Pending Return` trong `Handover & Return`.
-2. User chọn action `Confirm Damaged Return`, nhập mô tả hư hỏng bắt buộc và xác nhận.
-3. Hệ thống gọi `POST /api/borrow-histories/:historyId/return-damaged`, ghi return,
+2. User mở Return Detail, kiểm tra history và chọn action `Damaged return`.
+3. User nhập mô tả hư hỏng bắt buộc, có thể thêm evidence rồi xác nhận.
+4. Hệ thống gọi `POST /api/borrow-histories/:historyId/return-damaged`, ghi return,
    tạo asset issue `CONFIRMED` và chuyển asset BORROWED sang DAMAGED trong cùng
    transaction.
-4. UI phản ánh return thành công, nhận `issueId` từ response và có thể mở/link đến
+5. UI phản ánh return thành công, nhận `issueId` từ response và có thể mở/link đến
    Issue Detail khi user có quyền xem issue.
 
 ## Alternative Flows
@@ -133,7 +138,7 @@ History hoàn trả và issue CONFIRMED được liên kết theo nghiệp vụ;
 
 ## Related Screens
 
-`SCR-F05-01`, `SCR-F06-02`, `SCR-F07-01`.
+`SCR-F05-01`, `SCR-F05-04`, `SCR-F06-02`, `SCR-F07-01`.
 
 # FLOW-14 – Xem tài sản đang mượn và lịch sử
 
@@ -155,11 +160,11 @@ User đã đăng nhập và có permission scope phù hợp.
 
 ## Main Flow
 
-1. User mở Borrowing Activity.
-2. User chọn trạng thái xem hiện tại hoặc history; scope chỉ mở rộng khi có permission.
-3. Hệ thống hiển thị asset, borrower khi được phép, handover/return time và return condition.
-4. User chọn `View Details` trên một history.
-5. Hệ thống hiển thị request ID, created date, borrowing reason, asset metadata, approval metadata, handover metadata và return metadata nếu có.
+1. User mở Borrowing Activity và chọn một trong hai tab `Currently Borrowed` hoặc `Returned History`.
+2. Hệ thống gọi grouped activity endpoint tương ứng với permission (`/activity/me` cho `borrow_history.view_own`, `/activity` cho `borrow_history.view_all`) và lọc `state=CURRENT` hoặc `state=RETURNED`.
+3. Hệ thống hiển thị bảng `AppTable` với một dòng cho mỗi borrow request; các cột có title chuẩn gồm request, requester, assets, activity và action. Pagination/total tính theo request, không theo history.
+4. User expand một request row để xem bảng con có title cột và các asset histories matching tab, sau đó chọn `View Details` trên một asset history.
+5. Hệ thống hiển thị request ID, created date, borrowing reason, asset metadata, approval metadata, handover metadata và return metadata nếu có. Không hiển thị status ở cấp group; canonical asset status được xem trong detail.
 6. User có thể quay lại danh sách hoặc mở resource liên quan nếu còn quyền.
 
 ## Alternative Flows

@@ -14,6 +14,7 @@ const adapter = new PrismaMariaDb({
   password: process.env.DB_PASSWORD,
   database: process.env.DB_NAME,
   allowPublicKeyRetrieval: true,
+  connectionLimit: Number(process.env.DB_CONNECTION_LIMIT || 10),
 });
 
 const prisma: PrismaClientType = new PrismaClient({ adapter });

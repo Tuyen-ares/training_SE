@@ -2,7 +2,8 @@
 
 ## Trạng thái tài liệu
 
-- Trạng thái: **PROPOSED — đã có thiết kế, chưa triển khai code hoặc migration**.
+- Trạng thái: **IMPLEMENTED — VERIFIED**. Tiến độ chi tiết và evidence nằm tại
+  `docs/plans/2026-08-21-notification-outbox-remediation-checklist.md`.
 - Ngày lập: 2026-08-19.
 - Phạm vi triển khai chính: notification in-app hiện có và email qua SMTP.
 - FCM Web Push: kiến trúc có điểm mở rộng nhưng chưa nằm trong implementation scope của kế hoạch này.
@@ -20,8 +21,8 @@ Business transaction
 → resolve recipients
 → notification_deliveries
 → Delivery Processor
-   ├── InAppNotificationObserver
-   └── SmtpEmailObserver
+   ├── InAppDeliveryHandler
+   └── SmtpEmailDeliveryHandler
 ```
 
 Đây là mô hình **Observer/Publisher–Subscriber kết hợp Transactional Outbox**.
@@ -32,10 +33,10 @@ Outbox giúp event không bị mất giữa lúc database đã commit và lúc w
 Không gửi SMTP trực tiếp trong request xử lý nghiệp vụ. Không dùng event bus
 chỉ nằm trong memory làm cơ chế bảo đảm giao nhận.
 
-## 2. Baseline đã audit
+## 2. Baseline trước remediation (historical)
 
-Hệ thống hiện tại đã có notification in-app, nhưng chưa có Observer Pattern
-hoàn chỉnh, Outbox, delivery queue, worker hoặc SMTP provider.
+Các dòng dưới đây ghi lại trạng thái trước khi outbox được thêm; chúng không mô
+tả implementation hiện tại. Gap và evidence hiện hành nằm trong remediation checklist.
 
 | Thành phần hiện tại | Evidence | Nhận xét |
 | --- | --- | --- |
@@ -72,9 +73,9 @@ Triển khai một pipeline notification bền vững gồm:
 3. Outbox Dispatcher đọc event, xác định recipient và tạo delivery.
 4. Bảng `notification_deliveries` quản lý từng recipient và từng channel.
 5. Delivery Processor gọi các Observer độc lập:
-   - `InAppNotificationObserver` ghi notification trong hệ thống.
-   - `SmtpEmailObserver` gửi email qua `EmailProvider`.
-6. Worker process riêng chạy dispatcher và delivery processor.
+   - `InAppDeliveryHandler` ghi notification trong hệ thống.
+   - `SmtpEmailDeliveryHandler` gửi email qua `EmailProvider`.
+6. Các worker loop chạy trong cùng Node.js process với Express.
 7. Retry, idempotency, stale-lock recovery, structured logging và audit.
 
 ### Why — Tại sao triển khai như vậy?
@@ -98,10 +99,10 @@ Triển khai một pipeline notification bền vững gồm:
 | Recipient Resolver | Tìm user trực tiếp hoặc active user có effective permission hiện tại |
 | Delivery repository | Claim delivery, quản lý retry và audit trạng thái |
 | Delivery Processor | Chọn observer theo channel và cô lập lỗi giữa các channel |
-| InAppNotificationObserver | Tạo row trong bảng `notifications` |
-| SmtpEmailObserver | Gọi `EmailProvider` bằng dữ liệu snapshot |
+| InAppDeliveryHandler | Tạo row trong bảng `notifications` |
+| SmtpEmailDeliveryHandler | Gọi `EmailProvider` bằng dữ liệu snapshot |
 | EmailProvider | Abstraction để implementation dùng Nodemailer/SMTP |
-| Notification worker | Process riêng chạy dispatcher và processor |
+| Notification runtime | Các loop dispatcher/processor chạy cùng Express trong một Node.js process |
 | Employee/Asset Manager/Admin | Recipient nghiệp vụ; runtime vẫn xác định bằng user hoặc permission |
 
 ### When — Xử lý vào thời điểm nào?
@@ -131,8 +132,8 @@ Triển khai một pipeline notification bền vững gồm:
 - Outbox Dispatcher và Delivery Processor.
 - In-app observer.
 - SMTP observer qua Nodemailer nằm sau `EmailProvider` abstraction.
-- Worker process riêng.
-- Retry tối đa 5 lần, idempotency và stale lock recovery.
+- Worker loops chạy cùng Express trong một Node.js process.
+- Sáu lần thử lại sau lần xử lý ngay, idempotency và stale lock recovery.
 - Integration tests cho transaction, dispatch, delivery, retry và duplicate.
 - Cập nhật active requirement/spec trước khi code vì email hiện đang được ghi là out of scope.
 
@@ -165,8 +166,8 @@ flowchart LR
   TEMPLATE --> DELIVERY
 
   DELIVERY --> PROCESSOR[Delivery Processor]
-  PROCESSOR --> INAPP[InAppNotificationObserver]
-  PROCESSOR --> SMTP[SmtpEmailObserver]
+  PROCESSOR --> INAPP[InAppDeliveryHandler]
+  PROCESSOR --> SMTP[SmtpEmailDeliveryHandler]
   INAPP --> NOTIFICATIONS[(notifications)]
   SMTP --> PROVIDER[EmailProvider / Nodemailer]
   PROVIDER --> MAIL[SMTP Server]
@@ -179,7 +180,7 @@ flowchart LR
 - `notification_deliveries` mới quản lý retry của từng channel.
 - Observer không quyết định business state.
 - Recipient resolver không hard-code `Admin`, `Manager` hoặc `Employee`.
-- API process và worker process dùng chung code domain/repository, nhưng có entrypoint riêng.
+- Express và notification runtime dùng chung một composition root và một Node.js process.
 
 ## 7. Domain event contract
 
@@ -288,7 +289,6 @@ borrow_request.created
 | `next_attempt_at` | `DATETIME(3) NULL` | Due time cho retry dispatcher |
 | `locked_at` | `DATETIME(3) NULL` | Worker lease time |
 | `locked_by` | `VARCHAR(100) NULL` | Worker instance ID |
-| `delivery_count` | `INT` | Số delivery đã materialize |
 | `dispatched_at` | `DATETIME(3) NULL` | Khi tạo delivery hoàn tất |
 | `last_error` | `TEXT NULL` | Lỗi sanitized |
 | `created_at` | `DATETIME(3)` | Default now |
@@ -316,16 +316,13 @@ delivery.
 | `channel` | enum/string | `IN_APP`, `EMAIL`; `FCM` chỉ thêm ở phase khác |
 | `status` | enum/string | `PENDING`, `PROCESSING`, `SENT`, `FAILED`, `SKIPPED` |
 | `recipient_address` | `VARCHAR(255) NULL` | Email snapshot; null cho IN_APP |
-| `template_code` | `VARCHAR(100)` | Template identity |
-| `template_version` | `INT` | Snapshot version |
 | `notification_type` | `VARCHAR(50)` | Tương thích F07 read model |
 | `title_snapshot` | `VARCHAR(255)` | Rendered title/subject |
 | `text_body_snapshot` | `TEXT` | Rendered text body |
-| `html_body_snapshot` | `LONGTEXT NULL` | Rendered email HTML |
 | `related_entity_type` | `VARCHAR(50) NULL` | Logical reference |
 | `related_entity_id` | `INT NULL` | Logical reference |
 | `notification_id` | `INT NULL` | FK tới in-app notification sau khi tạo |
-| `smtp_message_id` | `VARCHAR(255) NULL` | Deterministic Message-ID |
+| `outbound_message_id` | `VARCHAR(255) NULL` | ID do BigIn tạo trước khi gửi; EMAIL dùng làm deterministic Message-ID |
 | `provider_message_id` | `VARCHAR(255) NULL` | Provider response nếu có |
 | `attempt_count` | `INT` | Default 0 |
 | `next_attempt_at` | `DATETIME(3) NULL` | Due time |
@@ -406,7 +403,7 @@ BEGIN
   claim event
   resolve recipient
   create delivery rows bằng unique key
-  mark event DISPATCHED + delivery_count
+  mark event DISPATCHED
 COMMIT
 ```
 
@@ -430,19 +427,13 @@ at-least-once.
 
 ## 14. Worker architecture
 
-Worker không phải biến của thư viện. Đây là một Node.js process riêng có
-entrypoint và vòng polling riêng.
+Worker là các loop nền trong cùng Node.js process với Express, có vòng polling
+và graceful shutdown riêng.
 
 ```text
 notification-worker.ts
   ├── OutboxDispatcher.runBatch()
   └── DeliveryProcessor.runBatch()
-```
-
-Đề xuất command:
-
-```text
-pnpm --filter backend start:worker
 ```
 
 Worker loop:
@@ -600,7 +591,7 @@ And event không bị dispatch thêm lần thứ hai sau khi đã hoàn tất
 
 ```gherkin
 Given một IN_APP delivery PENDING
-When InAppNotificationObserver xử lý thành công
+When InAppDeliveryHandler xử lý thành công
 Then có đúng một notifications row cho delivery
 And delivery lưu notificationId và chuyển SENT
 ```
@@ -618,7 +609,7 @@ And sentAt và provider/message reference được lưu
 
 ```gherkin
 Given SMTP trả lỗi transient
-When SmtpEmailObserver xử lý delivery
+When SmtpEmailDeliveryHandler xử lý delivery
 Then business state không bị thay đổi
 And delivery quay về PENDING với attemptCount tăng
 And nextAttemptAt theo retry schedule
@@ -794,7 +785,7 @@ Không xóa toàn bộ direct calls trong một lần trước khi event matrix 
 2. Tạo `EmailProvider` interface.
 3. Tạo `NodemailerEmailProvider`.
 4. Tạo SMTP template renderer và snapshot tại dispatch time.
-5. Tạo `SmtpEmailObserver`.
+5. Tạo `SmtpEmailDeliveryHandler`.
 6. Áp dụng retry/error classification.
 7. Implement deterministic `Message-ID`.
 8. Test bằng fake provider; không dùng SMTP thật trong automated test.
@@ -807,11 +798,11 @@ Exit criteria:
 - Provider permanent error kết thúc đúng.
 - IN_APP không bị ảnh hưởng khi EMAIL fail.
 
-### Phase 6 — Worker deployment và rollout
+### Phase 6 — Runtime deployment và rollout
 
-1. Thêm worker entrypoint và package scripts.
-2. Deploy worker thành Background Worker riêng trên Render.
-3. Deploy migration và API code trước; worker sau.
+1. Compose các loop tại server entrypoint nhưng không tạo timer khi import `app.ts`.
+2. Deploy một Node.js process chứa Express và notification runtime.
+3. Deploy migration trước code runtime.
 4. Bật worker với concurrency/batch thấp.
 5. Bật in-app delivery trước.
 6. Bật SMTP cho môi trường test nội bộ.
@@ -905,7 +896,6 @@ SMTP_SECURE=false
 SMTP_USER=
 SMTP_PASSWORD=
 SMTP_FROM=
-SMTP_REPLY_TO=
 NOTIFICATION_WORKER_ID=
 NOTIFICATION_WORKER_BATCH_SIZE=20
 NOTIFICATION_WORKER_POLL_MS=2000

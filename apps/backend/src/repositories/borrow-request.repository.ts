@@ -5,19 +5,38 @@ import type {
   CreateBorrowRequestDto,
   BorrowHistoryDto,
   BorrowHistoryDetailDto,
-  HandoverQueueItemDto,
+  HandoverQueueRequestDto,
+  ReturnQueueRequestDto,
+  BorrowingActivityRequestGroupDto,
   PageDto,
   PageQuery,
   ReviewQueueQuery,
   BorrowHistoryQuery,
+  BorrowingActivityQuery,
 } from '@/models/borrow-lifecycle.model.js';
 import type { Prisma } from '../../generated/prisma/index.js';
 
 export type BorrowTransaction = Pick<
   Prisma.TransactionClient,
-  'assets' | 'borrow_requests' | 'borrow_request_details' | 'borrow_histories'
+  | 'assets'
+  | 'borrow_requests'
+  | 'borrow_request_details'
+  | 'borrow_histories'
+  | 'users'
 >;
-export interface BorrowActionDetail { id: number; requestId: number; requesterId: number; approvalStatus: string; assetId: number; assetStatus: string; historyId: number | null; }
+export interface BorrowActionDetail {
+  id: number;
+  requestId: number;
+  requesterId: number;
+  requesterName: string;
+  approvalStatus: string;
+  assetId: number;
+  assetCode: string;
+  assetModelName: string;
+  expectedReturnDate: Date;
+  assetStatus: string;
+  historyId: number | null;
+}
 
 export interface IBorrowRequestRepository {
   createForRequester(
@@ -33,14 +52,31 @@ export interface IBorrowRequestRepository {
   approveDetail(detailId: number, reviewerId: number, transaction: BorrowTransaction): Promise<void>;
   rejectDetail(detailId: number, reviewerId: number, reason: string, transaction: BorrowTransaction): Promise<void>;
   createHistory(detailId: number, handedOverBy: number, transaction: BorrowTransaction): Promise<number>;
-  findHistoryForAction(historyId: number, transaction: BorrowTransaction): Promise<{ id: number; detailId: number; assetId: number; assetStatus: string; requesterId: number; returnedAt: Date | null } | null>;
+  findHistoryForAction(historyId: number, transaction: BorrowTransaction): Promise<{
+    id: number;
+    detailId: number;
+    assetId: number;
+    assetCode: string;
+    assetModelName: string;
+    expectedReturnDate: Date;
+    assetStatus: string;
+    requesterId: number;
+    requesterName: string;
+    returnedAt: Date | null;
+  } | null>;
   completeReturn(historyId: number, receiverId: number, condition: string, transaction: BorrowTransaction): Promise<void>;
   refreshRequestStatus(requestId: number, transaction: BorrowTransaction): Promise<void>;
   withdraw(requestId: number, requesterId: number, transaction: BorrowTransaction): Promise<number[]>;
   listReviewQueue(query: ReviewQueueQuery): Promise<PageDto<BorrowRequestDto>>;
-  listHandoverQueue(query: PageQuery): Promise<PageDto<HandoverQueueItemDto>>;
-  listReturnQueue(query: PageQuery): Promise<PageDto<BorrowHistoryDto>>;
+  findHandoverQueueRequest(requestId: number): Promise<HandoverQueueRequestDto | null>;
+  listHandoverQueue(query: PageQuery): Promise<PageDto<HandoverQueueRequestDto>>;
+  findReturnQueueRequest(requestId: number): Promise<ReturnQueueRequestDto | null>;
+  listReturnQueue(query: PageQuery): Promise<PageDto<ReturnQueueRequestDto>>;
   listCurrent(requesterId: number, query: PageQuery): Promise<PageDto<BorrowHistoryDto>>;
   listHistory(query: BorrowHistoryQuery, requesterId?: number): Promise<PageDto<BorrowHistoryDto>>;
+  listBorrowingActivity(
+    query: BorrowingActivityQuery,
+    requesterId?: number,
+  ): Promise<PageDto<BorrowingActivityRequestGroupDto>>;
   findHistoryDetail(historyId: number, requesterId?: number): Promise<BorrowHistoryDetailDto | null>;
 }

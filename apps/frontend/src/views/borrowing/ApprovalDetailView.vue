@@ -134,7 +134,10 @@ async function reject() {
 }
 
 function openHandoverQueue() {
-  router.push({ name: 'handover-return', query: { tab: 'handover' } })
+  router.push({
+    name: 'handover-detail',
+    params: { requestId: String(request.value.id) },
+  })
 }
 
 onMounted(() => { if (!request.value) load() })

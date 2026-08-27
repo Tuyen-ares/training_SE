@@ -50,5 +50,33 @@ describe('cameraSession', () => {
     await expect(cameraSession.forceStop(CAMERA_OWNERS.MEDIA_CAPTURE, 'close', lease.token)).rejects.toMatchObject({ code: 'CAMERA_CLEANUP_FAILED' })
     await expect(cameraSession.acquire(CAMERA_OWNERS.QR_SCANNER, async () => {})).rejects.toMatchObject({ code: 'CAMERA_BUSY' })
   })
-})
 
+  it('allows failed cleanup to be retried and releases only after success', async () => {
+    const teardown = vi.fn()
+      .mockRejectedValueOnce(new Error('stop failed'))
+      .mockResolvedValueOnce()
+    const lease = await cameraSession.acquire(CAMERA_OWNERS.MEDIA_CAPTURE, teardown)
+
+    await expect(cameraSession.forceStop(CAMERA_OWNERS.MEDIA_CAPTURE, 'close', lease.token)).rejects.toMatchObject({ code: 'CAMERA_CLEANUP_FAILED' })
+    expect(cameraSession.getActiveLease()).toMatchObject({ token: lease.token, state: 'cleanup-failed' })
+
+    await expect(cameraSession.forceStop(CAMERA_OWNERS.MEDIA_CAPTURE, 'close', lease.token)).resolves.toBe(true)
+    expect(teardown).toHaveBeenCalledTimes(2)
+    expect(cameraSession.getActiveLease()).toBeNull()
+  })
+
+  it('deduplicates concurrent force-stop attempts while teardown is running', async () => {
+    let resolveTeardown
+    const teardown = vi.fn(() => new Promise((resolve) => { resolveTeardown = resolve }))
+    const lease = await cameraSession.acquire(CAMERA_OWNERS.MEDIA_CAPTURE, teardown)
+
+    const first = cameraSession.forceStop(CAMERA_OWNERS.MEDIA_CAPTURE, 'close', lease.token)
+    const second = cameraSession.forceStop(CAMERA_OWNERS.MEDIA_CAPTURE, 'close', lease.token)
+    await Promise.resolve()
+    expect(teardown).toHaveBeenCalledTimes(1)
+
+    resolveTeardown()
+    await Promise.all([first, second])
+    expect(cameraSession.getActiveLease()).toBeNull()
+  })
+})

@@ -15,11 +15,15 @@ const pageQuerySchema = z.object({
 });
 
 const reviewQueueQuerySchema = pageQuerySchema.extend({
-  approvalStatus: z.enum(['PENDING', 'APPROVED', 'REJECTED']).default('PENDING'),
+  approvalStatus: z.enum(['PENDING', 'ALL', 'APPROVED', 'REJECTED']).default('PENDING'),
 });
 
 const historyQuerySchema = pageQuerySchema.extend({
   state: z.enum(['ALL', 'CURRENT', 'RETURNED']).default('ALL'),
+});
+
+const activityQuerySchema = pageQuerySchema.extend({
+  state: z.enum(['CURRENT', 'RETURNED']).default('CURRENT'),
 });
 
 const mediaIdsSchema = z
@@ -152,11 +156,35 @@ export class BorrowWorkflowController {
     }
   };
 
+  handoverDetail = async (req: Request, res: Response): Promise<void> => {
+    const requestId = readPositiveId(req.params.requestId);
+    if (!requestId) return ApiResponse.badRequest(res, { requestId: ['A positive id is required'] });
+    try {
+      const request = await this.service.getHandoverQueueDetail(requestId);
+      if (!request) return ApiResponse.notFound(res, 'Borrow request not found');
+      return ApiResponse.ok(res, request);
+    } catch {
+      return ApiResponse.internalError(res);
+    }
+  };
+
   returnQueue = async (req: Request, res: Response): Promise<void> => {
     const parsed = pageQuerySchema.safeParse(req.query);
     if (!parsed.success) return ApiResponse.badRequest(res, { query: ['Invalid pagination query'] });
     try {
       return ApiResponse.ok(res, await this.service.listReturnQueue(parsed.data));
+    } catch {
+      return ApiResponse.internalError(res);
+    }
+  };
+
+  returnDetail = async (req: Request, res: Response): Promise<void> => {
+    const requestId = readPositiveId(req.params.requestId);
+    if (!requestId) return ApiResponse.badRequest(res, { requestId: ['A positive id is required'] });
+    try {
+      const request = await this.service.getReturnQueueDetail(requestId);
+      if (!request) return ApiResponse.notFound(res, 'Borrow request not found');
+      return ApiResponse.ok(res, request);
     } catch {
       return ApiResponse.internalError(res);
     }
@@ -203,6 +231,27 @@ export class BorrowWorkflowController {
     if (!parsed.success) return ApiResponse.badRequest(res, { query: ['Invalid pagination query'] });
     try {
       return ApiResponse.ok(res, await this.service.listHistory(parsed.data));
+    } catch {
+      return ApiResponse.internalError(res);
+    }
+  };
+
+  ownActivity = async (req: Request, res: Response): Promise<void> => {
+    if (!req.auth) return ApiResponse.unauthorized(res);
+    const parsed = activityQuerySchema.safeParse(req.query);
+    if (!parsed.success) return ApiResponse.badRequest(res, { query: ['Invalid borrowing activity query'] });
+    try {
+      return ApiResponse.ok(res, await this.service.listBorrowingActivity(parsed.data, req.auth.sub));
+    } catch {
+      return ApiResponse.internalError(res);
+    }
+  };
+
+  allActivity = async (req: Request, res: Response): Promise<void> => {
+    const parsed = activityQuerySchema.safeParse(req.query);
+    if (!parsed.success) return ApiResponse.badRequest(res, { query: ['Invalid borrowing activity query'] });
+    try {
+      return ApiResponse.ok(res, await this.service.listBorrowingActivity(parsed.data));
     } catch {
       return ApiResponse.internalError(res);
     }

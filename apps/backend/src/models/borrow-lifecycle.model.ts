@@ -9,6 +9,7 @@ export type BorrowRequestStatus =
   | 'CANCELLED';
 
 export type BorrowDetailStatus = 'PENDING' | 'APPROVED' | 'REJECTED';
+export type ReviewQueueApprovalStatus = 'ALL' | BorrowDetailStatus;
 
 export interface CreateBorrowRequestDto {
   note: string;
@@ -53,16 +54,17 @@ export interface BorrowRequestDetailDto {
   rejectionReason: string | null;
 }
 
+export interface BorrowRequesterDto {
+  id: number;
+  userCode: string;
+  name: string;
+  email: string;
+  avatarUrl: string | null;
+  department: { id: number; name: string } | null;
+}
 export interface BorrowRequestDto {
   id: number;
-  requester: {
-    id: number;
-    userCode: string;
-    name: string;
-    email: string;
-    avatarUrl: string | null;
-    department: { id: number; name: string } | null;
-  };
+  requester: BorrowRequesterDto;
   status: BorrowRequestStatus;
   note: string;
   createdAt: Date;
@@ -81,13 +83,19 @@ export interface PageQuery {
 }
 
 export interface ReviewQueueQuery extends PageQuery {
-  approvalStatus: BorrowDetailStatus;
+  approvalStatus: ReviewQueueApprovalStatus;
 }
 
 export type BorrowHistoryState = 'ALL' | 'CURRENT' | 'RETURNED';
 
 export interface BorrowHistoryQuery extends PageQuery {
   state: BorrowHistoryState;
+}
+
+export type BorrowingActivityState = 'CURRENT' | 'RETURNED';
+
+export interface BorrowingActivityQuery extends PageQuery {
+  state: BorrowingActivityState;
 }
 
 export interface PageDto<T> extends PageQuery {
@@ -97,16 +105,6 @@ export interface PageDto<T> extends PageQuery {
 
 export interface HandoverQueueItemDto {
   detailId: number;
-  requestId: number;
-  requestCreatedAt: Date;
-  requester: {
-    id: number;
-    userCode: string;
-    name: string;
-    email: string;
-    avatarUrl: string | null;
-    department: { id: number; name: string } | null;
-  };
   asset: {
     id: number;
     assetCode: string;
@@ -119,6 +117,31 @@ export interface HandoverQueueItemDto {
   expectedReturnDate: string;
   approvedBy: { id: number; name: string } | null;
   approvedAt: Date | null;
+}
+export interface HandoverQueueRequestDto {
+  requestId: number;
+  requestCreatedAt: Date;
+  requester: BorrowRequesterDto;
+  pendingCount: number;
+  approvedCount: number;
+  handedOverCount: number;
+  items: HandoverQueueItemDto[];
+}
+export interface ReturnQueueRequestDto {
+  requestId: number;
+  requestCreatedAt: Date;
+  requester: BorrowRequesterDto;
+  pendingCount: number;
+  returnedCount: number;
+  items: BorrowHistoryDto[];
+}
+
+export interface BorrowingActivityRequestGroupDto {
+  requestId: number;
+  requestCreatedAt: Date;
+  requester: BorrowRequesterDto;
+  itemCount: number;
+  items: BorrowHistoryDto[];
 }
 
 export type ApproveAllFailureReason = 'ASSET_NOT_AVAILABLE' | 'DETAIL_NOT_PENDING';

@@ -9,6 +9,7 @@ so that **I can review my equipment usage**.
 ## Acceptance Criteria
 
 - AC-US-F05-04-01: When opening my history, then only history linked to requests from the current user is displayed.
+- AC-US-F05-04-01a: `Currently Borrowed` and `Returned History` remain separate tabs; each tab uses a shared titled request table with expandable matching histories and does not show a request-level status badge.
 - AC-US-F05-04-02: Then each history record shows the asset, handover date, return date, and return condition when available.
 - AC-US-F05-04-03: Unreturned history is clearly distinguished from returned history.
 - AC-US-F05-04-04: The user cannot change history data through the view function.

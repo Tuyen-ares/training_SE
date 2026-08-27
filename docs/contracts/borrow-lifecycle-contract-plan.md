@@ -150,11 +150,13 @@ type ReviewQueueItemDto = BorrowRequestListItemDto & {
   requester: { id: number; name: string }
   details: Array<Pick<
     BorrowRequestDetailDto,
-    'id' | 'asset' | 'expectedReturnAt' | 'approvalStatus' | 'rejectionReason'
+    'id' | 'asset' | 'expectedReturnDate' | 'approvalStatus' | 'rejectionReason'
   >>
 }
 
-// GET /api/borrow-requests/review-queue?page=&pageSize=&status=
+// GET /api/borrow-request-details/review-queue?page=&pageSize=&approvalStatus=
+// approvalStatus: PENDING (default), ALL, APPROVED, REJECTED.
+// ALL returns request groups with a PENDING detail first; each group is oldest-first.
 // Requires: borrow_request.view_all
 // 200 ApiEnvelope<Page<ReviewQueueItemDto>>
 
@@ -180,8 +182,21 @@ not change the asset's status.
 ```ts
 // POST /api/borrow-request-details/:detailId/handover
 // Requires: asset.checkout
-// Body: none
-// 200 ApiEnvelope<BorrowHistoryDto>
+type ConfirmHandoverInput = { mediaIds?: number[] }
+type ConfirmHandoverResponse = { historyId: number }
+// 200 ApiEnvelope<ConfirmHandoverResponse>
+
+// GET /api/borrow-request-details/handover-queue?page=&pageSize=
+// Requires: asset.checkout
+// 200 ApiEnvelope<Page<HandoverQueueRequestDto>>
+
+// GET /api/borrow-request-details/handover-queue/:requestId
+// Requires: asset.checkout
+// 200 ApiEnvelope<HandoverQueueRequestDto>
+
+// GET /api/borrow-histories/return-queue/:requestId
+// Requires: asset.checkin
+// 200 ApiEnvelope<ReturnQueueRequestDto>
 
 // GET /api/borrow-histories/current?page=&pageSize=
 // Requires: borrow_history.view_own

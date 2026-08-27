@@ -21,8 +21,9 @@ function issue(overrides: Partial<AssetIssue> = {}): AssetIssue {
     cost: null,
     result: null,
     note: null,
-    asset: { id: 10, serialNumber: null, status: 'DAMAGED', modelName: 'Laptop' },
+    asset: { id: 10, assetCode: 'AST-001', serialNumber: null, status: 'DAMAGED', modelName: 'Laptop' },
     reporter: null,
+    repairEvidence: [],
     ...overrides,
   };
 }
@@ -53,7 +54,7 @@ function createService(repository: MemoryIssueRepository) {
     { startRepair: async () => {}, completeRepair: async () => {} } as never,
     repository,
     { lockForAssignmentInTransaction: async () => repository.lockedVendor } as never,
-    { createInTransaction: async () => repository.current } as never,
+    { append: async () => undefined } as never,
     transactionPrisma,
   );
 }

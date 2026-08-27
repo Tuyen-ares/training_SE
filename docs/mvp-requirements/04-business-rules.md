@@ -54,6 +54,8 @@
 - **BR-BOR-17:** Thu hồi hợp lệ đặt header `CANCELLED`, giữ nguyên trạng thái detail để bảo toàn lịch sử và giải phóng mọi asset `RESERVED` bởi phiếu.
 - **BR-BOR-18:** borrow_request chỉ chuyển `COMPLETED` khi tất cả detail `APPROVED`đã được bàn giao đều đã hoàn trả, và không còn detail `PENDING` cần xử lý.đã được bàn giao đều đã hoàn trả, và không còn detail PENDING cần xử lý. Detail REJECTED không ảnh hưởng việc hoàn tất phiếu.
 
+- **BR-BOR-19:** Review Queue mặc định lọc detail `PENDING`; filter `ALL` hiển thị mọi request có detail trong phạm vi quyền, ưu tiên request có ít nhất một detail `PENDING`, rồi sắp xếp oldest-first trong từng nhóm.
+
 ## Bàn giao và hoàn trả
 
 - **BR-HAN-01:** Chỉ asset `RESERVED` cho đúng detail mới được bàn giao.
@@ -99,7 +101,7 @@
 - **BR-NOT-01:** `related_entity_type` và `related_entity_id` là tham chiếu logic, không phải quan hệ khóa ngoại.
 - **BR-NOT-02:** User chỉ được xem và cập nhật trạng thái đọc notification của chính mình.
 - **BR-NOT-03:** Khi notification được đánh dấu đã đọc, hệ thống phải ghi nhận trạng thái và thời điểm đọc.
-- **BR-NOT-04:** Notification MVP chỉ nằm trong hệ thống; recipient xác định theo user/permission và entity, không hard-code theo tên role.
+- **BR-NOT-04:** Notification MVP hỗ trợ in-app và SMTP email; recipient xác định theo user/permission và entity, không hard-code theo tên role. Delivery được xử lý eventually consistent sau business commit.
 - **BR-NOT-05:** MVP phải tạo notification cho các sự kiện nghiệp vụ quan trọng gồm:
 - có borrow request mới cần xử lý;
 - kết quả duyệt/từ chối yêu cầu mượn;

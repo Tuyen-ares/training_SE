@@ -87,7 +87,10 @@ Update the active notification schema documentation, implementation plan, notifi
 - Prisma format/generate/validate.
 - Backend typecheck, build and unit tests.
 - Focused notification database integration tests on a non-production test database when available.
-- Source audit proving active code no longer references `smtp_message_id` or `smtpMessageId`; the historical creation migration is the only allowed old database-name reference.
+- Source audit proving the active Prisma schema, runtime, tests and current
+  schema guide no longer use `smtp_message_id` or `smtpMessageId`. Historical
+  creation/rename migrations and design/checklist text may mention the old name
+  to explain the transition.
 - Verify-change dry-run before any full repository gate because the worktree contains unrelated frontend changes.
 - `git diff --check`.
 - If production deployment is separately approved: run Prisma migrate deploy/status and a read-only column/data audit without printing credentials.

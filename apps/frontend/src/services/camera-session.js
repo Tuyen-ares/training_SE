@@ -55,7 +55,7 @@ async function forceStop(owner, reason = 'forced-stop', token) {
   if (lease.forceStopPromise) return lease.forceStopPromise
 
   lease.state = 'stopping'
-  lease.forceStopPromise = (async () => {
+  const attempt = (async () => {
     let cleanupError = null
     try {
       await lease.teardown(reason)
@@ -73,8 +73,13 @@ async function forceStop(owner, reason = 'forced-stop', token) {
     release(owner, token)
     return true
   })()
+  lease.forceStopPromise = attempt
 
-  return lease.forceStopPromise
+  try {
+    return await attempt
+  } finally {
+    if (lease.forceStopPromise === attempt) lease.forceStopPromise = null
+  }
 }
 
 function trackPending(owner, token, pending) {
@@ -82,7 +87,9 @@ function trackPending(owner, token, pending) {
   if (!matchesLease(lease, owner, token)) return pending
 
   let tracked
-  tracked = Promise.resolve(pending).finally(() => lease.pending.delete(tracked))
+  tracked = Promise.resolve(pending)
+    .then(() => undefined, () => undefined)
+    .finally(() => lease.pending.delete(tracked))
   lease.pending.add(tracked)
   return pending
 }
@@ -112,7 +119,6 @@ async function acquire(owner, teardown) {
     const lease = {
       owner,
       token: createToken(),
-      generation: leaseSequence,
       teardown,
       pending: new Set(),
       state: 'active',
@@ -123,7 +129,6 @@ async function acquire(owner, teardown) {
     return {
       owner: lease.owner,
       token: lease.token,
-      generation: lease.generation,
     }
   })
 
@@ -136,7 +141,6 @@ function getActiveLease() {
   return {
     owner: activeLease.owner,
     token: activeLease.token,
-    generation: activeLease.generation,
     state: activeLease.state,
   }
 }

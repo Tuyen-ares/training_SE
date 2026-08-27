@@ -1,5 +1,60 @@
 # Implementation Memory
 
+## 2026-08-21 — Notification delivery durability (implemented and verified)
+
+- The durable target remains transactional domain events, observer-produced
+  intents, atomic delivery materialization, and channel handlers in the same
+  Node.js process as Express. FCM/SMS remain outside active scope.
+- RabbitMQ is an optional delivery transport for notification_deliveries only.
+  DISABLED keeps the database delivery loops, MISCONFIGURED stops delivery
+  processing without automatic fallback, and READY runs channel-specific
+  publisher/consumer sessions. Domain events still use outbox_events.
+  Publisher claims use PUBLISHING leases and confirm plus basic.return checks;
+  consumers CAS to PROCESSING and increment attempt_count once. The database
+  remains the source of truth and IN_APP remains the logical channel for any
+  future Firebase realtime transport.
+- Delivery rows use `outbound_message_id` for the optional ID assigned by
+  BigIn before provider I/O; EMAIL uses it as the stable SMTP Message-ID.
+  `provider_message_id` keeps the provider result after sending. The generic
+  pair avoids future `teams_message_id` columns. Delivery `event_id` remains
+  a logical outbox reference so the two tables can be retained independently.
+- Runtime, dispatcher and handlers now depend on repository contracts. Typed
+  Zod-validated events map all 14 event types to three observers; recipient and
+  template resolution precede atomic delivery materialization. A Map registry
+  selects atomic in-app and structured-message SMTP handlers without channel branches
+  in the generic processor. Borrow and asset-issue events carry compact business
+  snapshots (names, request/detail or issue IDs, asset identity, dates, reasons,
+  conditions and repair fields) created inside the business transaction. The
+  `borrow_request.approval_summary` event is the single notification boundary for
+  Approve All; successful detail audit events are suppressed from notification,
+  skipped details remain pending, and an all-skipped action emits no summary.
+  Notification materialization creates one notification_messages row per event with
+  the event_type snapshot, template_version and compact JSON render payload;
+  notification_deliveries references it through nullable message_id for legacy
+  compatibility and no longer stores an HTML body column. The SMTP handler renders
+  English branded HTML at send time; deliveries without structured message payload
+  are rebuilt from their title/text snapshots. User input is escaped, links use
+  APP_PUBLIC_URL, and display times use Asia/Ho_Chi_Minh while persisted timestamps
+  remain UTC.
+- Claim/finalize/retry operations require status and lease ownership. Outbox
+  and delivery repositories select due IDs with `FOR UPDATE SKIP LOCKED`, bulk
+  update each claimed batch, and read the claims in one transaction. Runtime
+  uses recursive loops, bounded channel concurrency and one shared DB limiter.
+- SMTP configuration is `DISABLED`, `MISCONFIGURED`, or `READY`. Disabled SMTP
+  produces terminal skips, misconfiguration leaves backlog pending without an
+  email loop, and ready SMTP reuses one pooled transporter. Sanitized runtime
+  errors redact authorization, secret key/value and URL credentials. Persisted
+  timestamps remain UTC; the SMTP RFC `Date` header is formatted at send time
+  with `Asia/Ho_Chi_Minh` (`+0700`) so mailbox metadata follows Vietnam time.
+- Verification: backend typecheck/build, 90 unit tests, 14 MariaDB integration
+  tests (including bulk claim/lease/materialization/reclaim and lifecycle event
+  counts), verify-change dry/full runs, and the selected frontend production
+  build passed. A new API-created delivery was observed through
+  `PENDING -> PROCESSING -> SENT` with a stored provider message ID. Direct
+  mailbox receipt remains a manual gate; SMTP delivery stays at-least-once.
+- Detailed gap state and command evidence live in
+  `docs/plans/2026-08-21-notification-outbox-remediation-checklist.md`.
+
 Đây là technical memory có chọn lọc, không phải changelog. Chỉ ghi thông tin có
 giá trị lâu dài cho việc đọc, triển khai và debug project.
 
@@ -282,6 +337,12 @@ only performs token-checked bookkeeping. Coordinator `forceStop` is the only
 preemption path and waits for pending startup before releasing. Page lifecycle,
 camera switching and unexpected track-ended events use this same path.
 
+**Cleanup retry gotcha:** A failed owner teardown must retain both its tokenized
+lease and stream candidate. Only an in-flight cleanup promise is deduplicated;
+after rejection, later cleanup may retry. The coordinator releases the lease
+only after teardown succeeds and pending `getUserMedia` settles, while stale
+streams returned after preemption are stopped immediately.
+
 **Review rule:** Successful frame encoding stops tracks, clears
 `video.srcObject`, releases the lease and only then enters review. Review keeps
 only a local File/object URL. Retake acquires a new lease before
@@ -387,6 +448,79 @@ workspace views, Registration Requests toolbar, and the responsive static audit.
 `git diff --check -- apps/frontend`, and responsive runtime overflow smoke
 checks. Realtime/polling was not added; the registration queue refresh remains
 an explicit API re-fetch.
+
+### 2026-08-26 — Request-level grouping for fulfillment queues
+
+**Feature:** F05 Handover & Return.
+
+**Decision:** Giữ Handover & Return là màn hình fulfillment riêng với hai tab và
+permission độc lập, nhưng đổi read model của cả hai queue từ detail/history
+phẳng sang group cấp borrow request. Queue chỉ hiển thị summary/count và điều
+hướng vào detail tương ứng: Handover Detail dùng
+`GET /borrow-request-details/handover-queue/:requestId`, Return Detail dùng
+`GET /borrow-histories/return-queue/:requestId`. Hai detail page giữ mutation
+từng asset/history để admin/manager kiểm tra, chụp evidence tùy chọn và confirm.
+Không thêm bulk handover/return trong MVP; evidence vẫn claim theo từng history.
+
+**Reason:** Approval Queue đã làm rõ context request; cùng một request không nên
+bị chia thành nhiều dòng vận hành, đồng thời checkout/checkin vẫn cần thao tác
+độc lập trên từng asset/history.
+
+**Affected areas:** Borrow lifecycle DTO/repository/service/controller/routes,
+Handover/Return Queue and Handover/Return Detail Vue views/services, Approval
+Detail deep-link, OpenAPI, API/lifecycle/frontend contracts and
+integration/component tests.
+
+**Verification:** Backend typecheck, focused workflow/lifecycle tests, frontend
+production build, responsive static audit, repository verification selector and
+git diff check.
+
+### 2026-08-26 — Request-level grouping and standard table surface for Borrowing Activity
+
+**Feature:** F05 Borrowing Activity.
+
+**Decision:** Giữ hai tab Currently Borrowed và Returned History, nhưng đổi
+read model từ history phẳng sang request group và hiển thị bằng shared
+`AppTable`: một dòng chính cho mỗi borrow request, có title cột chuẩn và một
+bảng con expandable cho các asset history matching tab. Pagination/total tính
+theo borrow request; child histories chỉ gồm state đang chọn và được xếp theo
+detailId. Không thêm status ở cấp group vì status canonical vẫn thuộc asset và
+được xem trong History/Asset Detail. Giữ nguyên các API asset-level hiện tại để
+không phá dashboard; Borrowing Activity dùng endpoint grouped riêng với
+borrow_history.view_own hoặc borrow_history.view_all.
+
+**Reason:** Một request là giỏ nghiệp vụ chứa nhiều asset detail. Grouping giữ
+context request liền mạch, tránh lặp requester/request date và tránh một
+request bị tách qua nhiều trang. Dùng cùng table foundation với Approval Queue
+và fulfillment queue giữ title, density, pagination và responsive behavior đồng
+nhất; child rows chỉ mở khi cần nên không làm danh sách chính quá dài.
+
+**Affected areas:** Borrowing Activity Vue view/test, active frontend screen and
+flow specifications, F05 user stories, grouped read model/API contracts,
+OpenAPI/API catalog and implementation memory. Không có database migration.
+
+**Verification:** Frontend component tests, production build, responsive static
+audit, grouped backend lifecycle integration coverage, OpenAPI contract checks
+and repository verification selector.
+### 2026-08-26 — Approval Queue `ALL` filter
+
+**Feature:** F04 Approval & Reservation.
+
+**Decision:** Không thêm endpoint mới. Mở rộng query của
+`GET /borrow-request-details/review-queue` với `approvalStatus`, giữ
+`PENDING` làm mặc định và bổ sung `ALL`. Khi chọn `ALL`, API phân trang
+server-side theo hai nhóm: request có ít nhất một detail `PENDING` trước,
+sau đó là request không còn `PENDING`; mỗi nhóm vẫn oldest-first.
+
+**Reason:** Reviewer có thể xem cả lịch sử trong cùng queue mà không tải toàn
+bộ dữ liệu về client, đồng thời quy tắc vận hành Pending-first vẫn được giữ.
+
+**Affected areas:** Review queue controller/model/repository, Approval Queue
+Vue view and component/integration tests, OpenAPI, API catalog, lifecycle
+contract, user story, use case and frontend flow/screen specifications.
+
+**Verification:** Backend typecheck and review-queue integration coverage;
+frontend component tests, production build and responsive static audit.
 
 ### 2026-08-13 — Tách Approval Queue khỏi Fulfillment Queue
 

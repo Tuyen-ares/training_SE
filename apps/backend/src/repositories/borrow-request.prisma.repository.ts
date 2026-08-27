@@ -7,12 +7,18 @@ import type {
   BorrowRequestStatus,
   BorrowHistoryDto,
   BorrowHistoryDetailDto,
+  BorrowRequesterDto,
   CreateBorrowRequestDto,
   HandoverQueueItemDto,
+  HandoverQueueRequestDto,
+  ReturnQueueRequestDto,
   PageDto,
   PageQuery,
   ReviewQueueQuery,
   BorrowHistoryQuery,
+  BorrowingActivityQuery,
+  BorrowingActivityRequestGroupDto,
+  BorrowingActivityState,
 } from '@/models/borrow-lifecycle.model.js';
 import type { MediaEvidenceDto } from '@/models/media.model.js';
 import { BorrowError } from '@/shared/app-error.js';
@@ -130,30 +136,90 @@ const historyDetailInclude = {
   return_evidence: { include: { media_files: { select: mediaSelect } } },
 } as const;
 
-const handoverQueueInclude = {
-  borrow_requests: {
+
+const handoverQueueRequestInclude = {
+  users: {
+    select: {
+      id: true,
+      user_code: true,
+      name: true,
+      email: true,
+      avatar_url: true,
+      avatar_media: { select: { storage_path: true } },
+      department: { select: { id: true, name: true } },
+    },
+  },
+  borrow_request_details: {
     include: {
-      users: {
-        select: {
-          id: true,
-          user_code: true,
-          name: true,
-          email: true,
-          avatar_url: true,
-          avatar_media: { select: { storage_path: true } },
-          department: { select: { id: true, name: true } },
+      assets: {
+        include: {
+          asset_models: { select: { id: true, name: true } },
+          image_media: { select: { storage_path: true } },
+        },
+      },
+      approved_by_users: { select: { id: true, name: true } },
+      borrow_histories: { select: { id: true } },
+    },
+    orderBy: { id: 'asc' },
+  },
+} as const;
+
+const returnQueueRequestInclude = {
+  users: {
+    select: {
+      id: true,
+      user_code: true,
+      name: true,
+      email: true,
+      avatar_url: true,
+      avatar_media: { select: { storage_path: true } },
+      department: { select: { id: true, name: true } },
+    },
+  },
+  borrow_request_details: {
+    include: {
+      assets: {
+        include: {
+          asset_models: { select: { id: true, name: true } },
+          image_media: { select: { storage_path: true } },
+        },
+      },
+      borrow_histories: {
+        include: {
+          handed_over_by_users: { select: { id: true, name: true } },
+          received_by_users: { select: { id: true, name: true } },
+          handover_evidence: { include: { media_files: { select: mediaSelect } } },
+          return_evidence: { include: { media_files: { select: mediaSelect } } },
         },
       },
     },
+    orderBy: { id: 'asc' },
   },
-  assets: {
-    include: {
-      asset_models: { select: { id: true, name: true } },
-      image_media: { select: { storage_path: true } },
-    },
-  },
-  approved_by_users: { select: { id: true, name: true } },
 } as const;
+
+const borrowingActivityRequestInclude = (state: BorrowingActivityState) => {
+  const returnDateFilter = state === 'CURRENT'
+    ? { return_date: null }
+    : { return_date: { not: null } };
+  return {
+    users: requestInclude.users,
+    borrow_request_details: {
+      where: { borrow_histories: returnDateFilter },
+      include: {
+        assets: requestInclude.borrow_request_details.include.assets,
+        borrow_histories: {
+          include: {
+            handed_over_by_users: { select: { id: true, name: true } },
+            received_by_users: { select: { id: true, name: true } },
+            handover_evidence: { include: { media_files: { select: mediaSelect } } },
+            return_evidence: { include: { media_files: { select: mediaSelect } } },
+          },
+        },
+      },
+      orderBy: { id: 'asc' },
+    },
+  } as const;
+};
 
 function mapHistory(history: any): BorrowHistoryDto {
   const detail = history.borrow_request_details;
@@ -235,21 +301,8 @@ function mapHistoryDetail(history: any): BorrowHistoryDetailDto {
 }
 
 function mapHandoverQueueItem(detail: any): HandoverQueueItemDto {
-  const request = detail.borrow_requests;
   return {
     detailId: detail.id,
-    requestId: request.id,
-    requestCreatedAt: request.created_at,
-    requester: {
-      id: request.users.id,
-      userCode: request.users.user_code,
-      name: request.users.name,
-      email: request.users.email,
-      avatarUrl: mediaUrl(request.users.avatar_media) ?? request.users.avatar_url,
-      department: request.users.department
-        ? { id: request.users.department.id, name: request.users.department.name }
-        : null,
-    },
     asset: {
       id: detail.assets.id,
       assetCode: detail.assets.asset_code,
@@ -264,6 +317,68 @@ function mapHandoverQueueItem(detail: any): HandoverQueueItemDto {
       ? { id: detail.approved_by_users.id, name: detail.approved_by_users.name }
       : null,
     approvedAt: detail.approved_at,
+  };
+}
+
+function mapBorrowRequester(user: any): BorrowRequesterDto {
+  return {
+    id: user.id,
+    userCode: user.user_code,
+    name: user.name,
+    email: user.email,
+    avatarUrl: mediaUrl(user.avatar_media) ?? user.avatar_url,
+    department: user.department
+      ? { id: user.department.id, name: user.department.name }
+      : null,
+  };
+}
+
+function mapHandoverQueueRequest(request: any): HandoverQueueRequestDto {
+  const approvedDetails = request.borrow_request_details
+    .filter((detail: any) => detail.approval_status === 'APPROVED');
+  const pendingDetails = approvedDetails.filter((detail: any) =>
+    detail.assets.status === 'reserved' && !detail.borrow_histories,
+  );
+  return {
+    requestId: request.id,
+    requestCreatedAt: request.created_at,
+    requester: mapBorrowRequester(request.users),
+    pendingCount: pendingDetails.length,
+    approvedCount: approvedDetails.length,
+    handedOverCount: approvedDetails.filter((detail: any) => detail.borrow_histories).length,
+    items: pendingDetails.map(mapHandoverQueueItem),
+  };
+}
+
+function mapReturnQueueRequest(request: any): ReturnQueueRequestDto {
+  const detailsWithHistory = request.borrow_request_details
+    .filter((detail: any) => detail.borrow_histories);
+  const pendingDetails = detailsWithHistory
+    .filter((detail: any) => !detail.borrow_histories.return_date);
+  return {
+    requestId: request.id,
+    requestCreatedAt: request.created_at,
+    requester: mapBorrowRequester(request.users),
+    pendingCount: pendingDetails.length,
+    returnedCount: detailsWithHistory.length - pendingDetails.length,
+    items: pendingDetails.map((detail: any) => mapHistory({
+      ...detail.borrow_histories,
+      borrow_request_details: { ...detail, borrow_requests: request },
+    })),
+  };
+}
+
+function mapBorrowingActivityGroup(request: any): BorrowingActivityRequestGroupDto {
+  const items = request.borrow_request_details.map((detail: any) => mapHistory({
+    ...detail.borrow_histories,
+    borrow_request_details: { ...detail, borrow_requests: request },
+  }));
+  return {
+    requestId: request.id,
+    requestCreatedAt: request.created_at,
+    requester: mapBorrowRequester(request.users),
+    itemCount: items.length,
+    items,
   };
 }
 
@@ -382,8 +497,29 @@ export class PrismaBorrowRequestRepository implements IBorrowRequestRepository {
   }
 
   async findActionDetail(detailId: number, transaction: BorrowTransaction): Promise<BorrowActionDetail | null> {
-    const detail = await transaction.borrow_request_details.findUnique({ where: { id: detailId }, include: { borrow_requests: true, assets: true, borrow_histories: true } });
-    return detail ? { id: detail.id, requestId: detail.borrow_request_id, requesterId: detail.borrow_requests.user_id, approvalStatus: detail.approval_status, assetId: detail.asset_id, assetStatus: detail.assets.status, historyId: detail.borrow_histories?.id ?? null } : null;
+    const detail = await transaction.borrow_request_details.findUnique({
+      where: { id: detailId },
+      include: {
+        borrow_requests: { include: { users: { select: { id: true, name: true } } } },
+        assets: { include: { asset_models: { select: { name: true } } } },
+        borrow_histories: true,
+      },
+    });
+    return detail
+      ? {
+          id: detail.id,
+          requestId: detail.borrow_request_id,
+          requesterId: detail.borrow_requests.user_id,
+          requesterName: detail.borrow_requests.users.name,
+          approvalStatus: detail.approval_status,
+          assetId: detail.asset_id,
+          assetCode: detail.assets.asset_code,
+          assetModelName: detail.assets.asset_models.name,
+          expectedReturnDate: detail.expected_return_date,
+          assetStatus: detail.assets.status,
+          historyId: detail.borrow_histories?.id ?? null,
+        }
+      : null;
   }
 
   async findPendingDetailIdsForRequest(requestId: number): Promise<number[] | null> {
@@ -417,8 +553,31 @@ export class PrismaBorrowRequestRepository implements IBorrowRequestRepository {
   }
 
   async findHistoryForAction(historyId: number, transaction: BorrowTransaction) {
-    const history = await transaction.borrow_histories.findUnique({ where: { id: historyId }, include: { borrow_request_details: { include: { assets: true, borrow_requests: true } } } });
-    return history ? { id: history.id, detailId: history.borrow_request_detail_id, assetId: history.borrow_request_details.asset_id, assetStatus: history.borrow_request_details.assets.status, requesterId: history.borrow_request_details.borrow_requests.user_id, returnedAt: history.return_date } : null;
+    const history = await transaction.borrow_histories.findUnique({
+      where: { id: historyId },
+      include: {
+        borrow_request_details: {
+          include: {
+            assets: { include: { asset_models: { select: { name: true } } } },
+            borrow_requests: { include: { users: { select: { id: true, name: true } } } },
+          },
+        },
+      },
+    });
+    return history
+      ? {
+          id: history.id,
+          detailId: history.borrow_request_detail_id,
+          assetId: history.borrow_request_details.asset_id,
+          assetCode: history.borrow_request_details.assets.asset_code,
+          assetModelName: history.borrow_request_details.assets.asset_models.name,
+          expectedReturnDate: history.borrow_request_details.expected_return_date,
+          assetStatus: history.borrow_request_details.assets.status,
+          requesterId: history.borrow_request_details.borrow_requests.user_id,
+          requesterName: history.borrow_request_details.borrow_requests.users.name,
+          returnedAt: history.return_date,
+        }
+      : null;
   }
 
   async completeReturn(historyId: number, receiverId: number, condition: string, transaction: BorrowTransaction): Promise<void> {
@@ -466,56 +625,119 @@ export class PrismaBorrowRequestRepository implements IBorrowRequestRepository {
   }
 
   async listReviewQueue(query: ReviewQueueQuery): Promise<PageDto<BorrowRequestDto>> {
-    const where = { borrow_request_details: { some: { approval_status: query.approvalStatus } } };
+    const orderBy = [{ created_at: 'asc' as const }, { id: 'asc' as const }];
+
+    if (query.approvalStatus !== 'ALL') {
+      const where = { borrow_request_details: { some: { approval_status: query.approvalStatus } } };
+      const [requests, total] = await this.prisma.$transaction([
+        this.prisma.borrow_requests.findMany({
+          where,
+          orderBy,
+          skip: (query.page - 1) * query.pageSize,
+          take: query.pageSize,
+          include: requestInclude,
+        }),
+        this.prisma.borrow_requests.count({ where }),
+      ]);
+      return { items: requests.map(mapRequest), ...query, total };
+    }
+
+    const pendingWhere = {
+      borrow_request_details: { some: { approval_status: 'PENDING' as const } },
+    };
+    const nonPendingWhere = {
+      AND: [
+        { borrow_request_details: { some: {} } },
+        { borrow_request_details: { none: { approval_status: 'PENDING' as const } } },
+      ],
+    };
+    const offset = (query.page - 1) * query.pageSize;
+    const [pendingTotal, nonPendingTotal] = await this.prisma.$transaction([
+      this.prisma.borrow_requests.count({ where: pendingWhere }),
+      this.prisma.borrow_requests.count({ where: nonPendingWhere }),
+    ]);
+    const pendingTake = Math.min(query.pageSize, Math.max(0, pendingTotal - offset));
+    const nonPendingTake = query.pageSize - pendingTake;
+    const nonPendingSkip = Math.max(0, offset - pendingTotal);
+    const [pendingRequests, nonPendingRequests] = await this.prisma.$transaction([
+      this.prisma.borrow_requests.findMany({
+        where: pendingWhere,
+        orderBy,
+        skip: Math.min(offset, pendingTotal),
+        take: pendingTake,
+        include: requestInclude,
+      }),
+      this.prisma.borrow_requests.findMany({
+        where: nonPendingWhere,
+        orderBy,
+        skip: nonPendingSkip,
+        take: nonPendingTake,
+        include: requestInclude,
+      }),
+    ]);
+    return {
+      items: [...pendingRequests, ...nonPendingRequests].map(mapRequest),
+      ...query,
+      total: pendingTotal + nonPendingTotal,
+    };
+  }
+
+  async listHandoverQueue(query: PageQuery): Promise<PageDto<HandoverQueueRequestDto>> {
+    const where = {
+      borrow_request_details: {
+        some: {
+          approval_status: 'APPROVED',
+          assets: { status: 'reserved' as const },
+          borrow_histories: null,
+        },
+      },
+    };
     const [requests, total] = await this.prisma.$transaction([
       this.prisma.borrow_requests.findMany({
         where,
+        include: handoverQueueRequestInclude,
         orderBy: [{ created_at: 'asc' }, { id: 'asc' }],
         skip: (query.page - 1) * query.pageSize,
         take: query.pageSize,
-        include: requestInclude,
       }),
       this.prisma.borrow_requests.count({ where }),
     ]);
-    return { items: requests.map(mapRequest), ...query, total };
+    return { items: requests.map(mapHandoverQueueRequest), ...query, total };
   }
 
-  async listHandoverQueue(query: PageQuery): Promise<PageDto<HandoverQueueItemDto>> {
+  async findHandoverQueueRequest(requestId: number): Promise<HandoverQueueRequestDto | null> {
+    const request = await this.prisma.borrow_requests.findUnique({
+      where: { id: requestId },
+      include: handoverQueueRequestInclude,
+    });
+    return request ? mapHandoverQueueRequest(request) : null;
+  }
+
+  async listReturnQueue(query: PageQuery): Promise<PageDto<ReturnQueueRequestDto>> {
     const where = {
-      approval_status: 'APPROVED',
-      assets: { status: 'reserved' as const },
-      borrow_histories: null,
+      borrow_request_details: {
+        some: { borrow_histories: { return_date: null } },
+      },
     };
-    const [details, total] = await this.prisma.$transaction([
-      this.prisma.borrow_request_details.findMany({
+    const [requests, total] = await this.prisma.$transaction([
+      this.prisma.borrow_requests.findMany({
         where,
-        include: handoverQueueInclude,
-        orderBy: [{ borrow_requests: { created_at: 'asc' } }, { id: 'asc' }],
+        include: returnQueueRequestInclude,
+        orderBy: [{ created_at: 'asc' }, { id: 'asc' }],
         skip: (query.page - 1) * query.pageSize,
         take: query.pageSize,
       }),
-      this.prisma.borrow_request_details.count({ where }),
+      this.prisma.borrow_requests.count({ where }),
     ]);
-    return { items: details.map(mapHandoverQueueItem), ...query, total };
+    return { items: requests.map(mapReturnQueueRequest), ...query, total };
   }
 
-  async listReturnQueue(query: PageQuery): Promise<PageDto<BorrowHistoryDto>> {
-    const where = { return_date: null };
-    const [histories, total] = await this.prisma.$transaction([
-      this.prisma.borrow_histories.findMany({
-        where,
-        include: historyInclude,
-        orderBy: [
-          { borrow_request_details: { expected_return_date: 'asc' } },
-          { borrow_date: 'asc' },
-          { id: 'asc' },
-        ],
-        skip: (query.page - 1) * query.pageSize,
-        take: query.pageSize,
-      }),
-      this.prisma.borrow_histories.count({ where }),
-    ]);
-    return { items: histories.map(mapHistory), ...query, total };
+  async findReturnQueueRequest(requestId: number): Promise<ReturnQueueRequestDto | null> {
+    const request = await this.prisma.borrow_requests.findUnique({
+      where: { id: requestId },
+      include: returnQueueRequestInclude,
+    });
+    return request ? mapReturnQueueRequest(request) : null;
   }
 
   async listCurrent(requesterId: number, query: PageQuery): Promise<PageDto<BorrowHistoryDto>> {
@@ -559,6 +781,32 @@ export class PrismaBorrowRequestRepository implements IBorrowRequestRepository {
       this.prisma.borrow_histories.count({ where }),
     ]);
     return { items: histories.map(mapHistory), ...query, total };
+  }
+
+  async listBorrowingActivity(
+    query: BorrowingActivityQuery,
+    requesterId?: number,
+  ): Promise<PageDto<BorrowingActivityRequestGroupDto>> {
+    const returnDateFilter = query.state === 'CURRENT'
+      ? { return_date: null }
+      : { return_date: { not: null } };
+    const where = {
+      ...(requesterId !== undefined ? { user_id: requesterId } : {}),
+      borrow_request_details: {
+        some: { borrow_histories: returnDateFilter },
+      },
+    };
+    const [requests, total] = await this.prisma.$transaction([
+      this.prisma.borrow_requests.findMany({
+        where,
+        include: borrowingActivityRequestInclude(query.state),
+        orderBy: [{ created_at: 'desc' }, { id: 'desc' }],
+        skip: (query.page - 1) * query.pageSize,
+        take: query.pageSize,
+      }),
+      this.prisma.borrow_requests.count({ where }),
+    ]);
+    return { items: requests.map(mapBorrowingActivityGroup), ...query, total };
   }
 
   async findHistoryDetail(historyId: number, requesterId?: number): Promise<BorrowHistoryDetailDto | null> {

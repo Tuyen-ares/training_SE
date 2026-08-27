@@ -149,4 +149,63 @@ describe('useCameraCapture', () => {
     expect(capture.reviewFile.value).toBe(review)
     cameraSession.resetForTests()
   })
+
+  it('keeps the lease after track cleanup fails and releases it on retry', async () => {
+    const track = makeTrack()
+    track.stop
+      .mockImplementationOnce(() => { throw new Error('hardware stop failed') })
+      .mockImplementationOnce(() => { throw new Error('hardware still busy') })
+    getUserMedia.mockResolvedValue(makeStream(track))
+    const capture = useCameraCapture()
+    capture.videoRef.value = makeVideo()
+    await capture.start()
+
+    await expect(capture.stop()).resolves.toBe(false)
+    expect(cameraSession.getActiveLease()).toMatchObject({ owner: CAMERA_OWNERS.MEDIA_CAPTURE })
+    await expect(cameraSession.acquire(CAMERA_OWNERS.QR_SCANNER, async () => {})).rejects.toMatchObject({ code: 'CAMERA_BUSY' })
+
+    await expect(capture.stop()).resolves.toBe(true)
+    expect(track.stop).toHaveBeenCalledTimes(3)
+    expect(cameraSession.getActiveLease()).toBeNull()
+  })
+
+  it('stops a stale stream that resolves after another owner preempts startup', async () => {
+    let resolveStream
+    getUserMedia.mockReturnValue(new Promise((resolve) => { resolveStream = resolve }))
+    const capture = useCameraCapture()
+    capture.videoRef.value = makeVideo()
+    const startup = capture.start()
+    await Promise.resolve()
+    await Promise.resolve()
+
+    const scannerAcquisition = cameraSession.acquire(CAMERA_OWNERS.QR_SCANNER, async () => {})
+    const staleTrack = makeTrack()
+    resolveStream(makeStream(staleTrack))
+    const scannerLease = await scannerAcquisition
+    await startup
+
+    expect(staleTrack.stop).toHaveBeenCalledTimes(1)
+    expect(cameraSession.getActiveLease()).toMatchObject({ token: scannerLease.token, owner: CAMERA_OWNERS.QR_SCANNER })
+    await cameraSession.forceStop(CAMERA_OWNERS.QR_SCANNER, 'close', scannerLease.token)
+  })
+
+  it('restores the previous device when both switch attempts fail', async () => {
+    const originalTrack = makeTrack({ facingMode: 'user', deviceId: 'camera-a' })
+    const restoredTrack = makeTrack({ facingMode: 'user', deviceId: 'camera-a' })
+    getUserMedia
+      .mockResolvedValueOnce(makeStream(originalTrack))
+      .mockRejectedValueOnce(Object.assign(new Error('exact failed'), { name: 'NotReadableError' }))
+      .mockRejectedValueOnce(Object.assign(new Error('facing failed'), { name: 'NotReadableError' }))
+      .mockResolvedValueOnce(makeStream(restoredTrack))
+    const capture = useCameraCapture({ defaultFacing: 'user' })
+    capture.videoRef.value = makeVideo()
+    await capture.start()
+
+    await expect(capture.switchCamera()).resolves.toBe(true)
+
+    expect(getUserMedia).toHaveBeenCalledTimes(4)
+    expect(getUserMedia.mock.calls[3][0]).toEqual({ video: { deviceId: { exact: 'camera-a' } }, audio: false })
+    expect(capture.requestedFacing.value).toBe('user')
+    expect(capture.phase.value).toBe(CAMERA_PHASES.READY)
+  })
 })

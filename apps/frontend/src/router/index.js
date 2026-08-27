@@ -132,6 +132,18 @@ const router = createRouter({
       meta: { requiresAuth: true, permissionsAny: ['asset.checkout', 'asset.checkin'] },
     },
     {
+      path: '/handover-return/:requestId',
+      name: 'handover-detail',
+      component: () => import('../views/borrowing/HandoverDetailView.vue'),
+      meta: { requiresAuth: true, permission: 'asset.checkout' },
+    },
+    {
+      path: '/handover-return/return/:requestId',
+      name: 'return-detail',
+      component: () => import('../views/borrowing/ReturnDetailView.vue'),
+      meta: { requiresAuth: true, permission: 'asset.checkin' },
+    },
+    {
       path: '/borrowing-activity',
       name: 'borrowing-activity',
       component: () => import('../views/borrowing/BorrowingActivityView.vue'),

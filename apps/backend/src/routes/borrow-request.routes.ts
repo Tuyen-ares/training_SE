@@ -12,30 +12,27 @@ import { PrismaVendorRepository } from '@/repositories/vendor.prisma.repository.
 import { AssetService } from '@/services/assets.service.js';
 import { AssetIssueService } from '@/services/asset-issue.service.js';
 import { BorrowWorkflowService } from '@/services/borrow-workflow.service.js';
-import { PrismaNotificationRepository } from '@/repositories/notification.prisma.repository.js';
-import { NotificationService } from '@/services/notification.service.js';
+import { domainEventWriter } from '@/notifications/composition.js';
 import { VendorService } from '@/services/vendor.service.js';
 
 const router = Router();
 const repository = new PrismaBorrowRequestRepository(prisma);
-const notificationRepository = new PrismaNotificationRepository(prisma);
-const notificationService = new NotificationService(notificationRepository);
 const assetService = new AssetService(new PrismaAssetRepository(prisma), prisma);
 const assetIssueService = new AssetIssueService(
   assetService,
   new PrismaAssetIssueRepository(prisma),
   new VendorService(new PrismaVendorRepository(prisma), prisma),
-  notificationService,
+  domainEventWriter,
   prisma,
 );
-const service = new BorrowRequestService(repository, notificationService, prisma);
+const service = new BorrowRequestService(repository, domainEventWriter, prisma);
 const controller = new BorrowRequestController(service);
 const workflowController = new BorrowWorkflowController(
   new BorrowWorkflowService(
     repository,
     assetService,
     assetIssueService,
-    notificationService,
+    domainEventWriter,
     prisma,
   ),
 );

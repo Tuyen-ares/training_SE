@@ -28,4 +28,5 @@ F01 và các feature phát sinh event; recipient được xác định theo user
 
 ## Out of Scope
 
-Email, SMS, mobile push và notification scheduling.
+SMS, mobile push và notification scheduling. SMTP email thuộc active F07 scope
+và được gửi bất đồng bộ; in-app notification cũng eventually consistent.

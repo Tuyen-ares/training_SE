@@ -22,7 +22,10 @@ const evidenceServices = vi.hoisted(() => ({
 }))
 
 vi.mock('../../stores/auth', () => ({ useAuthStore: () => authStore }))
-vi.mock('vue-router', () => ({ useRoute: () => ({ query: {} }) }))
+vi.mock('vue-router', () => ({
+  useRoute: () => ({ query: {} }),
+  useRouter: () => ({ push: vi.fn() }),
+}))
 vi.mock('ant-design-vue', () => ({
   message: {
     error: vi.fn(),
@@ -70,8 +73,16 @@ describe('HandoverReturnView', () => {
   it('keeps the return queue when an older handover reload resolves later', async () => {
     const handoverRequest = deferred()
     const returnRequest = deferred()
-    const handoverItem = { detailId: 11, requester: { name: 'Handover user' }, asset: {} }
-    const returnItem = { id: 22, borrower: { name: 'Return user' }, asset: {} }
+    const handoverItem = {
+      requestId: 11,
+      requester: { name: 'Handover user' },
+      items: [{ detailId: 111, asset: {} }],
+    }
+    const returnItem = {
+      requestId: 22,
+      requester: { name: 'Return user' },
+      items: [{ id: 222, borrower: { name: 'Return user' }, asset: {} }],
+    }
 
     queueServices.listHandoverQueue.mockReturnValueOnce(handoverRequest.promise)
     queueServices.listReturnQueue.mockReturnValueOnce(returnRequest.promise)
@@ -106,11 +117,49 @@ describe('HandoverReturnView', () => {
     returnRequest.resolve(page([returnItem]))
     await flushPromises()
     expect(wrapper.findComponent(AppTableStub).props('dataSource')).toEqual([returnItem])
-    expect(wrapper.findComponent(AppTableStub).props('rowKey')).toBe('id')
+    expect(wrapper.findComponent(AppTableStub).props('rowKey')).toBe('requestId')
 
     handoverRequest.resolve(page([handoverItem]))
     await flushPromises()
     expect(wrapper.findComponent(AppTableStub).props('dataSource')).toEqual([returnItem])
-    expect(wrapper.findComponent(AppTableStub).props('rowKey')).toBe('id')
+    expect(wrapper.findComponent(AppTableStub).props('rowKey')).toBe('requestId')
+  })
+
+  it('uses request groups as the handover queue rows', async () => {
+    const group = {
+      requestId: 77,
+      requester: { name: 'Grouped user' },
+      pendingCount: 2,
+      approvedCount: 2,
+      handedOverCount: 0,
+      items: [{ detailId: 771, asset: {} }, { detailId: 772, asset: {} }],
+    }
+    queueServices.listHandoverQueue.mockResolvedValue(page([group]))
+
+    const wrapper = mount(HandoverReturnView, {
+      global: {
+        stubs: {
+          AppTable: AppTableStub,
+          EvidenceMediaPicker: EvidenceMediaPickerStub,
+          WorkspaceLayout: WorkspaceLayoutStub,
+          'a-alert': true,
+          'a-avatar': true,
+          'a-button': true,
+          'a-empty': true,
+          'a-form-item': true,
+          'a-modal': true,
+          'a-table-column': true,
+          'a-tabs': TabsStub,
+          'a-tab-pane': true,
+          'a-textarea': true,
+        },
+      },
+    })
+    await flushPromises()
+
+    const table = wrapper.findComponent(AppTableStub)
+    expect(table.props('dataSource')).toEqual([group])
+    expect(table.props('rowKey')).toBe('requestId')
+    expect(table.props('dataSource')[0].items).toHaveLength(2)
   })
 })

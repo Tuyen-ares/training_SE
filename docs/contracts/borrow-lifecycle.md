@@ -54,9 +54,11 @@ Multiple pending requests may reference the same available asset.
 
 ## F04 — Approval and reservation
 
-- `GET /api/borrow-request-details/review-queue?page=&pageSize=` —
-  `borrow_request.view_all`; company-wide page containing requests with at
-  least one `PENDING` detail, oldest first.
+- `GET /api/borrow-request-details/review-queue?page=&pageSize=&approvalStatus=` —
+  `borrow_request.view_all`; `approvalStatus` accepts `PENDING` (default),
+  `ALL`, `APPROVED` or `REJECTED`. Filter theo detail status và phân trang
+  theo request, oldest first. Với `ALL`, request có ít nhất một detail
+  `PENDING` đứng trước các request không còn `PENDING`; mỗi nhóm oldest first.
 - `POST /api/borrow-request-details/:detailId/approve` —
   `borrow_request.approve`; empty body. Atomically changes the detail
   `PENDING → APPROVED` and asset `AVAILABLE → RESERVED`. Returns
@@ -76,22 +78,41 @@ a non-pending detail returns `409`.
 
 ## F05 — Handover, normal return and history
 
-- `GET /api/borrow-request-details/handover-queue?page=&pageSize=` —
-  `asset.checkout`; vận hành queue chỉ gồm detail `APPROVED`, asset `RESERVED`
-  và chưa có borrow history. Queue này không yêu cầu
-  `borrow_request.view_all` hoặc `borrow_history.view_all`. Kết quả sắp xếp theo
-  request cũ trước, sau đó `detailId` tăng dần.
+- `GET /api/borrow-request-details/handover-queue?page=&pageSize=` — 
+  `asset.checkout`; trả về group cấp request, trong đó có các detail
+  `APPROVED`, asset `RESERVED` và chưa có borrow history. Queue này không yêu
+  cầu `borrow_request.view_all` hoặc `borrow_history.view_all`. Pagination và
+  `total` tính theo request; request cũ trước, detail trong request theo
+  `detailId` tăng dần.
+- `GET /api/borrow-request-details/handover-queue/:requestId` —
+  `asset.checkout`; tải một request group để admin/manager kiểm tra context và
+  các detail còn chờ bàn giao. Endpoint không yêu cầu `borrow_request.view_all`
+  hoặc `borrow_history.view_all`.
 - `GET /api/borrow-histories/return-queue?page=&pageSize=` — `asset.checkin`;
-  vận hành queue chỉ gồm history có `return_date IS NULL`. Queue này không yêu
-  cầu `borrow_request.view_all` hoặc `borrow_history.view_all`. Kết quả sắp xếp
-  theo expected return date tăng dần, `borrowedAt` tăng dần và `historyId`
-  tăng dần. Response dùng lại `BorrowHistoryPage`.
+  trả về group cấp request chứa history chưa có `return_date`. Queue này không
+  yêu cầu `borrow_request.view_all` hoặc `borrow_history.view_all`. Pagination
+  và `total` tính theo request; request cũ trước, detail trong request theo
+  `detailId` tăng dần.
+- `GET /api/borrow-histories/return-queue/:requestId` — `asset.checkin`;
+  tải một request group để admin/manager kiểm tra requester, progress và các
+  history chưa trả trước khi xác nhận từng history. Endpoint không yêu cầu
+  `borrow_request.view_all` hoặc `borrow_history.view_all`.
 - `POST /api/borrow-request-details/:detailId/handover` — `asset.checkout`;
   empty body. Atomically changes `RESERVED → BORROWED` and creates exactly one
   borrow history using the request owner as borrower. Returns
   `{ "data": { "historyId": number } }`.
 - `GET /api/borrow-histories/current?page=&pageSize=` —
   `borrow_history.view_own`; current unreturned assets of the current user.
+- `GET /api/borrow-histories/activity/me?page=&pageSize=&state=CURRENT|RETURNED` —
+  `borrow_history.view_own`; request-grouped current or returned history of the
+  authenticated user. Pagination and `total` count borrow requests; each group
+  contains only child histories matching `state` and children are ordered by
+  `detailId` ascending. The group contains request identity, requester, creation
+  date and matching `itemCount`; it has no status field.
+- `GET /api/borrow-histories/activity?page=&pageSize=&state=CURRENT|RETURNED` —
+  `borrow_history.view_all`; same request-grouped read model for company-wide
+  history. The existing asset-level `/current`, `/me` and `/borrow-histories`
+  endpoints remain unchanged for backward-compatible consumers.
 - `POST /api/borrow-histories/:historyId/return` — `asset.checkin`; empty body.
   Atomically records receiver/time, writes canonical `returnCondition=NORMAL`,
   and changes asset `BORROWED → AVAILABLE`. The client cannot submit a return
@@ -129,7 +150,8 @@ History responses use camelCase and include asset, borrower, expected return
 date, handover actor/time and return actor/time/condition. When all approved
 details have been returned and no detail remains pending, the request becomes
 `COMPLETED`. Damaged Return is the F05/F06 integration point and its history,
-asset, issue and notifications are committed as one business transaction.
+asset, issue and durable outbox events are committed as one business transaction.
+In-app and SMTP deliveries are created asynchronously after commit.
 
 ## Shared response shapes
 
@@ -158,18 +180,8 @@ type BorrowRequestDetail = {
   rejectionReason: string | null
 }
 
-type HandoverQueueItem = {
+type HandoverQueueDetail = {
   detailId: number
-  requestId: number
-  requestCreatedAt: string
-  requester: {
-    id: number
-    userCode: string
-    name: string
-    email: string
-    avatarUrl: string | null
-    department: { id: number; name: string } | null
-  }
   asset: {
     id: number
     assetCode: string
@@ -182,6 +194,42 @@ type HandoverQueueItem = {
   expectedReturnDate: string
   approvedBy: { id: number; name: string } | null
   approvedAt: string | null
+}
+
+type BorrowRequesterSummary = {
+  id: number
+  userCode: string
+  name: string
+  email: string
+  avatarUrl: string | null
+  department: { id: number; name: string } | null
+}
+
+type HandoverQueueRequest = {
+  requestId: number
+  requestCreatedAt: string
+  requester: BorrowRequesterSummary
+  pendingCount: number
+  approvedCount: number
+  handedOverCount: number
+  items: HandoverQueueDetail[]
+}
+
+type ReturnQueueRequest = {
+  requestId: number
+  requestCreatedAt: string
+  requester: BorrowRequesterSummary
+  pendingCount: number
+  returnedCount: number
+  items: BorrowHistory[]
+}
+
+type BorrowingActivityRequestGroup = {
+  requestId: number
+  requestCreatedAt: string
+  requester: BorrowRequesterSummary
+  itemCount: number
+  items: BorrowHistory[]
 }
 
 type BorrowHistory = {

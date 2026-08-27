@@ -16,11 +16,22 @@ const result = ref({ items: [], page: 1, pageSize: 10, total: 0 })
 const query = reactive({ page: 1, pageSize: 10, approvalStatus: 'PENDING' })
 const statusOptions = [
   { value: 'PENDING', label: 'Pending approval' },
+  { value: 'ALL', label: 'All statuses' },
   { value: 'APPROVED', label: 'Approved' },
   { value: 'REJECTED', label: 'Rejected' },
 ]
 
-const matchingDetails = (record) => record.details.filter((detail) => detail.approvalStatus === query.approvalStatus)
+const matchingDetails = (record) => query.approvalStatus === 'ALL'
+  ? record.details
+  : record.details.filter((detail) => detail.approvalStatus === query.approvalStatus)
+const rowStatus = (record) => query.approvalStatus === 'ALL' ? record.status : query.approvalStatus
+const rowStatusLabel = (record) => query.approvalStatus === 'ALL' ? '' : statusLabel.value
+const expectedReturnLabel = (record) => {
+  const dates = [...new Set(matchingDetails(record).map((detail) => detail.expectedReturnDate).filter(Boolean))].sort()
+  if (!dates.length) return '—'
+  if (dates.length === 1) return dates[0]
+  return `${dates[0]} – ${dates[dates.length - 1]}`
+}
 const statusLabel = computed(() => statusOptions.find((option) => option.value === query.approvalStatus)?.label || 'Requests')
 const formatDate = (value) => new Intl.DateTimeFormat('en-GB', { dateStyle: 'medium' }).format(new Date(value))
 
@@ -118,12 +129,12 @@ onMounted(load)
           </a-table-column>
           <a-table-column title="Expected return" key="return" :width="160">
             <template #default="{ record }">
-              <span class="date-value">{{ matchingDetails(record)[0]?.expectedReturnDate || '—' }}</span>
+              <span class="date-value">{{ expectedReturnLabel(record) }}</span>
             </template>
           </a-table-column>
           <a-table-column title="Status" key="status" :width="144">
-            <template #default>
-              <StatusTag class="status-tag" :status="query.approvalStatus" :label="statusLabel" />
+            <template #default="{ record }">
+              <StatusTag class="status-tag" :status="rowStatus(record)" :label="rowStatusLabel(record)" />
             </template>
           </a-table-column>
           <a-table-column title="Action" key="actions" fixed="right" :width="actionWidth('normal')" align="right">
@@ -147,7 +158,7 @@ onMounted(load)
                   <span>REQ-{{ String(record.id).padStart(4, '0') }} · {{ formatDate(record.createdAt) }}</span>
                 </div>
               </div>
-              <div class="queue-mobile-meta"><span>{{ matchingDetails(record).length }} asset{{ matchingDetails(record).length === 1 ? '' : 's' }}</span><span>{{ matchingDetails(record)[0]?.expectedReturnDate || 'No return date' }}</span><StatusTag :status="query.approvalStatus" :label="statusLabel" /></div>
+              <div class="queue-mobile-meta"><span>{{ matchingDetails(record).length }} asset{{ matchingDetails(record).length === 1 ? '' : 's' }}</span><span>{{ expectedReturnLabel(record) }}</span><StatusTag :status="rowStatus(record)" :label="rowStatusLabel(record)" /></div>
               <a-button class="review-button bigin-touch-target" :type="query.approvalStatus === 'PENDING' ? 'primary' : 'default'" @click="router.push({ name: 'approval-detail', params: { id: record.id }, state: { request: record } })">{{ query.approvalStatus === 'PENDING' ? 'Review request' : 'View details' }}</a-button>
             </div>
           </template>

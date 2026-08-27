@@ -23,6 +23,8 @@ const activeViews = [
   'views/borrowing/ApprovalQueueView.vue',
   'views/borrowing/ApprovalDetailView.vue',
   'views/borrowing/HandoverReturnView.vue',
+  'views/borrowing/HandoverDetailView.vue',
+  'views/borrowing/ReturnDetailView.vue',
   'views/borrowing/BorrowingActivityView.vue',
   'views/borrowing/BorrowingActivityDetailView.vue',
   'views/asset-issues/AssetIssueListView.vue',
@@ -67,6 +69,8 @@ const assetList = readSource('views/assets/AssetListView.vue')
 const assetDetail = readSource('views/assets/AssetDetailView.vue')
 const borrowingActivity = readSource('views/borrowing/BorrowingActivityView.vue')
 const handoverReturn = readSource('views/borrowing/HandoverReturnView.vue')
+const handoverDetail = readSource('views/borrowing/HandoverDetailView.vue')
+const returnDetail = readSource('views/borrowing/ReturnDetailView.vue')
 const myBorrowRequests = readSource('views/borrowing/MyBorrowRequestsView.vue')
 const vendors = readSource('views/vendors/VendorListView.vue')
 const assetIdentityUtility = readSource('utils/asset-identity.js')
@@ -90,7 +94,8 @@ const assetIdentityRenderers = [
   'views/borrowing/BorrowRequestCreateView.vue',
   'views/borrowing/BorrowRequestDetailView.vue',
   'views/borrowing/ApprovalDetailView.vue',
-  'views/borrowing/HandoverReturnView.vue',
+  'views/borrowing/HandoverDetailView.vue',
+  'views/borrowing/ReturnDetailView.vue',
   'views/borrowing/BorrowingActivityView.vue',
   'views/borrowing/BorrowingActivityDetailView.vue',
   'views/dashboard/DashboardView.vue',

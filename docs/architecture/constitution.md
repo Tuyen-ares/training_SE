@@ -128,52 +128,36 @@ role mặc định `employee`, KHÔNG cho client tự chọn role.
 - Bảng `user_roles` thuộc RBAC. Module Users/Auth KHÔNG tự ghi trực tiếp
   `user_roles`; nếu cần gán role sau khi tạo user thì gọi `RbacService`.
 
-## 7. Sự kiện nghiệp vụ và Notification — target, chưa triển khai
+## 7. Sự kiện nghiệp vụ và Notification — đã triển khai
 
-- Hiện chưa có bảng Notification, listener hoặc event bus. Contract chi tiết nằm tại
-  [`../modules/notifications/spec.md`](../modules/notifications/spec.md).
-- Module nghiệp vụ chỉ publish domain event; tuyệt đối KHÔNG gọi NotificationService,
-  email provider hoặc ghi bảng Notification trực tiếp.
-- Event chuẩn có envelope gồm `eventId`, `type`, `occurredAt` và `payload`; danh sách
-  event nghiệp vụ xem [`system-overview.md`](system-overview.md).
-- Notification dùng Publisher–Subscriber để nhận event và dùng channel
-  adapter/strategy để gửi qua từng kênh. Kênh mục tiêu ban đầu là `in_app`; kênh
-  `email` được bổ sung sau mà không sửa service phát event.
-- `notifications` lưu thông báo logic cho từng người dùng và trạng thái đọc trong app.
-  Khi cần theo dõi gửi đa kênh, `notification_deliveries` lưu trạng thái
-  `pending|sent|failed`, số lần thử và lỗi cuối của từng channel.
-- Không gửi email, gọi HTTP provider hoặc thực hiện công việc chậm bên trong Prisma
-  transaction.
-
-### Giai đoạn 1 — In-process Event Bus + In-App Notification
-
-- Event bus đặt tại `src/events/bus.ts`; event envelope/type đặt tại
-  `src/events/domain-event.ts`.
-- Event phát sinh trong transaction được thu thập và chỉ publish SAU KHI Promise
-  `prisma.$transaction(...)` hoàn tất thành công. Không gọi `emit` giữa callback.
-- `bus.publish(event)` chạy listener bằng `Promise.allSettled`, log từng listener bị
-  reject và không throw lỗi ngược về business flow.
-- Lỗi Notification KHÔNG được đổi response thành lỗi hoặc rollback nghiệp vụ đã commit.
-- Giai đoạn này chấp nhận event có thể mất nếu process dừng sau commit. Không dùng
-  Kafka, RabbitMQ hoặc Saga.
-
-### Giai đoạn 2 — Email channel
-
-- Thêm `EmailNotificationChannel` phía sau cùng NotificationService/channel contract;
-  module Borrow, Repair và Asset không thay đổi.
-- Email ở giai đoạn đơn giản là best-effort. Lỗi một channel không làm channel khác
-  thất bại và phải được log/theo dõi riêng.
-
-### Giai đoạn 3 — Transactional Outbox khi cần bảo đảm giao nhận
-
-- Chỉ triển khai khi email/thông báo được yêu cầu không được mất và cần retry bền vững.
-- Khi nâng cấp, event và row outbox phải được ghi trong cùng transaction nghiệp vụ;
-  worker chỉ đọc event đã commit, dispatch tới listener/channel, retry khi lỗi.
-- Consumer phải idempotent theo `eventId` vì outbox có thể giao một event nhiều lần.
-- Việc chuyển từ in-process sang outbox không được đổi event contract hoặc làm module
-  nghiệp vụ phụ thuộc Notification.
-- Chỉ emit cho sự kiện nghiệp vụ có ý nghĩa (duyệt, từ chối, trả, hỏng, sửa xong…),
-  KHÔNG emit cho CRUD tầm thường.
+- Contract chi tiết nằm tại
+  [`../modules/notifications/spec.md`](../modules/notifications/spec.md); danh sách
+  event nghiệp vụ nằm tại [`system-overview.md`](system-overview.md).
+- Hệ thống dùng Transactional Outbox, không dùng in-process event bus, Kafka hoặc
+  RabbitMQ. Runtime notification chạy cùng Node.js process với Express nhưng chỉ
+  khởi động khi `NOTIFICATION_WORKER_ENABLED=true`.
+- Module nghiệp vụ ghi domain event vào `outbox_events` trong cùng Prisma transaction
+  với thay đổi nghiệp vụ. Transaction rollback thì event cũng rollback; worker chỉ
+  nhìn thấy và claim event sau khi transaction đã commit.
+- Event chuẩn có `eventId`, `eventType`, `eventVersion`, aggregate, actor,
+  correlation, `occurredAt` và payload được validate theo từng event type.
+- Module nghiệp vụ không gọi NotificationService, SMTP provider hoặc ghi trực tiếp
+  vào `notifications`/`notification_deliveries`. Chỉ phát các sự kiện nghiệp vụ có
+  ý nghĩa; CRUD tầm thường không tự phát event.
+- Ba observer trong `src/notifications` nhận event và chỉ tạo notification intent;
+  observer không truy vấn Prisma, render email hoặc tạo delivery.
+- Recipient resolver và template catalog biến intent thành các delivery snapshot.
+  Việc tạo `notification_deliveries` và chuyển outbox sang `DISPATCHED` diễn ra
+  nguyên tử trong một transaction.
+- `notification_deliveries` tách riêng trạng thái của từng người nhận và từng kênh.
+  Lỗi EMAIL không làm IN_APP thất bại; retry dùng nội dung và địa chỉ đã snapshot.
+- Generic delivery processor chọn handler qua registry. In-app handler tạo dòng
+  `notifications` và liên kết delivery trong cùng transaction; SMTP handler thực
+  hiện network I/O ngoài database transaction.
+- Claim, finalize, release và reclaim đều kiểm tra status cùng lease owner. Consumer
+  phải idempotent vì cơ chế giao nhận có at-least-once semantics.
+- Không gửi email, gọi provider hoặc giữ DB concurrency permit trong SMTP I/O.
+  `NOTIFICATION_WORKER_ENABLED=false` và `SMTP_ENABLED=false` là mặc định an toàn.
 
 ## 8. Giao dịch (transaction)
 

@@ -12,6 +12,7 @@ so that **I can approve or reject the correct items**.
 - AC-US-F04-01-02: Then the system shows the overall status and the status of each detail.
 - AC-US-F04-01-03: Then the user can identify which details remain `PENDING`.
 - AC-US-F04-01-04: Given the user lacks permission to view all requests, then the system does not provide other users' data.
+- AC-US-F04-01-05: Then filter hỗ trợ `PENDING` (mặc định), `ALL`, `APPROVED` và `REJECTED`; khi chọn `ALL`, request có detail `PENDING` được hiển thị trước các request còn lại và vẫn phân trang theo request.
 
 ## Applicable Business Rules
 

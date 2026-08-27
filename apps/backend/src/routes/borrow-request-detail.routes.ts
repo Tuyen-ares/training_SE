@@ -11,8 +11,7 @@ import { PrismaMediaRepository } from '@/repositories/media.prisma.repository.js
 import { AssetService } from '@/services/assets.service.js';
 import { AssetIssueService } from '@/services/asset-issue.service.js';
 import { BorrowWorkflowService } from '@/services/borrow-workflow.service.js';
-import { PrismaNotificationRepository } from '@/repositories/notification.prisma.repository.js';
-import { NotificationService } from '@/services/notification.service.js';
+import { domainEventWriter } from '@/notifications/composition.js';
 import { VendorService } from '@/services/vendor.service.js';
 import { S3MediaStorage } from '@/services/media-storage.service.js';
 import { MediaService } from '@/services/media.service.js';
@@ -20,8 +19,6 @@ import { MediaService } from '@/services/media.service.js';
 const router = Router();
 const borrowRepository = new PrismaBorrowRequestRepository(prisma);
 const assetService = new AssetService(new PrismaAssetRepository(prisma), prisma);
-const notificationRepository = new PrismaNotificationRepository(prisma);
-const notificationService = new NotificationService(notificationRepository);
 const mediaService = new MediaService(
   new PrismaMediaRepository(prisma),
   new S3MediaStorage(),
@@ -31,7 +28,7 @@ const assetIssueService = new AssetIssueService(
   assetService,
   new PrismaAssetIssueRepository(prisma),
   new VendorService(new PrismaVendorRepository(prisma), prisma),
-  notificationService,
+  domainEventWriter,
   prisma,
   mediaService,
 );
@@ -40,13 +37,14 @@ const controller = new BorrowWorkflowController(
     borrowRepository,
     assetService,
     assetIssueService,
-    notificationService,
+    domainEventWriter,
     prisma,
     mediaService,
   ),
 );
 
 router.get('/handover-queue', requireAuth, requirePermission('asset.checkout'), controller.handoverQueue);
+router.get('/handover-queue/:requestId', requireAuth, requirePermission('asset.checkout'), controller.handoverDetail);
 router.get('/review-queue', requireAuth, requirePermission('borrow_request.view_all'), controller.reviewQueue);
 router.get('/review-queue/:requestId', requireAuth, requirePermission('borrow_request.view_all'), controller.reviewDetail);
 router.post('/:detailId/approve', requireAuth, requirePermission('borrow_request.approve'), controller.approve);

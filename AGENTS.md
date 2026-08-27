@@ -27,3 +27,18 @@ After implementation:
 
 `docs/future/**` is `FUTURE / NOT IMPLEMENTED`. Never implement from it unless the
 user explicitly moves that scope into active requirements.
+
+## Notification, outbox, and event-workflow governance
+
+Every task that touches notifications, the transactional outbox, delivery
+processing, or a workflow that emits a domain event must:
+
+1. Read `docs/plans/2026-08-21-notification-outbox-remediation-checklist.md` before editing.
+2. Mark exactly one relevant checklist gap `IN_PROGRESS` before implementing it.
+3. Update that gap and its verification evidence in the same change; never mark
+   it `COMPLETE` until the relevant tests pass.
+4. At the end of each remediation phase, synchronize the single durable
+   notification architecture entry in `docs/project-context/implementation-memory.md`.
+
+The checklist owns fix-level progress. Implementation memory must not become a
+per-file changelog.

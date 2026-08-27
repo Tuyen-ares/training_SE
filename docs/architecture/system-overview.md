@@ -83,20 +83,27 @@ retired (terminal)
 
 approved/rejected là trạng thái cuối, không chuyển tiếp. Chủ sở hữu: module 05.
 
-## Domain events (target — dùng cho Notification sau này)
+## Domain events (active notification outbox catalog)
 
 | Event | Emit ở | Payload chính |
 |-------|--------|---------------|
-| `borrow_request.created` | 05 | requestId, userId |
-| `borrow_request.approved` | 05 | requestId, userId, approverId, assetIds |
-| `borrow_request.rejected` | 05 | requestId, userId, approverId, note |
-| `asset.returned` | 05 | detailId, assetId, userId, condition |
-| `asset.status_changed` | 02 | assetId, from, to |
-| `repair.started` | 06 | repairLogId, assetId, handledBy |
-| `repair.completed` | 06 | repairLogId, assetId, cost, result |
+| `borrow_request.created` | 03 | requestId, requesterId |
+| `borrow_request.approval_summary` | 04 | requestId, requesterId, approvalItems |
+| `borrow_request_detail.approved` | 04 | requestId, requesterId |
+| `borrow_request_detail.rejected` | 04 | requestId, requesterId |
+| `borrow_history.handed_over` | 05 | requestId, requesterId |
+| `borrow_history.returned` | 05 | requestId, requesterId |
+| `borrow_history.returned_damaged` | 05 | requestId, requesterId |
+| `asset_issue.reported` | 06 | issueId, reporterId |
+| `asset_issue.created_from_damaged_return` | 05/06 | issueId, reporterId |
+| `asset_issue.confirmed` | 06 | issueId, reporterId |
+| `asset_issue.rejected` | 06 | issueId, reporterId |
+| `asset_issue.repair_started` | 06 | issueId, reporterId |
+| `asset_issue.repair_completed` | 06 | issueId, reporterId |
+| `asset_issue.repair_failed` | 06 | issueId, reporterId |
 
-> Hiện chưa triển khai event bus, Notification table hay listener. Hướng triển khai
-> đa kênh và lộ trình In-App → Email → Transactional Outbox được chốt tại
+> Notification hiện dùng Transactional Outbox và Observer dispatch trong cùng
+> Node.js process; In-App và SMTP là delivery handlers. Chi tiết được chốt tại
 > [`../modules/notifications/spec.md`](../modules/notifications/spec.md).
 
 ## Glossary
@@ -112,8 +119,8 @@ approved/rejected là trạng thái cuối, không chuyển tiếp. Chủ sở h
   token mới cùng `family_id`; dùng lại token cũ → nghi ngờ đánh cắp → revoke cả family.
 - Publisher–Subscriber: module nghiệp vụ publish event mà không cần biết Notification
   hay channel nào đang lắng nghe.
-- Notification channel adapter: implementation gửi một Notification qua `in_app`,
-  `email` hoặc channel khác sau cùng một contract.
+- Notification channel handler: Strategy implementation gửi qua `IN_APP`, `EMAIL`
+  hoặc channel khác sau cùng một contract.
 - Transactional Outbox: ghi event vào bảng outbox trong cùng business transaction,
   rồi worker dispatch sau commit để giảm nguy cơ mất event và hỗ trợ retry.
 - REQ-xxx: mã định danh của một acceptance criteria trong spec module.

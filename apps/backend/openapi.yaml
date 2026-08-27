@@ -1100,10 +1100,9 @@ paths:
         - F05 - Handover, Return & History
       summary: Hàng đợi bàn giao
       description: >-
-        Yêu cầu permission `asset.checkout`. Chỉ trả về detail `APPROVED` có asset
-        `RESERVED` và chưa có borrow history; không yêu cầu `borrow_request.view_all`
-        hoặc `borrow_history.view_all`. Sắp xếp request cũ trước, sau đó `detailId`
-        tăng dần.
+        Yêu cầu permission asset.checkout. Chỉ trả về request có detail `APPROVED`,
+        asset `RESERVED` và chưa có borrow history. Pagination và total tính theo
+        request; các detail trong request được sắp xếp theo detailId tăng dần.
       operationId: listHandoverQueue
       security:
         - bearerAuth: []
@@ -1126,22 +1125,61 @@ paths:
           $ref: '#/components/responses/Unauthorized'
         '403':
           $ref: '#/components/responses/Forbidden'
+  /borrow-request-details/handover-queue/{requestId}:
+    get:
+      tags:
+        - F05 - Handover, Return & History
+      summary: Chi tiết bàn giao theo phiếu
+      description: >-
+        Yêu cầu permission asset.checkout. Trả về context của một request và các
+        detail APPROVED có asset RESERVED chưa có borrow history để admin/manager
+        kiểm tra asset, chụp evidence nếu cần và xác nhận từng asset. Response
+        giữ progress approved/handed over và chỉ trả các detail còn chờ bàn giao.
+      operationId: getHandoverRequestDetail
+      security:
+        - bearerAuth: []
+      parameters:
+        - $ref: '#/components/parameters/RequestId'
+      responses:
+        '200':
+          description: Chi tiết request chờ bàn giao
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data:
+                    $ref: '#/components/schemas/HandoverQueueRequest'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          description: Không tìm thấy phiếu
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
   /borrow-request-details/review-queue:
     get:
       tags:
         - F04 - Approval & Reservation
       summary: Hàng đợi duyệt
       description: >-
-        Trang toàn công ty chứa các phiếu có ít nhất một detail `PENDING`, sắp xếp cũ nhất trước.
+        Trang toàn công ty lọc theo trạng thái detail `PENDING`, `ALL`, `APPROVED` hoặc `REJECTED`
+        (mặc định `PENDING`). Với `ALL`, nhóm có detail `PENDING` đứng trước, mỗi nhóm sắp xếp cũ nhất trước.
       operationId: reviewQueue
       parameters:
         - $ref: '#/components/parameters/Page'
         - $ref: '#/components/parameters/PageSize'
         - name: approvalStatus
           in: query
-          description: Lọc theo trạng thái duyệt của detail (mặc định PENDING)
+          description: >-
+            Lọc theo trạng thái detail: PENDING (mặc định), ALL, APPROVED hoặc REJECTED
           schema:
-            $ref: '#/components/schemas/BorrowDetailStatus'
+            $ref: '#/components/schemas/ReviewQueueApprovalStatus'
       responses:
         '200':
           description: Trang hàng đợi duyệt
@@ -1306,6 +1344,70 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/Error'
+  /borrow-histories/activity/me:
+    get:
+      tags:
+        - F05 - Handover, Return & History
+      summary: Activity mượn theo request của tôi
+      description: >-
+        Danh sách current hoặc returned borrow history của user hiện tại, nhóm
+        theo borrow request. Pagination và total tính theo request, không theo
+        history; response không có status cấp request.
+      operationId: listMyBorrowingActivity
+      security:
+        - bearerAuth: []
+      parameters:
+        - $ref: '#/components/parameters/Page'
+        - $ref: '#/components/parameters/PageSize'
+        - $ref: '#/components/parameters/BorrowingActivityState'
+      responses:
+        '200':
+          description: Trang activity mượn theo request của user hiện tại
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data:
+                    $ref: '#/components/schemas/BorrowingActivityRequestGroupPage'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+  /borrow-histories/activity:
+    get:
+      tags:
+        - F05 - Handover, Return & History
+      summary: Activity mượn theo request toàn bộ
+      description: >-
+        Danh sách current hoặc returned borrow history toàn công ty, nhóm theo
+        borrow request cho user có permission phù hợp. Pagination và total tính
+        theo request; response không có status cấp request.
+      operationId: listAllBorrowingActivity
+      security:
+        - bearerAuth: []
+      parameters:
+        - $ref: '#/components/parameters/Page'
+        - $ref: '#/components/parameters/PageSize'
+        - $ref: '#/components/parameters/BorrowingActivityState'
+      responses:
+        '200':
+          description: Trang activity mượn theo request toàn công ty
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data:
+                    $ref: '#/components/schemas/BorrowingActivityRequestGroupPage'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
   /borrow-histories/current:
     get:
       tags:
@@ -1386,10 +1488,9 @@ paths:
         - F05 - Handover, Return & History
       summary: Hàng đợi nhận trả
       description: >-
-        Yêu cầu permission `asset.checkin`. Chỉ trả về borrow history chưa có
-        `return_date`; không yêu cầu `borrow_request.view_all` hoặc
-        `borrow_history.view_all`. Sắp xếp theo expected return date gần nhất/quá
-        hạn trước, rồi `borrowedAt` cũ trước và `historyId` tăng dần.
+        Yêu cầu permission asset.checkin. Chỉ trả về request có borrow history chưa
+        có return_date. Pagination và total tính theo request; các history trong
+        request được sắp xếp theo detailId tăng dần.
       operationId: listReturnQueue
       security:
         - bearerAuth: []
@@ -1405,13 +1506,49 @@ paths:
                 type: object
                 properties:
                   data:
-                    $ref: '#/components/schemas/BorrowHistoryPage'
+                    $ref: '#/components/schemas/ReturnQueuePage'
         '400':
           $ref: '#/components/responses/BadRequest'
         '401':
           $ref: '#/components/responses/Unauthorized'
         '403':
           $ref: '#/components/responses/Forbidden'
+  /borrow-histories/return-queue/{requestId}:
+    get:
+      tags:
+        - F05 - Handover, Return & History
+      summary: Chi tiết hoàn trả theo phiếu
+      description: >-
+        Yêu cầu permission asset.checkin. Trả về context của một request và các
+        history chưa có return_date để admin/manager kiểm tra asset, chọn tình trạng
+        trả và xác nhận từng history. Response giữ progress returned/pending của request.
+      operationId: getReturnRequestDetail
+      security:
+        - bearerAuth: []
+      parameters:
+        - $ref: '#/components/parameters/RequestId'
+      responses:
+        '200':
+          description: Chi tiết request chờ hoàn trả
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data:
+                    $ref: '#/components/schemas/ReturnQueueRequest'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          description: Không tìm thấy phiếu
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
   /borrow-histories/{historyId}:
     get:
       tags:
@@ -2767,6 +2904,16 @@ components:
           - ALL
           - CURRENT
           - RETURNED
+    BorrowingActivityState:
+      name: state
+      in: query
+      description: Lọc current hoặc returned history trong request group
+      schema:
+        type: string
+        enum:
+          - CURRENT
+          - RETURNED
+        default: CURRENT
   responses:
     BadRequest:
       description: Dữ liệu đầu vào không hợp lệ
@@ -3239,6 +3386,13 @@ components:
         - PENDING
         - APPROVED
         - REJECTED
+    ReviewQueueApprovalStatus:
+      type: string
+      enum:
+        - ALL
+        - PENDING
+        - APPROVED
+        - REJECTED
     CreateBorrowRequestInput:
       type: object
       properties:
@@ -3500,6 +3654,8 @@ components:
         - historyId
     HandoverQueueItem:
       type: object
+      deprecated: true
+      description: Legacy detail-level shape retained for compatibility; the handover queue now returns HandoverQueueRequest groups.
       properties:
         detailId:
           type: integer
@@ -3596,13 +3752,174 @@ components:
         - expectedReturnDate
         - approvedBy
         - approvedAt
+    BorrowRequesterSummary:
+      type: object
+      properties:
+        id:
+          type: integer
+        userCode:
+          type: string
+          pattern: '^BI[0-9]{5,}$'
+        name:
+          type: string
+        email:
+          type: string
+          format: email
+        avatarUrl:
+          type: string
+          nullable: true
+        department:
+          type: object
+          nullable: true
+          properties:
+            id:
+              type: integer
+            name:
+              type: string
+          required:
+            - id
+            - name
+      required:
+        - id
+        - userCode
+        - name
+        - email
+        - avatarUrl
+        - department
+    HandoverQueueDetail:
+      type: object
+      properties:
+        detailId:
+          type: integer
+        asset:
+          type: object
+          properties:
+            id:
+              type: integer
+            assetCode:
+              type: string
+            serialNumber:
+              type: string
+              nullable: true
+            qrCode:
+              type: string
+            imageUrl:
+              type: string
+              nullable: true
+            status:
+              $ref: '#/components/schemas/AssetStatus'
+            model:
+              $ref: '#/components/schemas/AssetSummary'
+          required:
+            - id
+            - assetCode
+            - serialNumber
+            - qrCode
+            - imageUrl
+            - status
+            - model
+        expectedReturnDate:
+          type: string
+          format: date
+        approvedBy:
+          type: object
+          nullable: true
+          properties:
+            id:
+              type: integer
+            name:
+              type: string
+          required:
+            - id
+            - name
+        approvedAt:
+          type: string
+          format: date-time
+          nullable: true
+      required:
+        - detailId
+        - asset
+        - expectedReturnDate
+        - approvedBy
+        - approvedAt
+    HandoverQueueRequest:
+      type: object
+      properties:
+        requestId:
+          type: integer
+        requestCreatedAt:
+          type: string
+          format: date-time
+        requester:
+          $ref: '#/components/schemas/BorrowRequesterSummary'
+        pendingCount:
+          type: integer
+        approvedCount:
+          type: integer
+        handedOverCount:
+          type: integer
+        items:
+          type: array
+          items:
+            $ref: '#/components/schemas/HandoverQueueDetail'
+      required:
+        - requestId
+        - requestCreatedAt
+        - requester
+        - pendingCount
+        - approvedCount
+        - handedOverCount
+        - items
     HandoverQueuePage:
       type: object
       properties:
         items:
           type: array
           items:
-            $ref: '#/components/schemas/HandoverQueueItem'
+            $ref: '#/components/schemas/HandoverQueueRequest'
+        page:
+          type: integer
+        pageSize:
+          type: integer
+        total:
+          type: integer
+      required:
+        - items
+        - page
+        - pageSize
+        - total
+    ReturnQueueRequest:
+      type: object
+      properties:
+        requestId:
+          type: integer
+        requestCreatedAt:
+          type: string
+          format: date-time
+        requester:
+          $ref: '#/components/schemas/BorrowRequesterSummary'
+        pendingCount:
+          type: integer
+        returnedCount:
+          type: integer
+        items:
+          type: array
+          items:
+            $ref: '#/components/schemas/BorrowHistory'
+      required:
+        - requestId
+        - requestCreatedAt
+        - requester
+        - pendingCount
+        - returnedCount
+        - items
+    ReturnQueuePage:
+      type: object
+      properties:
+        items:
+          type: array
+          items:
+            $ref: '#/components/schemas/ReturnQueueRequest'
         page:
           type: integer
         pageSize:
@@ -3926,6 +4243,46 @@ components:
           type: array
           items:
             $ref: '#/components/schemas/BorrowHistory'
+        page:
+          type: integer
+        pageSize:
+          type: integer
+        total:
+          type: integer
+      required:
+        - items
+        - page
+        - pageSize
+        - total
+    BorrowingActivityRequestGroup:
+      type: object
+      properties:
+        requestId:
+          type: integer
+        requestCreatedAt:
+          type: string
+          format: date-time
+        requester:
+          $ref: '#/components/schemas/BorrowRequesterSummary'
+        itemCount:
+          type: integer
+        items:
+          type: array
+          items:
+            $ref: '#/components/schemas/BorrowHistory'
+      required:
+        - requestId
+        - requestCreatedAt
+        - requester
+        - itemCount
+        - items
+    BorrowingActivityRequestGroupPage:
+      type: object
+      properties:
+        items:
+          type: array
+          items:
+            $ref: '#/components/schemas/BorrowingActivityRequestGroup'
         page:
           type: integer
         pageSize:

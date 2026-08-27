@@ -19,6 +19,7 @@ test('damaged return rolls back history and asset changes when issue creation fa
       }
     },
     findHistoryForAction: async () => state.history,
+    findActionDetail: async () => ({ requestId: 5 }),
     completeReturn: async () => {
       state.history.returnedAt = new Date();
       state.returnCondition = 'DAMAGED';
@@ -34,9 +35,8 @@ test('damaged return rolls back history and asset changes when issue creation fa
       throw new Error('simulated issue insert failure');
     },
   };
-  const notifications = {
-    createInTransaction: async () => ({}),
-    notifyPermissionHoldersInTransaction: async () => 0,
+  const events = {
+    append: async () => undefined,
   };
   const prisma = {
     async $transaction<T>(work: (transaction: object) => Promise<T>): Promise<T> {
@@ -53,7 +53,7 @@ test('damaged return rolls back history and asset changes when issue creation fa
     repository as any,
     assets as any,
     assetIssues as any,
-    notifications as any,
+    events as any,
     prisma as any,
   );
 
@@ -64,4 +64,42 @@ test('damaged return rolls back history and asset changes when issue creation fa
   assert.equal(state.history.returnedAt, null);
   assert.equal(state.returnCondition, null);
   assert.equal(state.assetStatus, 'borrowed');
+});
+
+test('handover queue detail delegates to the repository', async () => {
+  const expected = { requestId: 42, pendingCount: 1 };
+  const repository = {
+    findHandoverQueueRequest: async (requestId: number) => {
+      assert.equal(requestId, 42);
+      return expected;
+    },
+  };
+  const service = new BorrowWorkflowService(
+    repository as any,
+    {} as any,
+    {} as any,
+    { append: async () => undefined } as any,
+    {} as any,
+  );
+
+  assert.deepEqual(await service.getHandoverQueueDetail(42), expected);
+});
+
+test('return queue detail delegates to the repository', async () => {
+  const expected = { requestId: 42, pendingCount: 2 };
+  const repository = {
+    findReturnQueueRequest: async (requestId: number) => {
+      assert.equal(requestId, 42);
+      return expected;
+    },
+  };
+  const service = new BorrowWorkflowService(
+    repository as any,
+    {} as any,
+    {} as any,
+    { append: async () => undefined } as any,
+    {} as any,
+  );
+
+  assert.deepEqual(await service.getReturnQueueDetail(42), expected);
 });

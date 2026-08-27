@@ -1,7 +1,12 @@
 # Notification Architecture & Delivery Roadmap
 
-Status: **Proposed — design and rollout guide, not yet fully implemented**  
-Scope: In-app notification, Observer/Publisher–Subscriber, Firebase Cloud Messaging (FCM) Web Push and SMTP email.
+> Express and notification loops run in one Node.js process. Transactional
+> outbox, IN_APP, SMTP, and the optional RabbitMQ delivery transport are active
+> scope; FCM and SMS remain future scope.
+> The hardening verification and SMTP smoke-test evidence are tracked in the
+> notification outbox remediation checklist.
+Status: **IMPLEMENTED — HARDENING VERIFICATION IN PROGRESS**
+Scope: In-app notification, Observer/Publisher–Subscriber, transactional outbox and SMTP email. FCM/SMS sections below are future roadmap only.
 
 ## 1. Mục tiêu
 
@@ -9,9 +14,8 @@ Hệ thống phải có khả năng:
 
 - Tạo notification từ các event nghiệp vụ quan trọng mà không làm Borrow/Repair/Asset phụ thuộc vào từng channel.
 - Hiển thị notification trong ứng dụng.
-- Gửi FCM Web Push khi user không mở web page.
 - Gửi email qua SMTP.
-- Retry khi FCM/SMTP tạm thời lỗi.
+- Retry khi SMTP tạm thời lỗi.
 - Không mất event sau khi nghiệp vụ chính đã commit.
 - Không gửi trùng khi worker xử lý lại cùng một event.
 - Có thể thêm channel mới như SMS mà không sửa các service nghiệp vụ.
@@ -24,38 +28,30 @@ Hệ thống phải có khả năng:
 - Không xem Observer in-process là cơ chế đảm bảo giao nhận. Process dừng sau commit vẫn có thể làm mất event nếu chưa có Outbox.
 - Không ghi access token FCM, SMTP password hoặc service-account private key vào frontend, log hoặc repository.
 
-## 2. Baseline hiện tại
+## 2. Implementation hiện tại
 
-Notification in-app đã có các lớp chính:
+Business workflow ghi typed domain event vào `outbox_events` trong cùng Prisma
+transaction với thay đổi nghiệp vụ. Runtime sau commit gồm các lớp chính:
 
 ```text
-NotificationController
-        ↓
-NotificationService
-        ↓
-INotificationRepository
-        ↓
-PrismaNotificationRepository
-        ↓
-notifications
+Business transaction -> outbox_events
+Outbox loop -> three explicit observers -> notification_messages + delivery rows
+Delivery transport -> DB loop when disabled, or RabbitMQ publisher/consumer when READY
+Delivery handler -> IN_APP handler / pooled SMTP provider
 ```
 
-Các workflow hiện tại ghi notification qua `NotificationService` như một
-participant của transaction owner:
-
-- `BorrowRequestService` dùng `notifyPermissionHoldersInTransaction(...)` khi tạo request.
-- `BorrowWorkflowService` dùng `createInTransaction(...)` và
-  `notifyPermissionHoldersInTransaction(...)` khi approve, reject, handover,
-  return và damaged return.
-- `AssetIssueService` dùng cùng các participant method khi report/confirm/reject
-  và repair thay đổi trạng thái.
-
-`NotificationService` nhận và truyền tiếp cùng Prisma transaction client;
-`PrismaNotificationRepository` không tự mở write transaction. Vì vậy
-notification in-app rollback cùng business state nếu workflow thất bại.
-- Frontend dùng browser event `notifications:changed` để refresh unread badge trong cùng tab.
-
-Đây là nền tảng có thể mở rộng vì repository đã được inject qua interface. Tuy nhiên, đây chưa phải Observer Pattern hoàn chỉnh: chưa có domain event envelope, event bus, subscriber registry hoặc durable delivery queue.
+- Ba observer sở hữu explicit, không trùng lặp toàn bộ 14 event types.
+- Outbox và delivery claim theo `created_at, id` trong transaction bằng
+  `FOR UPDATE SKIP LOCKED`, bulk-update batch sang `PROCESSING`, rồi đọc lại
+  claim trước khi commit. Finalize/retry/fail vẫn yêu cầu đúng lease owner.
+- DB limiter bao quanh repository call/transaction; observer và SMTP I/O không
+  giữ DB permit.
+- SMTP config có ba trạng thái: `DISABLED` vẫn chạy email loop để ghi
+  `SKIPPED/SMTP_DISABLED`; `MISCONFIGURED` không chạy email loop và giữ backlog
+  `PENDING`; `READY` dùng một pooled transporter. Config log chỉ ghi error code,
+  còn runtime error che authorization, secret key/value và URL credentials.
+- Frontend tiếp tục dùng API F07 hiện tại và browser event
+  `notifications:changed`; public HTTP contract không đổi.
 
 ## 3. Kiến trúc mục tiêu
 
@@ -64,11 +60,10 @@ flowchart LR
   A[Borrow / Asset / Repair Service] --> B[Publish Domain Event]
   B --> C[(Transactional Outbox)]
   C --> D[Notification Worker]
-  D --> E[In-App Handler]
-  D --> F[FCM Handler]
+  D --> E[IN_APP Handler]
   D --> G[SMTP Handler]
   E --> H[(notifications)]
-  F --> I[Firebase Cloud Messaging]
+  E -. Future realtime transport .-> I[Firebase Cloud Messaging]
   G --> J[SMTP Provider]
   I --> K[Browser Service Worker / Device]
   J --> L[User Email]
@@ -104,20 +99,35 @@ interface DomainEvent<TPayload = unknown> {
 }
 ```
 
-### 4.1. Event MVP đề xuất
+### 4.1. Event catalog đang active
 
-| Event | Recipient chính | Payload tối thiểu |
+Catalog hiện có 14 domain event. Mỗi event dùng `eventVersion = 1`; ngoài các
+ID bắt buộc, payload có thể mang snapshot compact của tên người dùng, thiết bị,
+ngày trả dự kiến, kết quả xử lý và deep-link context. Snapshot được ghi cùng
+transaction nghiệp vụ để template không phải đọc lại dữ liệu đã thay đổi.
+
+| Event | Recipient chính | Payload snapshot chính |
 |---|---|---|
-| `borrow_request.created` | User có permission xử lý request | `requestId`, `requesterId` |
-| `borrow_request.approved` | Requester | `requestId`, `detailId`, `approverId` |
-| `borrow_request.rejected` | Requester | `requestId`, `detailId`, `approverId`, `reason` |
-| `asset.handed_over` | Requester | `requestId`, `detailId`, `assetId` |
-| `asset.returned` | Requester hoặc người liên quan | `requestId`, `detailId`, `assetId`, `condition` |
-| `asset_issue.reported` | User có permission xử lý issue | `issueId`, `assetId`, `reporterId` |
-| `asset_issue.confirmed` | Reporter và user liên quan | `issueId`, `assetId`, `actorId` |
-| `repair.started` | Reporter hoặc requester liên quan | `issueId`, `assetId`, `actorId` |
-| `repair.completed` | Reporter hoặc requester liên quan | `issueId`, `assetId`, `result`, `actorId` |
-| `repair.failed` | Reporter hoặc requester liên quan | `issueId`, `assetId`, `reason`, `actorId` |
+| `borrow_request.created` | User có permission xử lý request | request/requester, actor, danh sách detail + asset + expected return |
+| `borrow_request.approval_summary` | Requester | request/requester, reviewer, kết quả approved/skipped theo detail |
+| `borrow_request_detail.approved` | Requester | request/detail, requester, asset, approver, expected return |
+| `borrow_request_detail.rejected` | Requester | request/detail, requester, asset, reviewer, rejection reason |
+| `borrow_history.handed_over` | Requester | request/detail, requester, asset, handover actor, expected return |
+| `borrow_history.returned` | Requester | request/detail, requester, asset, receiver, return condition |
+| `borrow_history.returned_damaged` | Requester | request/detail, requester, asset, receiver, return condition |
+| `asset_issue.reported` | User có permission xử lý issue | issue/reporter, asset, description, status |
+| `asset_issue.created_from_damaged_return` | User có permission xử lý issue | issue/reporter, asset, description, status |
+| `asset_issue.confirmed` | Reporter | issue/reporter, asset, actor, description/status |
+| `asset_issue.rejected` | Reporter | issue/reporter, asset, actor, description/status/note |
+| `asset_issue.repair_started` | Reporter | issue/reporter, asset, actor, description/status/result/note |
+| `asset_issue.repair_completed` | Reporter | issue/reporter, asset, actor, description/status/result/note |
+| `asset_issue.repair_failed` | Reporter | issue/reporter, asset, actor, description/status/result/note |
+
+Approve đơn lẻ tạo notification riêng cho detail. Approve All ghi audit event
+cho từng detail thành công nhưng đánh dấu detail event không tạo notification;
+nếu có ít nhất một detail thành công, một `borrow_request.approval_summary`
+duy nhất tạo notification in-app và email tổng hợp. Detail lỗi vẫn giữ trạng
+thái `PENDING`; nếu tất cả bị bỏ qua thì không tạo summary event.
 
 Chỉ phát event cho thay đổi có ý nghĩa nghiệp vụ. Không phát event cho các thao tác CRUD tầm thường như đổi avatar hoặc đổi số điện thoại.
 
@@ -282,7 +292,7 @@ Mục tiêu: chuyển cách tạo notification hiện tại sang event subscribe
 - Không có notification trùng khi worker/event được xử lý lại.
 - User chỉ xem và mark-read notification của chính mình.
 
-### Phase 4 — FCM Web Push
+### Phase 4 — Firebase realtime delivery for IN_APP
 
 Mục tiêu: gửi push đến browser/device ngay cả khi user không mở web page.
 
@@ -326,7 +336,12 @@ GET    /api/notification-devices
 
 Backend phải kiểm tra user hiện tại khi tạo/xóa token. Token không được trả cho user khác.
 
-#### FCM channel handler
+#### Firebase transport behind IN_APP
+
+`IN_APP` remains the logical notification channel and the persisted
+`notifications` row remains the source of truth. Firebase Cloud Messaging is
+a future realtime transport for that channel, not a separate RabbitMQ channel.
+A Firebase outage must not remove or roll back the stored in-app notification.
 
 - Nhận event từ worker.
 - Lấy các device token active của recipient.
@@ -385,7 +400,6 @@ SMTP_SECURE
 SMTP_USER
 SMTP_PASSWORD
 SMTP_FROM
-SMTP_REPLY_TO
 ```
 
 Không log password, SMTP URL đầy đủ hoặc email content có dữ liệu nhạy cảm.
@@ -410,6 +424,7 @@ recipient_user_id
 channel            in_app | fcm | email
 status             pending | sent | failed
 attempt_count
+outbound_message_id nullable
 provider_message_id nullable
 last_error nullable
 sent_at nullable
@@ -571,3 +586,31 @@ Phase 0: Contract
 ```
 
 Lý do: Observer giúp tách coupling, nhưng Outbox mới đảm bảo event không mất khi process restart hoặc provider tạm thời lỗi. FCM và SMTP chỉ nên bật production sau khi Phase 2 hoàn tất.
+
+## RabbitMQ delivery transport
+
+RabbitMQ chỉ vận chuyển delivery đã materialize. Luồng là outbox_events, observer
+và template renderer, notification_deliveries, publisher confirm, channel queue,
+consumer CAS, rồi notifications hoặc SMTP.
+
+Exchange chính là bigin.notification-deliveries kiểu topic. IN_APP dùng queue
+bigin.notifications.in-app.v1 với routing key notification.in_app.delivery.
+EMAIL dùng queue bigin.notifications.email.v1 với routing key
+notification.email.delivery. Exchange dead-letter là bigin.dead-letter kiểu
+direct, có một DLQ riêng cho mỗi channel.
+
+DeliveryJobV1 có schemaVersion 1, deliveryId là chuỗi decimal dương, eventId là
+UUID, channel và publishLease. Không truyền outboundMessageId và không đặt
+contentEncoding. Header bắt buộc là x-event-id; x-correlation-id chỉ có khi
+correlation_id_snapshot khác null.
+
+Publisher claim đặt status PUBLISHING, locked_by là lease pub, locked_at và
+next_attempt_at. Confirm ACK chỉ thành công khi không có basic.return. Heartbeat
+là CAS theo id, status và lease, cập nhật cả locked_at và next_attempt_at.
+Consumer CAS yêu cầu PUBLISHING cùng publishLease, chuyển sang PROCESSING và
+tăng attempt_count đúng một lần. Consumer heartbeat chỉ cập nhật locked_at.
+
+Payload sai bị NACK vào DLQ. Delivery không tồn tại, terminal hoặc lease cũ
+được ACK. Handler thành công, skip, retry và fail đều ACK message Rabbit sau khi
+database đã ghi trạng thái. Lỗi database trước state update không ACK để broker
+redeliver. PUBLISHING và PROCESSING stale được reclaim bằng deadline tương ứng.

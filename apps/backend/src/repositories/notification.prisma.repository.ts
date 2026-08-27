@@ -1,13 +1,10 @@
 import type {
-  CreateNotificationInput,
   NotificationDto,
   NotificationListQuery,
   NotificationPage,
 } from '@/models/notification.model.js';
 import type {
   INotificationRepository,
-  NotificationLookupTransaction,
-  NotificationTransaction,
 } from '@/repositories/notification.repository.js';
 import type { PrismaClient } from '../../generated/prisma/index.js';
 
@@ -84,44 +81,4 @@ export class PrismaNotificationRepository implements INotificationRepository {
     return result.count;
   }
 
-  async create(
-    input: CreateNotificationInput,
-    transaction: NotificationTransaction,
-  ): Promise<NotificationDto> {
-    const notification = await transaction.notifications.create({
-      data: {
-        recipient_user_id: input.recipientUserId,
-        notification_type: input.notificationType,
-        title: input.title,
-        message: input.message,
-        related_entity_type: input.relatedEntityType ?? null,
-        related_entity_id: input.relatedEntityId ?? null,
-      },
-    });
-    return mapNotification(notification);
-  }
-
-  async findActiveUserIdsByPermissions(
-    permissionCodes: string[],
-    transaction?: NotificationLookupTransaction,
-  ): Promise<number[]> {
-    const database = transaction ?? this.prisma;
-    const users = await database.users.findMany({
-      where: {
-        is_active: true,
-        user_roles: {
-          some: {
-            roles: {
-              role_permissions: {
-                some: { permissions: { code: { in: permissionCodes } } },
-              },
-            },
-          },
-        },
-      },
-      select: { id: true },
-      distinct: ['id'],
-    });
-    return users.map(({ id }) => id);
-  }
 }

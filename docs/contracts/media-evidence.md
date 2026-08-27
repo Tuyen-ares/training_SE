@@ -174,6 +174,11 @@ owner teardown followed by `release`; `release` never stops tracks or the QR
 scanner itself. Pagehide, hidden visibility, camera switch and unexpected
 track-ended events use the same teardown boundary.
 
+If owner teardown fails, the coordinator retains the lease and candidate
+operation so no other workflow can open the hardware. Concurrent cleanup calls
+share only the in-flight attempt; a rejected attempt can be retried, and the
+lease is released only after teardown succeeds and pending startup settles.
+
 After a frame is encoded, all tracks and the preview element are cleared and
 the lease is released before the modal enters review. Review holds only the
 local File/object URL; `Chụp lại` acquires a new lease before requesting a new
