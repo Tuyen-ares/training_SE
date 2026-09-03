@@ -22,6 +22,7 @@ import { useRoute, useRouter } from 'vue-router'
 import { useAuthStore } from '../../stores/auth'
 import { useAppStore } from '../../stores/app'
 import { getUnreadNotificationCount } from '../../services/notifications/notification.service'
+import { initializeFcmNotifications } from '../../services/notifications/fcm.service'
 import BrandLogo from '../common/BrandLogo.vue'
 
 const route = useRoute()
@@ -147,15 +148,24 @@ function openProfile() {
   if (route.name !== 'profile') router.push({ name: 'profile' })
 }
 
+function refreshUnreadWhenVisible() {
+  if (!document.hidden) void loadUnreadNotifications()
+}
+
 onMounted(() => {
   updateViewport()
   window.addEventListener('resize', updateViewport)
   loadUnreadNotifications()
+  void initializeFcmNotifications(authStore.api)
   window.addEventListener('notifications:changed', loadUnreadNotifications)
+  window.addEventListener('focus', refreshUnreadWhenVisible)
+  document.addEventListener('visibilitychange', refreshUnreadWhenVisible)
 })
 onUnmounted(() => {
   window.removeEventListener('resize', updateViewport)
   window.removeEventListener('notifications:changed', loadUnreadNotifications)
+  window.removeEventListener('focus', refreshUnreadWhenVisible)
+  document.removeEventListener('visibilitychange', refreshUnreadWhenVisible)
   document.removeEventListener('keydown', handleEscape)
   document.body.classList.remove('bigin-mobile-nav-open')
 })

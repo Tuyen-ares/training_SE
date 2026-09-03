@@ -46,6 +46,7 @@ model users {
   handed_over_borrow_histories      borrow_histories[]        @relation("borrow_histories_handed_over_by")
   received_return_borrow_histories  borrow_histories[]        @relation("borrow_histories_received_by")
   notifications                     notifications[]
+  notification_devices              notification_devices[]
   notification_deliveries           notification_deliveries[]
   refresh_tokens                    refresh_tokens[]
   user_roles                        user_roles[]
@@ -248,6 +249,25 @@ model borrow_requests {
   users                  users                    @relation(fields: [user_id], references: [id], onUpdate: NoAction, map: "fk_borrow_requests_user")
 
   @@index([user_id], map: "fk_borrow_requests_user")
+}
+
+model notification_devices {
+  id             Int      @id @default(autoincrement())
+  user_id        Int
+  provider       String   @default("FCM") @db.VarChar(20)
+  token_hash     String   @unique(map: "uq_notification_devices_token_hash") @db.Char(64)
+  token          String   @db.Text
+  platform       String   @default("WEB") @db.VarChar(20)
+  user_agent     String?  @db.VarChar(500)
+  last_seen_at   DateTime @default(now()) @db.DateTime(3)
+  is_active      Boolean  @default(true)
+  failure_count  Int      @default(0)
+  last_error     String?  @db.Text
+  created_at     DateTime @default(now()) @db.DateTime(3)
+  updated_at     DateTime @updatedAt @db.DateTime(3)
+  users          users    @relation(fields: [user_id], references: [id], onDelete: Cascade, onUpdate: NoAction, map: "fk_notification_devices_user")
+
+  @@index([user_id, is_active], map: "idx_notification_devices_user_active")
 }
 
 model notification_messages {

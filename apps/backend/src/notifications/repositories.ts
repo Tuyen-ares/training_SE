@@ -143,6 +143,9 @@ export interface DeliveryRepository {
     now: Date;
   }): Promise<boolean>;
   isRecipientActive(userId: number): Promise<boolean>;
+  ensureInAppNotification(
+    claim: ClaimedDelivery,
+  ): Promise<number | null>;
   completeInApp(claim: ClaimedDelivery): Promise<boolean>;
   markSent(
     claim: ClaimedDelivery,

@@ -1,15 +1,17 @@
 # Notification Queue và Transactional Outbox
 
-Tài liệu này giải thích hai bảng mới của hệ thống thông báo theo cách dành cho
-người mới bắt đầu:
+Tài liệu này giải thích các bảng bền vững của hệ thống thông báo theo cách
+dành cho người mới bắt đầu:
 
 - outbox_events: lưu việc gì vừa xảy ra trong nghiệp vụ.
 - notification_messages: lưu event_type, phiên bản template và payload JSON nhỏ để render.
 - notification_deliveries: lưu phải gửi message nào cho ai, qua kênh nào.
+- notification_devices: lưu token browser FCM của user để worker có thể gửi push.
 
-> **Lưu ý:** Database vẫn là nguồn sự thật bền vững. RabbitMQ là transport
-> tùy chọn cho notification_deliveries; RABBITMQ_ENABLED=false giữ delivery
-> loop đọc database, còn READY chuyển delivery sang publisher/consumer RabbitMQ.
+> **Lưu ý:** Database vẫn là nguồn sự thật bền vững. IN_APP và FCM Web Push
+> chạy bằng direct worker; FCM không đi qua RabbitMQ. RabbitMQ là transport
+> tùy chọn cho EMAIL; RABBITMQ_ENABLED=false giữ email delivery loop đọc
+> database, còn READY chuyển email delivery sang publisher/consumer RabbitMQ.
 > Domain event vẫn luôn đi qua outbox_events.
 
 ## Catalog domain event và email snapshot
@@ -33,6 +35,35 @@ cho từng detail approved nhưng chỉ tạo một `borrow_request.approval_sum
 với danh sách approved/skipped; detail event bulk được đánh dấu suppress để
 không tạo email riêng. Nếu không có detail nào approved thì không tạo summary.
 
+## Bảng notification_devices
+
+Bảng này lưu mối liên hệ giữa user đăng nhập và browser/device đã xin quyền
+nhận FCM Web Push. Token là credential để gửi push: backend phải lưu token
+để dùng, nhưng không trả token qua API, không ghi token vào log và không đưa
+token vào frontend bundle. token_hash là SHA-256 dùng cho unique/index; token
+raw chỉ được dùng nội bộ khi gọi Firebase Admin.
+
+| Trường | Ý nghĩa dễ hiểu |
+| --- | --- |
+| id | ID thiết bị tăng tự động. |
+| user_id | User sở hữu browser/device; có foreign key tới users.id. |
+| provider | Hiện tại là FCM. |
+| token_hash | Hash SHA-256 của token, unique để cùng token không tạo bản ghi trùng. |
+| token | Token FCM raw dùng khi gửi; không xuất hiện trong response hoặc log. |
+| platform | Hiện tại là WEB. |
+| user_agent | Thông tin browser tùy chọn để hỗ trợ vận hành. |
+| last_seen_at | Lần cuối browser đăng ký/làm mới token. |
+| is_active | false khi token đã invalid hoặc bị hủy. |
+| failure_count | Số lần token bị provider báo lỗi invalid. |
+| last_error | Mã lỗi provider gần nhất, không chứa token. |
+| created_at / updated_at | Thời điểm tạo và cập nhật bản ghi. |
+
+Khi frontend gọi POST notification-devices, repository hash token rồi upsert
+theo token_hash. Nếu cùng browser đăng nhập user khác, owner được cập nhật
+sang user hiện tại. Khi Firebase báo registration-token-not-registered hoặc
+invalid-registration-token, worker vô hiệu hóa đúng device đó. API GET chỉ
+trả metadata; DELETE chỉ xóa device của user đang xác thực.
+
 ## Bức tranh tổng quát
 
 ```text
@@ -51,16 +82,16 @@ notification_messages
 notification_deliveries
 (mỗi người nhận + mỗi kênh là một dòng)
         |
-        v
-Delivery publisher -> RabbitMQ topic exchange -> channel queue
+        +---- IN_APP direct worker ----> notifications
+        |                                  |
+        |                                  +---- FCM Web Push ----> browser
         |
-        +---- IN_APP consumer ----> notifications
-        |
-        +---- EMAIL consumer -----> SMTP provider
+        +---- EMAIL -> optional RabbitMQ -> SMTP provider
 ```
 
 Ví dụ: yêu cầu mượn tài sản được duyệt là **một sự kiện**. Nếu cần báo cho một
-người bằng cả in-app và email thì sự kiện đó tạo ra **hai delivery**.
+người bằng cả in-app và email thì sự kiện đó tạo ra **hai delivery**. FCM đi
+chung trong delivery IN_APP, không tạo thêm một dòng hay một queue.
 
 ## Bảng `outbox_events`
 
@@ -193,7 +224,7 @@ notification_deliveries không lưu HTML; delivery cũ không có message payloa
 
 | Kênh | Ý nghĩa |
 | --- | --- |
-| `IN_APP` | Tạo một dòng trong bảng `notifications` để hiện trong giao diện BigIn. |
+| `IN_APP` | Tạo một dòng trong bảng `notifications`; nếu user đã đăng ký browser và FCM sẵn sàng thì worker gửi thêm push trực tiếp. |
 | EMAIL | SMTP dùng recipient_address và notification_messages.payload; HTML render lúc gửi. |
 
 ### Các giá trị của `status`
@@ -204,7 +235,7 @@ notification_deliveries không lưu HTML; delivery cũ không có message payloa
 | `PROCESSING` | Đã được một worker claim và đang xử lý. |
 | `SENT` | Đã gửi/tạo thông báo thành công. |
 | `FAILED` | Không thể gửi và worker sẽ không tự retry nữa. |
-| `SKIPPED` | Chủ động không gửi, ví dụ user inactive hoặc SMTP bị tắt. Đây không phải lỗi kỹ thuật. |
+| `SKIPPED` | Chủ động không gửi, ví dụ user inactive hoặc SMTP bị tắt. Không có device FCM vẫn là `SENT` vì notification in-app đã được lưu. |
 
 ### Ràng buộc và quan hệ quan trọng
 
@@ -416,23 +447,24 @@ Tên trường, kiểu dữ liệu và ràng buộc trong tài liệu này đư�
 
 - `apps/backend/prisma/schema.prisma`
 - `apps/backend/prisma/migrations/20260821100000_add_notification_outbox_delivery/migration.sql`
-- `apps/backend/prisma/migrations/20260825130000_rename_notification_outbound_message_id/migration.sql
-  - apps/backend/prisma/migrations/20260826090000_add_rabbitmq_delivery_leases/migration.sql
-  - apps/backend/prisma/migrations/20260826100000_add_notification_messages/migration.sql`
+- `apps/backend/prisma/migrations/20260825130000_rename_notification_outbound_message_id/migration.sql`
+- `apps/backend/prisma/migrations/20260826090000_add_rabbitmq_delivery_leases/migration.sql`
+- `apps/backend/prisma/migrations/20260826100000_add_notification_messages/migration.sql`
+- `apps/backend/prisma/migrations/20260831100000_add_notification_devices/migration.sql`
 
 Nếu tài liệu và schema khác nhau, Prisma schema cùng migration là nguồn sự thật.
 
 ## RabbitMQ delivery transport
 
-RabbitMQ chỉ vận chuyển delivery đã materialize. Luồng là outbox_events, observer
-và template renderer, notification_deliveries, publisher confirm, channel queue,
-consumer CAS, rồi notifications hoặc SMTP.
+RabbitMQ chỉ vận chuyển EMAIL delivery đã materialize. IN_APP persistence và
+FCM Web Push luôn chạy bằng direct worker để không phụ thuộc broker và để row
+notifications có trước khi push.
 
-Exchange chính là bigin.notification-deliveries kiểu topic. IN_APP dùng queue
-bigin.notifications.in-app.v1 với routing key notification.in_app.delivery.
-EMAIL dùng queue bigin.notifications.email.v1 với routing key
+Exchange chính là bigin.notification-deliveries kiểu topic. Queue IN_APP vẫn
+được giữ trong topology để tương thích cấu hình cũ nhưng runtime hiện tại
+bỏ qua nó. EMAIL dùng queue bigin.notifications.email.v1 với routing key
 notification.email.delivery. Exchange dead-letter là bigin.dead-letter kiểu
-direct, có một DLQ riêng cho mỗi channel.
+direct, có một DLQ riêng cho EMAIL.
 
 DeliveryJobV1 có schemaVersion 1, deliveryId là chuỗi decimal dương, eventId là
 UUID, channel và publishLease. Không truyền outboundMessageId và không đặt

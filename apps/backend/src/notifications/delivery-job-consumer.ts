@@ -80,8 +80,12 @@ export class DeliveryJobConsumer implements Loop {
     this.connecting = true;
     this.startPromise = (async () => {
       try {
-        this.connection = await amqp.connect(this.config.url);
+        this.connection = await amqp.connect(this.config.url, {
+          heartbeat: this.config.heartbeatSeconds,
+        });
         this.channel = await this.connection.createChannel();
+        this.connection.on('error', (error) => this.log(error));
+        this.channel.on('error', (error) => this.log(error));
         await configureRabbitTopology(this.channel, this.config);
         await this.channel.prefetch(
           this.config.channels[this.channelName].prefetch,

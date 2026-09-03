@@ -381,6 +381,41 @@ export class PrismaDeliveryRepository implements DeliveryRepository {
       }),
     );
   }
+  async ensureInAppNotification(claim: ClaimedDelivery) {
+    return this.prisma.$transaction(async (tx) => {
+      const current = await tx.notification_deliveries.findFirst({
+        where: {
+          id: claim.id,
+          status: 'PROCESSING',
+          locked_by: claim.leaseOwner,
+        },
+      });
+      if (!current) return null;
+      if (current.notification_id) return current.notification_id;
+
+      const notification = await tx.notifications.create({
+        data: {
+          recipient_user_id: current.recipient_user_id,
+          notification_type: current.notification_type,
+          title: current.title_snapshot,
+          message: current.text_body_snapshot,
+          related_entity_type: current.related_entity_type,
+          related_entity_id: current.related_entity_id,
+        },
+      });
+      const changed = await tx.notification_deliveries.updateMany({
+        where: {
+          id: claim.id,
+          status: 'PROCESSING',
+          locked_by: claim.leaseOwner,
+          notification_id: null,
+        },
+        data: { notification_id: notification.id },
+      });
+      if (changed.count !== 1) throw new Error('DELIVERY_LEASE_LOST');
+      return notification.id;
+    });
+  }
   async completeInApp(claim: ClaimedDelivery) {
     return this.prisma.$transaction(async (tx) => {
       const current = await tx.notification_deliveries.findFirst({

@@ -113,6 +113,9 @@
 | `GET /api/notifications/unread-count` | Get unread notification count | Xem số thông báo chưa đọc | Return the count of unread notifications for the current user. / Trả số thông báo chưa đọc của user hiện tại. | Existing |
 | `PATCH /api/notifications/:notificationId/read` | Mark notification as read | Đánh dấu thông báo đã đọc | Mark one owned notification as read. / Đánh dấu một thông báo thuộc user là đã đọc. | Existing |
 | `PATCH /api/notifications/read-all` | Mark all notifications as read | Đánh dấu tất cả thông báo đã đọc | Mark all current-user notifications as read. / Đánh dấu toàn bộ thông báo của user hiện tại đã đọc. | Existing |
+| `GET /api/notification-devices` | List my browser push devices | Xem thiết bị browser push | Return current-user FCM Web device metadata; registration tokens are never returned. / Trả metadata thiết bị FCM Web, không trả token. | New |
+| `POST /api/notification-devices` | Register browser push device | Đăng ký thiết bị browser push | Upsert the authenticated user's FCM Web token; token is stored server-side and omitted from the response. / Upsert token FCM Web, token chỉ lưu backend. | New |
+| `DELETE /api/notification-devices/:id` | Remove browser push device | Hủy đăng ký thiết bị browser push | Remove one device owned by the authenticated user. / Xóa thiết bị thuộc user hiện tại. | New |
 
 ## F08 — Administration / Quản trị người dùng và phân quyền
 
@@ -159,4 +162,4 @@ business transition changes are implied by this response-field addition.
 - Role delete and permission-code CRUD are not public APIs. / Delete role và CRUD permission code không có public API.
 - User, vendor and department delete are not public APIs; their lifecycle status is changed through the dedicated `*.manage_status` endpoints. / Không có API delete cho user, vendor và department; status dùng endpoint `*.manage_status` riêng.
 - QR inventory session, asset-location history, procurement and accounting. / Phiên kiểm kê QR, lịch sử vị trí, mua sắm và kế toán.
-- SMS, mobile push and scheduled notifications. SMTP email is asynchronous and adds no public API. / SMS, push mobile và thông báo theo lịch; SMTP email không thêm public API.
+- SMS, mobile push and scheduled notifications. SMTP email and browser FCM push are asynchronous; FCM device registration is exposed only through the F07 device endpoints above. / SMS, push mobile và thông báo theo lịch; email SMTP và browser FCM là bất đồng bộ.

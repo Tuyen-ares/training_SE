@@ -20,6 +20,7 @@ export interface RabbitMqConfig {
   publishLeaseTimeoutMs: number;
   publishHeartbeatIntervalMs: number;
   consumerLeaseTimeoutMs: number;
+  heartbeatSeconds: number;
   pollIntervalMs: number;
   batchSize: number;
   enabledChannels: readonly DeliveryChannel[];
@@ -98,10 +99,15 @@ export function readRabbitMqConfig(
     env.RABBITMQ_CONSUMER_LEASE_TIMEOUT_MS,
     300_000,
   );
+  const heartbeatSeconds = positiveInteger(
+    env.RABBITMQ_HEARTBEAT_SECONDS,
+    30,
+  );
   if (
     !publishLeaseTimeoutMs ||
     !publishHeartbeatIntervalMs ||
-    !consumerLeaseTimeoutMs
+    !consumerLeaseTimeoutMs ||
+    !heartbeatSeconds
   )
     return { state: 'MISCONFIGURED', error: 'RABBITMQ_LEASE_VALUE_INVALID' };
   if (
@@ -167,6 +173,7 @@ export function readRabbitMqConfig(
       publishLeaseTimeoutMs,
       publishHeartbeatIntervalMs,
       consumerLeaseTimeoutMs,
+      heartbeatSeconds,
       pollIntervalMs,
       batchSize,
       enabledChannels: uniqueChannels,

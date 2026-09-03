@@ -25,11 +25,19 @@ export interface SmtpConfig {
   user?: string;
   password?: string;
   from: string;
+  connectionTimeout: number;
+  greetingTimeout: number;
+  socketTimeout: number;
 }
 export type SmtpConfigResult =
   | { state: 'DISABLED' }
   | { state: 'MISCONFIGURED'; error: string }
   | { state: 'READY'; config: SmtpConfig };
+
+const positiveTimeout = (value: string | undefined, fallback: number) => {
+  const parsed = Number(value ?? fallback);
+  return Number.isInteger(parsed) && parsed > 0 ? parsed : null;
+};
 
 const BUSINESS_TIME_ZONE = 'Asia/Ho_Chi_Minh';
 const emailDateFormatter = new Intl.DateTimeFormat('en-US', {
@@ -81,6 +89,9 @@ export class NodemailerEmailProvider implements EmailProvider {
         ? { user: config.user, pass: config.password }
         : undefined,
       pool: true,
+      connectionTimeout: config.connectionTimeout,
+      greetingTimeout: config.greetingTimeout,
+      socketTimeout: config.socketTimeout,
     });
   }
   async send(input: Parameters<EmailProvider['send']>[0]) {
@@ -105,6 +116,20 @@ export function readSmtpConfig(env: NodeJS.ProcessEnv): SmtpConfigResult {
   const secureValue = env.SMTP_SECURE ?? 'false';
   if (secureValue !== 'true' && secureValue !== 'false')
     return { state: 'MISCONFIGURED', error: 'SMTP_SECURE_INVALID' };
+  const connectionTimeout = positiveTimeout(
+    env.SMTP_CONNECTION_TIMEOUT_MS,
+    30_000,
+  );
+  const greetingTimeout = positiveTimeout(
+    env.SMTP_GREETING_TIMEOUT_MS,
+    30_000,
+  );
+  const socketTimeout = positiveTimeout(
+    env.SMTP_SOCKET_TIMEOUT_MS,
+    120_000,
+  );
+  if (!connectionTimeout || !greetingTimeout || !socketTimeout)
+    return { state: 'MISCONFIGURED', error: 'SMTP_TIMEOUT_INVALID' };
   const hasUser = Boolean(env.SMTP_USER?.trim());
   const hasPassword = Boolean(env.SMTP_PASSWORD);
   if (hasUser !== hasPassword)
@@ -118,6 +143,9 @@ export function readSmtpConfig(env: NodeJS.ProcessEnv): SmtpConfigResult {
       user: hasUser ? env.SMTP_USER!.trim() : undefined,
       password: hasPassword ? env.SMTP_PASSWORD : undefined,
       from: env.SMTP_FROM.trim(),
+      connectionTimeout,
+      greetingTimeout,
+      socketTimeout,
     },
   };
 }

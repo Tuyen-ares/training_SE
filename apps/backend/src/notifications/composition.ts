@@ -9,6 +9,11 @@ import {
   DeliveryProcessor,
   InAppDeliveryHandler,
 } from '@/notifications/delivery.js';
+import {
+  FirebaseAdminFcmProvider,
+  FcmInAppPushNotifier,
+} from '@/notifications/fcm.js';
+import { readFirebaseConfig } from '@/notifications/firebase-config.js';
 import { NotificationMaterializer } from '@/notifications/materializer.js';
 import {
   PrismaDeliveryRepository,
@@ -20,6 +25,8 @@ import type {
   OutboxRepository,
   RecipientRepository,
 } from '@/notifications/repositories.js';
+import type { INotificationDeviceRepository } from '@/repositories/notification-device.repository.js';
+import { PrismaNotificationDeviceRepository } from '@/repositories/notification-device.prisma.repository.js';
 import {
   ConcurrencyLimiter,
   DeliveryLoop,
@@ -76,6 +83,10 @@ export function createNotificationRuntime(
     new PrismaDeliveryRepository(prisma),
     dbLimiter,
   );
+  const devices = limited<INotificationDeviceRepository>(
+    new PrismaNotificationDeviceRepository(prisma),
+    dbLimiter,
+  );
   const templates = new NotificationTemplateCatalog(
     env.EMAIL_BRAND_LOGO_URL?.trim() || null,
   );
@@ -86,12 +97,40 @@ export function createNotificationRuntime(
     env.APP_PUBLIC_URL ?? '',
   );
   const smtp = readSmtpConfig(env);
-  const provider =
+  const emailProvider =
     smtp.state === 'READY' ? new NodemailerEmailProvider(smtp.config) : null;
+  const firebase = readFirebaseConfig(env);
+  let fcmProvider: FirebaseAdminFcmProvider | null = null;
+  if (firebase.state === 'READY') {
+    try {
+      fcmProvider = new FirebaseAdminFcmProvider(firebase.config);
+    } catch (error) {
+      console.error(
+        JSON.stringify({
+          component: 'NotificationRuntime',
+          channel: 'FCM',
+          error: sanitizeError(error),
+          action: 'FCM_PROVIDER_DISABLED',
+        }),
+      );
+    }
+  } else if (firebase.state === 'MISCONFIGURED') {
+    console.error(
+      JSON.stringify({
+        component: 'NotificationRuntime',
+        channel: 'FCM',
+        error: firebase.error,
+        action: 'FCM_LOOP_DISABLED',
+      }),
+    );
+  }
+  const fcmNotifier = fcmProvider
+    ? new FcmInAppPushNotifier(devices, fcmProvider)
+    : undefined;
   const registry = new DeliveryHandlerRegistry([
-    new InAppDeliveryHandler(deliveries),
+    new InAppDeliveryHandler(deliveries, fcmNotifier),
     new SmtpEmailDeliveryHandler(
-      provider,
+      emailProvider,
       smtp.state !== 'DISABLED',
       sanitizeError,
       templates,
@@ -116,19 +155,19 @@ export function createNotificationRuntime(
   ];
   const rabbit = readRabbitMqConfig(env);
   const rabbitResources: Array<{ close(): Promise<void> }> = [];
+  loops.push(
+    new DeliveryLoop(
+      deliveries,
+      processor,
+      'IN_APP',
+      workerId,
+      interval,
+      batch,
+      lock,
+      numberEnv(env.IN_APP_CONCURRENCY, 5),
+    ),
+  );
   if (rabbit.state === 'DISABLED') {
-    loops.push(
-      new DeliveryLoop(
-        deliveries,
-        processor,
-        'IN_APP',
-        workerId,
-        interval,
-        batch,
-        lock,
-        numberEnv(env.IN_APP_CONCURRENCY, 5),
-      ),
-    );
     if (smtp.state !== 'MISCONFIGURED')
       loops.push(
         new DeliveryLoop(
@@ -141,9 +180,11 @@ export function createNotificationRuntime(
           lock,
           numberEnv(env.EMAIL_CONCURRENCY, 10),
         ),
-      );
+    );
   } else if (rabbit.state === 'READY') {
-    for (const channel of rabbit.config.enabledChannels) {
+    for (const channel of rabbit.config.enabledChannels.filter(
+      (value) => value === 'EMAIL',
+    )) {
       const publisher = new DeliveryJobPublisherLoop(
         deliveries,
         rabbit.config,
@@ -160,6 +201,15 @@ export function createNotificationRuntime(
       loops.push(publisher, consumer);
       rabbitResources.push(publisher, consumer);
     }
+    if (rabbit.config.enabledChannels.includes('IN_APP'))
+      console.warn(
+        JSON.stringify({
+          component: 'NotificationRuntime',
+          channel: 'IN_APP',
+          action: 'RABBITMQ_IGNORED_FOR_IN_APP',
+          reason: 'IN_APP_AND_FCM_USE_DIRECT_WORKER',
+        }),
+      );
   } else {
     console.error(
       JSON.stringify({
@@ -182,6 +232,7 @@ export function createNotificationRuntime(
     loops.push(new RetentionCleanupLoop(outbox, deliveries, 86400000, 500));
   return new NotificationRuntime(loops, async () => {
     for (const resource of rabbitResources) await resource.close();
-    await provider?.close();
+    await emailProvider?.close();
+    await fcmProvider?.close();
   });
 }

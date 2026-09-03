@@ -57,6 +57,7 @@ function repository(
   return {
     claimDue: async () => [],
     isRecipientActive: async () => true,
+    ensureInAppNotification: async () => 1,
     completeInApp: async () => true,
     markSent: async () => true,
     retry: async () => true,
@@ -241,6 +242,9 @@ test('SMTP config validates states, port, boolean and auth pairs', () => {
       user: undefined,
       password: undefined,
       from: 'from@test.local',
+      connectionTimeout: 30_000,
+      greetingTimeout: 30_000,
+      socketTimeout: 120_000,
     },
   });
   for (const SMTP_PORT of ['0', '65536', '1.5', 'not-a-number'])

@@ -4,7 +4,7 @@
   "private": true,
   "main": "dist/server.js",
   "scripts": {
-    "test": "tsx --test tests/password-hasher.test.ts tests/auth.middleware.test.ts tests/user.service.test.ts tests/auth.service.test.ts tests/asset.service.test.ts tests/rbac.service.test.ts tests/borrow-workflow.service.test.ts tests/vendor.service.test.ts tests/asset-issue-vendor.service.test.ts tests/media.service.test.ts tests/notification-domain-event.test.ts tests/notification-delivery.test.ts tests/notification-materializer.test.ts tests/notification-rabbit.test.ts",
+    "test": "tsx --test tests/password-hasher.test.ts tests/auth.middleware.test.ts tests/user.service.test.ts tests/auth.service.test.ts tests/asset.service.test.ts tests/rbac.service.test.ts tests/borrow-workflow.service.test.ts tests/vendor.service.test.ts tests/asset-issue-vendor.service.test.ts tests/media.service.test.ts tests/notification-domain-event.test.ts tests/notification-delivery.test.ts tests/notification-fcm.test.ts tests/notification-materializer.test.ts tests/notification-rabbit.test.ts",
     "test:db": "tsx --test --test-concurrency=1 tests/user-api.integration.test.ts tests/registration-rbac.integration.test.ts tests/asset-api.integration.test.ts tests/borrow-lifecycle.integration.test.ts tests/asset-issue-notification.integration.test.ts tests/notification-outbox.integration.test.ts tests/vendor-api.integration.test.ts tests/department-api.integration.test.ts tests/race-condition.integration.test.ts",
     "test:notification:rabbit": "tsx --test tests/notification-rabbit.test.ts",
     "test:notification:rabbit:integration": "tsx --test tests/notification-rabbit.integration.test.ts",
@@ -36,6 +36,7 @@
     "mysql2": "^3.22.5",
     "nodemailer": "^9.0.5",
     "amqplib": "^0.10.9",
+    "firebase-admin": "^14.3.0",
     "nodeman": "^1.1.2",
     "swagger-ui-express": "^5.0.1",
     "yaml": "^2.9.0",

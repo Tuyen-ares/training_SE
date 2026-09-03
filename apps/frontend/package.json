@@ -16,6 +16,7 @@
     "bcrypt": "^6.0.0",
     "cors": "^2.8.6",
     "express-validator": "^7.3.2",
+    "firebase": "^12.18.0",
     "html5-qrcode": "^2.3.8",
     "jsonwebtoken": "^9.0.3",
     "pinia": "^3.0.4",

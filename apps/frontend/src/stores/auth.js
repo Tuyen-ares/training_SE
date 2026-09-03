@@ -108,6 +108,12 @@ export const useAuthStore = defineStore('auth', () => {
 
   const logout = async () => {
     try {
+      try {
+        const { disableFcmNotifications } = await import('../services/notifications/fcm.service')
+        await disableFcmNotifications(api)
+      } catch {
+        // Push cleanup is best effort and must not prevent session logout.
+      }
       await unwrap(http.post('/auth/logout'))
     } finally {
       clearSession()

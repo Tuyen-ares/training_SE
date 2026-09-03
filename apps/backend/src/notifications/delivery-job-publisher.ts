@@ -240,13 +240,18 @@ export class DeliveryJobPublisherLoop implements Loop {
     this.connecting = true;
     this.startPromise = (async () => {
       try {
-        this.connection = await amqp.connect(this.config.url);
+        this.connection = await amqp.connect(this.config.url, { heartbeat: this.config.heartbeatSeconds });
         this.channel = await this.connection.createConfirmChannel();
-        await configureRabbitTopology(this.channel, this.config);
-        this.connection.on('close', () => {
-          this.channel = null;
-          this.connection = null;
-          if (!this.stopping) this.schedule(0);
+        this.channel.on('error', (error) => {
+          console.error(
+            JSON.stringify({
+              component: 'DeliveryJobPublisherLoop',
+              error: String(error instanceof Error ? error.message : error).slice(
+                0,
+                2000,
+              ),
+            }),
+          );
         });
         this.connection.on('error', (error) => {
           console.error(
@@ -258,6 +263,12 @@ export class DeliveryJobPublisherLoop implements Loop {
               ),
             }),
           );
+        });
+        await configureRabbitTopology(this.channel, this.config);
+        this.connection.on('close', () => {
+          this.channel = null;
+          this.connection = null;
+          if (!this.stopping) this.schedule(0);
         });
       } catch (error) {
         await this.channel?.close().catch(() => undefined);

@@ -4,6 +4,7 @@ import type {
   DeliveryRepository,
 } from '@/notifications/repositories.js';
 import { RETRY_DELAYS_MS } from '@/notifications/repositories.js';
+import type { InAppPushNotifier } from '@/notifications/fcm.js';
 
 export type DeliveryOutcome =
   | { kind: 'SENT'; providerMessageId?: string; persisted?: boolean }
@@ -84,8 +85,21 @@ export class DeliveryProcessor {
 
 export class InAppDeliveryHandler implements DeliveryHandler {
   readonly channel = 'IN_APP' as const;
-  constructor(private readonly repository: DeliveryRepository) {}
+  constructor(
+    private readonly repository: DeliveryRepository,
+    private readonly pushNotifier?: InAppPushNotifier,
+  ) {}
   async process(delivery: ClaimedDelivery): Promise<DeliveryOutcome> {
+    if (this.pushNotifier) {
+      const notificationId =
+        await this.repository.ensureInAppNotification(delivery);
+      if (!notificationId)
+        return { kind: 'FAILED', error: 'DELIVERY_LEASE_LOST' };
+      const outcome = await this.pushNotifier.send(delivery, notificationId);
+      if (outcome.kind === 'SKIPPED')
+        return { kind: 'SENT' };
+      return outcome;
+    }
     const completed = await this.repository.completeInApp(delivery);
     return completed
       ? { kind: 'SENT', persisted: true }

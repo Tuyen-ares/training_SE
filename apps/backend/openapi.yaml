@@ -2219,6 +2219,82 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/Error'
+  /notification-devices:
+    get:
+      tags:
+        - F07 - Notifications
+      summary: List my browser push devices
+      description: FCM registration tokens are never returned by this API.
+      operationId: listNotificationDevices
+      responses:
+        '200':
+          description: Registered browser push devices
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/NotificationDevice'
+                required: [data]
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+    post:
+      tags:
+        - F07 - Notifications
+      summary: Register a browser push device
+      description: The token is stored server-side for the worker and is never returned.
+      operationId: registerNotificationDevice
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/RegisterNotificationDeviceRequest'
+      responses:
+        '201':
+          description: The device was registered or refreshed
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data:
+                    $ref: '#/components/schemas/NotificationDevice'
+                required: [data]
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+  /notification-devices/{id}:
+    delete:
+      tags:
+        - F07 - Notifications
+      summary: Remove one browser push device
+      description: Only the device owner may remove it.
+      operationId: deleteNotificationDevice
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+            minimum: 1
+      responses:
+        '204':
+          description: Device registration removed
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '404':
+          description: Device not found for the current user
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
   /users/me:
     get:
       tags:
@@ -4605,6 +4681,59 @@ components:
         - pageSize
         - total
         - unreadCount
+    NotificationDevice:
+      type: object
+      properties:
+        id:
+          type: integer
+        provider:
+          type: string
+          enum: [FCM]
+        platform:
+          type: string
+          enum: [WEB]
+        isActive:
+          type: boolean
+        failureCount:
+          type: integer
+          minimum: 0
+        lastSeenAt:
+          type: string
+          format: date-time
+        createdAt:
+          type: string
+          format: date-time
+        updatedAt:
+          type: string
+          format: date-time
+      required:
+        - id
+        - provider
+        - platform
+        - isActive
+        - failureCount
+        - lastSeenAt
+        - createdAt
+        - updatedAt
+    RegisterNotificationDeviceRequest:
+      type: object
+      properties:
+        token:
+          type: string
+          minLength: 1
+          maxLength: 4096
+          description: FCM Web Push token; never log or return it.
+        platform:
+          type: string
+          enum: [WEB]
+        userAgent:
+          type: string
+          maxLength: 500
+          nullable: true
+      required:
+        - token
+        - platform
+      additionalProperties: false
     User:
       type: object
       properties:

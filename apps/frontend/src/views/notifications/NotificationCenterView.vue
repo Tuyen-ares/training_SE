@@ -3,10 +3,11 @@ import {
   BellOutlined,
   CheckCircleOutlined,
   CheckOutlined,
+  DesktopOutlined,
   ExclamationCircleOutlined,
   ToolOutlined,
 } from '@ant-design/icons-vue'
-import { computed, h, onMounted, reactive, ref } from 'vue'
+import { computed, h, onMounted, onUnmounted, reactive, ref } from 'vue'
 import { message } from 'ant-design-vue'
 import { useRouter } from 'vue-router'
 
@@ -17,6 +18,11 @@ import {
   markAllNotificationsRead,
   markNotificationRead,
 } from '../../services/notifications/notification.service'
+import {
+  enableFcmNotifications,
+  getFcmConfigStatus,
+  initializeFcmNotifications,
+} from '../../services/notifications/fcm.service'
 import { useAuthStore } from '../../stores/auth'
 
 const authStore = useAuthStore()
@@ -26,9 +32,19 @@ const loading = ref(true)
 const actionId = ref(null)
 const markingAll = ref(false)
 const errorMessage = ref('')
+const fcmState = ref(getFcmConfigStatus().state)
+const fcmLoading = ref(false)
 const page = reactive({ items: [], page: 1, pageSize: 10, total: 0, unreadCount: 0 })
 
 const hasUnread = computed(() => page.unreadCount > 0)
+const showFcmBanner = computed(() =>
+  ['READY', 'PERMISSION_REQUIRED', 'DENIED', 'ERROR'].includes(fcmState.value))
+const fcmDescription = computed(() => {
+  if (fcmState.value === 'DENIED') return 'Browser permission is blocked. Allow notifications in the site settings, then try again.'
+  if (fcmState.value === 'ERROR') return 'Desktop notifications could not be enabled. Check the browser and Firebase configuration.'
+  if (fcmState.value === 'ENABLED') return 'Desktop notifications are enabled for this browser.'
+  return 'Enable browser notifications to see new updates without refreshing the page.'
+})
 
 const notificationStyles = {
   ASSET_ISSUE_REPORTED: { icon: ExclamationCircleOutlined, color: 'var(--bigin-color-error)', background: 'var(--bigin-surface-error)' },
@@ -112,6 +128,28 @@ async function markAllRead() {
   }
 }
 
+async function setupFcm() {
+  const result = await initializeFcmNotifications(authStore.api)
+  fcmState.value = result.state
+}
+
+async function enableFcm() {
+  fcmLoading.value = true
+  try {
+    const result = await enableFcmNotifications(authStore.api)
+    fcmState.value = result.state
+    if (result.state === 'ENABLED') message.success('Desktop notifications enabled.')
+    else if (result.state === 'DENIED') message.warning('Allow notifications in your browser settings to enable desktop alerts.')
+    else if (result.state === 'ERROR') message.error('Desktop notifications could not be enabled.')
+  } finally {
+    fcmLoading.value = false
+  }
+}
+
+function handleNotificationChanged() {
+  void load()
+}
+
 async function openRelated(notification) {
   await markRead(notification)
   if (!notification.relatedEntityId) return message.info('This notification has no related record.')
@@ -128,7 +166,14 @@ async function openRelated(notification) {
   message.warning('You do not have access to the related record.')
 }
 
-onMounted(load)
+onMounted(() => {
+  void load()
+  void setupFcm()
+  window.addEventListener('notifications:changed', handleNotificationChanged)
+})
+onUnmounted(() => {
+  window.removeEventListener('notifications:changed', handleNotificationChanged)
+})
 </script>
 
 <template>
@@ -140,14 +185,30 @@ onMounted(load)
           <h1>Notifications</h1>
           <p>Updates about your requests, handovers, returns, and asset issues.</p>
         </div>
-        <a-button
-          class="bigin-touch-target"
-          :disabled="!hasUnread"
-          :loading="markingAll"
-          :icon="h(CheckOutlined)"
-          @click="markAllRead"
-        >Mark all as read</a-button>
+        <a-space class="notification-page__header-actions" wrap>
+          <a-button
+            class="bigin-touch-target"
+            :disabled="!hasUnread"
+            :loading="markingAll"
+            :icon="h(CheckOutlined)"
+            @click="markAllRead"
+          >Mark all as read</a-button>
+        </a-space>
       </header>
+
+      <section v-if="showFcmBanner" class="notification-push-banner">
+        <span class="notification-push-banner__icon"><DesktopOutlined /></span>
+        <div class="notification-push-banner__copy">
+          <strong>Desktop notifications</strong>
+          <p>{{ fcmDescription }}</p>
+        </div>
+        <a-button
+          v-if="fcmState !== 'ENABLED'"
+          class="bigin-touch-target"
+          :loading="fcmLoading"
+          @click="enableFcm"
+        >Enable</a-button>
+      </section>
 
       <section class="notification-panel">
         <a-tabs :active-key="activeTab" @change="changeTab">
@@ -219,6 +280,7 @@ onMounted(load)
 <style scoped>
 .notification-page { margin: 0; max-width: none; min-width: 0; padding: 28px 32px 48px; }
 .notification-page__header { align-items: flex-start; display: flex; gap: 24px; justify-content: space-between; margin-bottom: 18px; }
+.notification-page__header-actions { justify-content: flex-end; }
 .notification-page h1 { font-size: 28px; line-height: 1.25; margin: 0; }
 .notification-page p { color: var(--bigin-text-secondary); margin: 6px 0 0; }
 .notification-panel { background: var(--bigin-surface-panel); border: 1px solid var(--bigin-border-secondary); border-radius: 8px; min-height: 520px; padding: 0 22px; }
@@ -233,9 +295,15 @@ onMounted(load)
 .notification-item__heading time { color: var(--bigin-text-tertiary); flex: 0 0 auto; font-size: 12px; }
 .notification-item__content p { line-height: 1.55; margin: 6px 0 10px; overflow-wrap: anywhere; }
 .notification-panel__footer { align-items: center; color: var(--bigin-text-tertiary); display: flex; justify-content: space-between; padding: 18px 0; }
+.notification-push-banner { align-items: center; background: var(--bigin-surface-primary-soft); border: 1px solid var(--bigin-color-primary); border-radius: 8px; display: flex; gap: 12px; margin-bottom: 18px; padding: 14px 16px; }
+.notification-push-banner__icon { color: var(--bigin-color-primary); font-size: 20px; }
+.notification-push-banner__copy { flex: 1; min-width: 0; }
+.notification-push-banner__copy strong { color: var(--bigin-text-primary); }
+.notification-push-banner__copy p { margin: 3px 0 0; }
 @media (max-width: 700px) {
   .notification-page { padding: 18px 14px 32px; }
   .notification-page__header { align-items: stretch; flex-direction: column; }
+  .notification-page__header-actions { justify-content: flex-start; }
   .notification-panel { padding: 0 14px; }
   .notification-item { padding: 16px 12px; }
   .notification-item__heading { flex-direction: column; gap: 4px; }

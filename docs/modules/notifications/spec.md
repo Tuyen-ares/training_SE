@@ -1,12 +1,13 @@
 # Notification Architecture & Delivery Roadmap
 
 > Express and notification loops run in one Node.js process. Transactional
-> outbox, IN_APP, SMTP, and the optional RabbitMQ delivery transport are active
-> scope; FCM and SMS remain future scope.
+> outbox, IN_APP, SMTP, and optional browser FCM Web Push are active scope.
+> RabbitMQ remains an optional email transport; SMS remains future scope.
 > The hardening verification and SMTP smoke-test evidence are tracked in the
 > notification outbox remediation checklist.
 Status: **IMPLEMENTED — HARDENING VERIFICATION IN PROGRESS**
-Scope: In-app notification, Observer/Publisher–Subscriber, transactional outbox and SMTP email. FCM/SMS sections below are future roadmap only.
+Scope: In-app notification, Observer/Publisher–Subscriber, transactional outbox,
+SMTP email and browser FCM Web Push. SMS remains future roadmap scope.
 
 ## 1. Mục tiêu
 
@@ -36,8 +37,8 @@ transaction với thay đổi nghiệp vụ. Runtime sau commit gồm các lớp
 ```text
 Business transaction -> outbox_events
 Outbox loop -> three explicit observers -> notification_messages + delivery rows
-Delivery transport -> DB loop when disabled, or RabbitMQ publisher/consumer when READY
-Delivery handler -> IN_APP handler / pooled SMTP provider
+Delivery transport -> direct DB loops for IN_APP/FCM, or RabbitMQ for EMAIL when READY
+Delivery handler -> IN_APP persistence + direct FCM provider / pooled SMTP provider
 ```
 
 - Ba observer sở hữu explicit, không trùng lặp toàn bộ 14 event types.
@@ -50,8 +51,8 @@ Delivery handler -> IN_APP handler / pooled SMTP provider
   `SKIPPED/SMTP_DISABLED`; `MISCONFIGURED` không chạy email loop và giữ backlog
   `PENDING`; `READY` dùng một pooled transporter. Config log chỉ ghi error code,
   còn runtime error che authorization, secret key/value và URL credentials.
-- Frontend tiếp tục dùng API F07 hiện tại và browser event
-  `notifications:changed`; public HTTP contract không đổi.
+- Frontend giữ nguyên các API đọc/đánh dấu notification của F07, bổ sung các
+  endpoint đăng ký device FCM và dùng browser event notifications:changed.
 
 ## 3. Kiến trúc mục tiêu
 
@@ -63,7 +64,7 @@ flowchart LR
   D --> E[IN_APP Handler]
   D --> G[SMTP Handler]
   E --> H[(notifications)]
-  E -. Future realtime transport .-> I[Firebase Cloud Messaging]
+  E --> I[Firebase Cloud Messaging]
   G --> J[SMTP Provider]
   I --> K[Browser Service Worker / Device]
   J --> L[User Email]
@@ -76,10 +77,13 @@ flowchart LR
 3. Transaction commit thành công.
 4. Worker đọc các outbox event đã commit.
 5. Dispatcher tìm các subscriber phù hợp.
-6. Mỗi channel tạo hoặc gửi delivery riêng.
+6. IN_APP tạo notification bền vững trước; nếu có cấu hình và token hợp lệ,
+   worker gửi FCM trực tiếp. EMAIL vẫn là delivery riêng.
 7. Worker cập nhật trạng thái `pending`, `sent`, `failed`, số lần retry và lỗi cuối.
 
-Nếu bước nghiệp vụ rollback, event cũng rollback. Nếu FCM/SMTP lỗi sau khi nghiệp vụ đã commit, worker retry mà không làm rollback nghiệp vụ.
+Nếu bước nghiệp vụ rollback, event cũng rollback. Nếu FCM/SMTP lỗi sau khi
+nghiệp vụ đã commit, worker retry mà không làm rollback nghiệp vụ. FCM không
+đi qua RabbitMQ; RabbitMQ chỉ được dùng cho EMAIL khi được bật.
 
 ## 4. Event contract
 
@@ -254,7 +258,8 @@ Worker thực hiện:
 
 - `event_id` là unique.
 - Mỗi handler phải kiểm tra event đã xử lý chưa.
-- FCM/email delivery cần unique key dạng `(event_id, recipient_id, channel)`.
+- IN_APP/EMAIL delivery cần unique key dạng `(event_id, recipient_id, channel)`;
+  FCM dùng chung delivery IN_APP nên không tạo thêm Rabbit hoặc delivery row.
 - Worker có thể chạy lại an toàn mà không tạo notification trùng.
 
 #### Retry policy đề xuất
@@ -292,7 +297,7 @@ Mục tiêu: chuyển cách tạo notification hiện tại sang event subscribe
 - Không có notification trùng khi worker/event được xử lý lại.
 - User chỉ xem và mark-read notification của chính mình.
 
-### Phase 4 — Firebase realtime delivery for IN_APP
+### Phase 4 — Firebase realtime delivery for IN_APP (implemented)
 
 Mục tiêu: gửi push đến browser/device ngay cả khi user không mở web page.
 
@@ -315,7 +320,8 @@ notification_devices
   id                 primary key
   user_id            indexed foreign key to users
   provider           fcm
-  token              unique
+  token_hash         unique SHA-256 index
+  token              backend-only raw token used for provider I/O
   platform           web
   user_agent         nullable
   last_seen_at       datetime
@@ -340,7 +346,7 @@ Backend phải kiểm tra user hiện tại khi tạo/xóa token. Token không �
 
 `IN_APP` remains the logical notification channel and the persisted
 `notifications` row remains the source of truth. Firebase Cloud Messaging is
-a future realtime transport for that channel, not a separate RabbitMQ channel.
+the direct realtime transport for that channel, not a separate RabbitMQ channel.
 A Firebase outage must not remove or roll back the stored in-app notification.
 
 - Nhận event từ worker.
@@ -362,14 +368,15 @@ A Firebase outage must not remove or roll back the stored in-app notification.
 ```
 
 - Token invalid/unregistered: deactivate token.
-- FCM timeout/rate limit/5xx: retry qua Outbox worker.
+- FCM timeout/rate limit/5xx: retry qua the same IN_APP delivery in the
+  Outbox worker; the already-persisted notification is never duplicated.
 - Service account credential chỉ nằm ở backend secret store/env server.
 
 #### Giới hạn cần nói rõ với người dùng
 
 FCM Web Push cho phép browser nhận thông báo khi web page đã đóng, nếu user đã cấp quyền và browser/OS vẫn hỗ trợ push. Không thể cam kết tuyệt đối khi user chặn notification, browser bị tắt hoàn toàn, OS tiết kiệm pin hoặc token đã hết hiệu lực.
 
-### Phase 5 — SMTP Email Channel
+### Phase 5 — SMTP Email Channel (implemented)
 
 Mục tiêu: gửi email cho event cần thông báo qua email.
 
@@ -414,14 +421,14 @@ Không log password, SMTP URL đầy đủ hoặc email content có dữ liệu 
 
 #### Delivery tracking
 
-Nên thêm `notification_deliveries`:
+`notification_deliveries` hiện có:
 
 ```text
 id
 event_id
 notification_id nullable
 recipient_user_id
-channel            in_app | fcm | email
+channel            in_app | email
 status             pending | sent | failed
 attempt_count
 outbound_message_id nullable
@@ -432,13 +439,13 @@ created_at
 updated_at
 ```
 
-Unique key đề xuất:
+Unique key hiện dùng:
 
 ```text
-(event_id, recipient_user_id, channel)
+(event_id, recipient_user_id, channel); FCM is delivered behind the IN_APP row.
 ```
 
-### Phase 6 — Preferences, quan sát và vận hành
+### Phase 6 — Preferences, quan sát và vận hành (future)
 
 Mục tiêu: kiểm soát channel và vận hành production.
 
@@ -507,8 +514,8 @@ Frontend:
 ```text
 apps/frontend/src/
   services/notifications/notification.service.js
-  services/fcm.service.js
-  firebase-messaging-sw.js
+  services/notifications/fcm.service.js
+  public/firebase-messaging-sw.js
 ```
 
 ## 7. Testing strategy
@@ -565,7 +572,8 @@ apps/frontend/src/
 - Event contract versioned và có `eventId` unique.
 - Outbox ghi cùng transaction nghiệp vụ.
 - Worker có lock, retry, idempotency và dead-letter handling.
-- In-app, FCM và SMTP là các channel độc lập.
+- In-app persistence and FCM are one logical IN_APP delivery: the database row
+  is committed before the direct push. SMTP remains a separate EMAIL delivery.
 - FCM token được quản lý theo user/device và token invalid được vô hiệu hóa.
 - SMTP secret không nằm trong frontend hoặc log.
 - Có metrics, alert và thao tác retry cho failed delivery.
@@ -573,31 +581,35 @@ apps/frontend/src/
 
 ## 10. Khuyến nghị triển khai
 
-Không nên nhảy thẳng từ cách gọi repository hiện tại sang FCM/SMTP. Thứ tự an toàn là:
+Thứ tự rollout hiện tại giữ outbox và worker làm nền tảng; FCM/SMTP chỉ được
+bật sau khi cấu hình secret/provider tương ứng đã được kiểm tra. Các phase
+đã triển khai đến Phase 5; Phase 6 vẫn là roadmap:
 
 ```text
 Phase 0: Contract
 → Phase 1: Observer/Event Bus
 → Phase 2: Outbox/Worker
 → Phase 3: In-app migration
-→ Phase 4: FCM
+→ Phase 4: FCM Web Push
 → Phase 5: SMTP
-→ Phase 6: Preferences/Operations
+→ Phase 6: Preferences/Operations (roadmap)
 ```
 
-Lý do: Observer giúp tách coupling, nhưng Outbox mới đảm bảo event không mất khi process restart hoặc provider tạm thời lỗi. FCM và SMTP chỉ nên bật production sau khi Phase 2 hoàn tất.
+Lý do: Observer giúp tách coupling, nhưng Outbox mới đảm bảo event không mất khi
+process restart hoặc provider tạm thời lỗi. FCM và SMTP chỉ bật sau khi Phase 2
+đã hoàn tất; FCM Web Push không dùng RabbitMQ.
 
 ## RabbitMQ delivery transport
 
-RabbitMQ chỉ vận chuyển delivery đã materialize. Luồng là outbox_events, observer
-và template renderer, notification_deliveries, publisher confirm, channel queue,
-consumer CAS, rồi notifications hoặc SMTP.
+RabbitMQ chỉ vận chuyển EMAIL delivery đã materialize. IN_APP persistence và
+FCM Web Push luôn chạy bằng direct worker để không phụ thuộc broker và để row
+notifications có trước khi push.
 
-Exchange chính là bigin.notification-deliveries kiểu topic. IN_APP dùng queue
-bigin.notifications.in-app.v1 với routing key notification.in_app.delivery.
-EMAIL dùng queue bigin.notifications.email.v1 với routing key
+Exchange chính là bigin.notification-deliveries kiểu topic. Queue IN_APP vẫn
+được giữ trong topology để tương thích cấu hình cũ nhưng runtime hiện tại
+bỏ qua nó. EMAIL dùng queue bigin.notifications.email.v1 với routing key
 notification.email.delivery. Exchange dead-letter là bigin.dead-letter kiểu
-direct, có một DLQ riêng cho mỗi channel.
+direct, có một DLQ riêng cho EMAIL.
 
 DeliveryJobV1 có schemaVersion 1, deliveryId là chuỗi decimal dương, eventId là
 UUID, channel và publishLease. Không truyền outboundMessageId và không đặt

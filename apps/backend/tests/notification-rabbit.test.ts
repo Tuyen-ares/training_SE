@@ -62,6 +62,16 @@ test('Rabbit config is disabled without enabling the feature', () => {
   assert.deepEqual(readRabbitMqConfig({}), { state: 'DISABLED' });
 });
 
+test('Rabbit config reads the AMQP heartbeat setting', () => {
+  const result = readRabbitMqConfig({
+    RABBITMQ_ENABLED: 'true',
+    RABBITMQ_URL: 'amqp://localhost',
+    RABBITMQ_HEARTBEAT_SECONDS: '45',
+  });
+  assert.equal(result.state, 'READY');
+  if (result.state === 'READY') assert.equal(result.config.heartbeatSeconds, 45);
+});
+
 class FakeConfirmChannel extends EventEmitter {
   options: Record<string, unknown> | undefined;
   publish(

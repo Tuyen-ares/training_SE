@@ -11,6 +11,7 @@ import borrowRequestDetailRoutes from '@/routes/borrow-request-detail.routes.js'
 import borrowHistoryRoutes from '@/routes/borrow-history.routes.js';
 import assetIssueRoutes from '@/routes/asset-issue.routes.js';
 import notificationRoutes from '@/routes/notification.routes.js';
+import notificationDeviceRoutes from '@/routes/notification-device.routes.js';
 import registrationRoutes from '@/routes/registration.routes.js';
 import vendorRoutes from '@/routes/vendor.routes.js';
 import mediaRoutes from '@/routes/media.routes.js';
@@ -30,6 +31,7 @@ const routes: RouteDefinition[] = [
   borrowHistoryRoutes,
   assetIssueRoutes,
   notificationRoutes,
+  notificationDeviceRoutes,
   registrationRoutes,
   vendorRoutes,
   mediaRoutes,

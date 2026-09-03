@@ -1,18 +1,21 @@
 # Implementation Memory
 
-## 2026-08-21 — Notification delivery durability (implemented and verified)
+## 2026-08-31 — Notification delivery durability and browser push (implemented)
 
 - The durable target remains transactional domain events, observer-produced
   intents, atomic delivery materialization, and channel handlers in the same
-  Node.js process as Express. FCM/SMS remain outside active scope.
+  Node.js process as Express. Browser FCM Web Push is active; SMS remains
+  outside active scope.
 - RabbitMQ is an optional delivery transport for notification_deliveries only.
   DISABLED keeps the database delivery loops, MISCONFIGURED stops delivery
   processing without automatic fallback, and READY runs channel-specific
   publisher/consumer sessions. Domain events still use outbox_events.
   Publisher claims use PUBLISHING leases and confirm plus basic.return checks;
   consumers CAS to PROCESSING and increment attempt_count once. The database
-  remains the source of truth and IN_APP remains the logical channel for any
-  future Firebase realtime transport.
+  remains the source of truth. IN_APP always uses the direct worker; FCM is
+  an optional direct transport behind that logical channel. RabbitMQ is only
+  used for EMAIL in the current composition, even if an old IN_APP queue is
+  still present in broker configuration.
 - Delivery rows use `outbound_message_id` for the optional ID assigned by
   BigIn before provider I/O; EMAIL uses it as the stable SMTP Message-ID.
   `provider_message_id` keeps the provider result after sending. The generic
@@ -36,22 +39,38 @@
   are rebuilt from their title/text snapshots. User input is escaped, links use
   APP_PUBLIC_URL, and display times use Asia/Ho_Chi_Minh while persisted timestamps
   remain UTC.
+- Browser FCM registration uses the `notification_devices` table. The indexed
+  `token_hash` prevents duplicate registration while the raw token is kept
+  only in backend storage for Firebase Admin delivery; device APIs never return
+  the token and runtime logs never include it. `ensureInAppNotification`
+  commits the in-app row before FCM I/O, so a retry cannot create a duplicate
+  notification. Invalid FCM tokens are deactivated; transient provider errors
+  retry the same IN_APP delivery.
+- Frontend Firebase client settings and the public VAPID key use `VITE_*`
+  environment variables because they are browser configuration. Firebase
+  Admin service-account credentials use backend-only `FIREBASE_PROJECT_ID`,
+  `FIREBASE_CLIENT_EMAIL` and `FIREBASE_PRIVATE_KEY`; they must never be copied
+  to frontend, source control or logs. Permission is requested only after an
+  explicit user action, while the service worker handles background
+  notifications and clicks.
 - Claim/finalize/retry operations require status and lease ownership. Outbox
   and delivery repositories select due IDs with `FOR UPDATE SKIP LOCKED`, bulk
   update each claimed batch, and read the claims in one transaction. Runtime
   uses recursive loops, bounded channel concurrency and one shared DB limiter.
+- RabbitMQ AMQP connections now use the optional `RABBITMQ_HEARTBEAT_SECONDS` setting (default 30s), and both publisher and consumer attach connection/channel error listeners so transport errors such as `ECONNRESET` are logged instead of becoming unhandled process crashes. Nodemailer receives configurable connection, greeting and socket timeouts from `SMTP_*_TIMEOUT_MS`.
 - SMTP configuration is `DISABLED`, `MISCONFIGURED`, or `READY`. Disabled SMTP
   produces terminal skips, misconfiguration leaves backlog pending without an
   email loop, and ready SMTP reuses one pooled transporter. Sanitized runtime
   errors redact authorization, secret key/value and URL credentials. Persisted
   timestamps remain UTC; the SMTP RFC `Date` header is formatted at send time
   with `Asia/Ho_Chi_Minh` (`+0700`) so mailbox metadata follows Vietnam time.
-- Verification: backend typecheck/build, 90 unit tests, 14 MariaDB integration
-  tests (including bulk claim/lease/materialization/reclaim and lifecycle event
-  counts), verify-change dry/full runs, and the selected frontend production
-  build passed. A new API-created delivery was observed through
-  `PENDING -> PROCESSING -> SENT` with a stored provider message ID. Direct
-  mailbox receipt remains a manual gate; SMTP delivery stays at-least-once.
+- Verification: backend typecheck/build and 98 unit tests passed; the FCM
+  focused suite is 7/7; frontend tests are 43/43; Prisma validate/generate,
+  frontend production build, OpenAPI parse, verify-change dry/full and
+  `git diff --check` passed. Read-only migration status recognized the new
+  device migration. MariaDB write tests and provider/browser smoke were not
+  run against the configured Aiven production datasource. Direct mailbox
+  receipt remains a manual gate; SMTP delivery stays at-least-once.
 - Detailed gap state and command evidence live in
   `docs/plans/2026-08-21-notification-outbox-remediation-checklist.md`.
 
