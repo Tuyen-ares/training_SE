@@ -1,0 +1,205 @@
+---
+name: task-workflow
+description: "AI task workflow — scope → spec → approved PLAN.md → implement/verify loop (capped, independent verifier) → review → cleanup. Triggers: 'implement X', 'add a feature', 'fix bug in Z', /task-workflow, or any non-trivial feature/bug-fix work."
+argument-hint: [what to implement or fix]
+effort: low
+---
+
+# task-workflow
+
+Follow this workflow for every non-trivial task.
+
+## Steps
+
+1. **Scope** — state what you're changing and why in one sentence before touching any code, then check that sentence against the ladder in `${CLAUDE_PLUGIN_ROOT}/skills/discovery-workflow/references/triage-ladder.md`. The ladder is stated once and shared by all three entry points, so a request typed here lands on the same rung it would have reached through `epic-workflow` or `discovery-workflow`.
+
+   **Only rung 1 continues to step 2.** Rung 2 is an epic, not a task — stop here and run `epic-workflow` to decompose it; it hands each unit back to this workflow one at a time. Rung 3 means nobody can yet write an acceptance criterion for the request, and a spec written over that gap is a guess dressed as an approval — stop and run `discovery-workflow` instead. Being invoked here is not evidence the work is rung 1: read the ladder before you commit to the sentence, not after.
+
+2. **Spec gate** (non-trivial features only) — write and get approval for a spec before implementing.
+   Skip for: bug fixes, copy changes, config tweaks, changes ≤20 lines of logic.
+   If the request doesn't contain enough information to fill the spec's required sections (What / Inputs-outputs / Edge cases / Security considerations / Testing strategy) with confidence, ask up to 3 targeted clarifying questions before drafting the spec — never fill the gaps with silent assumptions and present an approved-looking spec built on them.
+   Use the default format below unless the user explicitly asks for a "full spec" / "AI-friendly spec" / "spec-driven" spec — then use the full spec format instead. There is exactly one other way the full format gets used: run `model-router`'s capability scoring (its Steps 1–3 — signals plus the tier they score to, and nothing downstream of that) against the *described* scope before drafting — the files the request implies, passed via `--paths`, since no `PLAN.md` exists yet — and if it scores the `architect` tier, offer the full format once with the rubric's rationale and use whichever the user picks. A `worker` score is not a reason to raise formats at all. That score is the rubric's judgment, not yours: never upgrade the format because a task *feels* big. Step 4 reuses this score rather than re-running it, unless the approved spec changed the scope you fed it.
+   If the feature touches auth, sessions, secrets, PII, or untrusted input (user-controlled data, URLs, redirects, file paths), the spec's Security considerations must name the concrete risks — see `.claude/rules/security.md`. Don't defer security to the post-implementation review; a threat found at spec time is a sentence, the same one found after code review is a rewrite.
+
+3. **Plan file** — once the spec/plan is approved, write it to `PLAN.md`: the approved spec followed by a tasks tracking table (see format below).
+   If `PLAN.md` already exists with tasks not marked `Done`, stop and ask the user how to proceed (resume, discard, or replace) before writing — never overwrite silently. If it doesn't exist, or every task in it is `Done`, write the new plan over it.
+
+   **Coverage check** — before step 4, read the finished `PLAN.md` back once and confirm three things hold:
+   - every requirement in the spec maps to at least one task
+   - every task maps to a requirement, or says in `Notes` that it's setup/scaffolding
+   - every edge case the spec names is covered by a task or by the Testing strategy
+
+   Fix any gap in `PLAN.md` now. This is the same economics as the security rule in step 2: a missing task costs one line here and a whole verify round once code exists. At full-spec tier it's mechanical — check the `Covers` column against the FR list. Don't spawn a subagent for this; it's a read of a file you just wrote.
+
+   **Mirror the tasks for live tracking** — once the coverage check passes, create one Claude Code task per `## Tasks` row (`TaskCreate`), then keep them current as you work: `in_progress` when you start a row, `completed` when you flip it to `Done`. Skip the mirror for plans with fewer than 3 rows; the overhead outweighs the visibility.
+
+   **Only you write `PLAN.md`.** A spawned implementer reports which rows it finished and you flip them; a worker editing the file while you hold it sends the whole snippet back into your context as an edit notice. The mirror is **one-way and disposable**. `PLAN.md` is the source of truth: never edit the table from the task list, never let a task carry state the table doesn't, and never treat a completed task as evidence a row is done — step 4.5's rule stands, it's the reported test result that counts. Everything that must survive compaction, `/clear`, a handoff, or a fresh subagent lives in the file, which is why the table is *inside* `PLAN.md` and not a separate progress doc. The verifier and `spec-gate-guard.mjs` read `PLAN.md` off disk and cannot see session task state at all — that asymmetry is the point, so don't "fix" it by moving anything out of the file.
+
+4. **Implement/verify loop** — an independent verifier subagent, not just tests, checks every diff against `PLAN.md` before it reaches review. Skip the whole loop (implement inline, then just run lint+typecheck and the tests covering the change yourself) only when the spec gate itself was skipped **and** `model-router`'s verification bar came back "normal gates" — a trivial-looking change that touches a contract, migration, or CI path still goes through the loop. The loop guards against spec drift on non-trivial work; it isn't there to gate copy fixes.
+
+   1. **Implement.** Run `model-router`'s scoring and resolution only (its Steps 1 through 4: gather signals with the *planned* file list via `--paths`, score capability, set the verification bar, resolve the tier's model **and agent**, state all of it) — when the tier is obvious, skip the scoring but not the resolution: run `${CLAUDE_PLUGIN_ROOT}/skills/model-router/scripts/classify.mjs` once anyway for `routing.agents` and `routing.models`, since the project's profile decides which agent file a tier maps to. If step 2 already scored capability, reuse that result and run only the verification bar and resolution here; re-score just the capability axis when the approved spec moved the scope out from under it. Don't let `model-router` auto-spawn (its own Step 5); which tier actually implements is the user's call, not a silent one:
+      - **Scored tier is `architect`** — state the rationale and ask the user to confirm before spawning it. It's the most expensive tier (opus on both ladders, at `high` under `frontier`) and the biggest behavior swing, so it's the one case worth a pause. If the user declines, ask which tier/model they want instead and spawn that.
+      - **Scored tier is `worker`** — spawn it directly, no confirmation needed. Bar triggers (high-risk path, coverage under 0.3, a planned new code file, 5+ files, flaky symptom) change what the payload demands, never the tier.
+      - **User already named a tier or model explicitly** — use exactly that; skip both scoring and the confirmation step, but still run `classify.mjs` for `routing` so the named tier resolves to the project's agent file (and its model, unless the user named one).
+
+      **Spawn what `routing.agents[tier]` names, not the tier's usual agent.** A profile that pins a tier at a different effort routes to a variant — under `frontier` the worker tier is `worker-frontier` and the architect tier `architect-frontier`. Hardcoding the base name silently runs the task at the wrong effort. The spawned agent is the implementer for this task. Pass `model-router`'s verification bar through in the payload. Wait for it to finish and capture the returned agent ID. Its report is short by contract (worktree, branch, commit SHA or "uncommitted", files changed, rows finished, test command and result, never the diff); if you need the diff, get it from `git`, not from the report.
+      **Never dispatch implementation as `general-purpose` or `fork`, or under a hand-written prompt standing in for an agent.** The implementer is always the `bigin-skills:` agent `routing.agents[tier]` names, `worker` unless the score or an override says architect, and the verifier always `routing.agents.verifier`. A general-purpose agent inherits the orchestrator's model and carries none of the output budget, report cap or escalation rule. The brief is written: `PLAN.md`'s path, the base SHA, the verification bar and anything the plan can't say. Never point a subagent at a session transcript. When a unit's return will be long (an investigation, a migration inventory), name an output file in the brief, then read it in slices.
+
+   2. **Dispatch a fresh verifier.** Call the Agent tool with `subagent_type: "bigin-skills:" + routing.agents.verifier` and `model:` set to `routing.models.verifier`, both from the `routing` block step 4.1 always resolves, scored or not — read the agent off `routing` rather than assuming, the same as the implementer above; both profiles currently resolve the verifier to `verifier`, and a profile that pinned it differently would resolve to another agent without this step noticing. Point it at the diff itself — never the implementer's own summary of what it did, that's exactly what independence is for. Use this prompt and nothing more; don't ask for reasoning, evidence or prose, which the verifier would then append after its JSON:
+
+      ```
+      PLAN: {absolute path to PLAN.md}
+      Diff: git -C {worktree path} diff {base SHA}   (base = `git merge-base main HEAD`; covers committed and uncommitted work)
+      Files: {`git diff --stat {base SHA}` list, plus untracked files from `git status --porcelain`}
+      Implementer's test run: {command} → {its pass/fail line}
+      Return only the verify-contract JSON.
+      ```
+
+      Parse the response against `references/verify-contract.md`'s schema.
+   3. **On `FAIL`** — resume the *same* spawned implementer agent with `SendMessage` (`to:` its agent ID) relaying the issues list verbatim, so it fixes only what was flagged instead of re-deriving the task. Then dispatch a **new** verifier (fresh Agent call, new agent ID, no memory of this round) against the new diff. Note the round in `PLAN.md`'s task-row `Notes` (e.g. "Fix-loop round 2/3"). Cap at 3 rounds. **Every verifier dispatch on this plan counts as a round, whatever it is called** — a "final audit", a "focused" or "re-scoped" check, or a re-run after the user raised the cap all count, and the count never restarts except under `## Course correction` step 5. Don't re-run model-router's scoring on a resume — the task's underlying complexity doesn't change round to round, only the issue list does; if the implementer itself decides the tier was wrong, it uses the normal `ROUTING_MISMATCH:` handback instead.
+
+      **Trivial-fix carve-out.** A resume costs the implementer a full context rebuild, which is a bad trade for a two-word correction. So the orchestrator may apply the fix itself — but only when **every** issue on the list clears all four bars:
+
+      - **The issue already names the correct value**, so applying it takes no decision: a typo, a wrong path/name/number/version, a stale cross-reference, a wording fix. If two valid fixes exist and you'd have to pick one, it isn't trivial.
+      - **It's text, not behaviour.** No logic, control flow, contract, schema, config value, or test assertion moves. A test's *name* is text; what it asserts is not.
+      - **It's bounded** — one hunk, a couple of lines at most, in a file the diff already touches. Never a new file.
+      - **All-or-nothing.** One issue that fails any bar sends the *whole* list back to the implementer. Never split a list — fixing the easy ones yourself and relaying the rest leaves the implementer re-deriving against a diff it didn't write.
+
+      Nothing else about the round changes. **Dispatch a fresh verifier** against the new diff exactly as above — the independence that matters is in the audit, not in who typed the fix, and a self-applied fix is the case where an unaudited diff is easiest to talk yourself into. The round still counts against the cap of 3, and `Notes` still records it, marked for what it was (e.g. "Fix-loop round 2/3, orchestrator-applied"). If an orchestrator-applied round comes back `FAIL`, the next round goes to the implementer — never self-fix twice running on the same issue.
+
+      A `FAIL` means the implementation missed the plan. If the **plan itself** is now wrong — the requirement moved under it — that isn't a fix-loop round and relaying it as one makes the implementer chase a spec nobody re-approved. See `## Course correction`.
+   4. **Round cap hit** — stop looping. Show the user the latest issues list and ask whether to adjust `PLAN.md`, raise the cap, or take over manually. Do not proceed to Review, and do not dispatch another verifier under a different label to get there — it is still a round.
+   5. **On `PASS`** — continue to Review below. The implementer is responsible for lint + typecheck + tests passing before it ever reports a diff as ready — the verifier's job is auditing against `PLAN.md`, not re-running the test suite. Quote the implementer's reported test command and its pass/fail line before flipping any `PLAN.md` task row to `Done` — a claim that tests pass without that line doesn't count, and quoting it never means re-running it.
+
+      **Which tests, and when.** Each round, the implementer runs the tests covering what the diff touches — the changed packages, files or specs — never the whole suite; a fix round re-runs only those. On `PASS`, resume the implementer once more to run the **full** suite a single time, and take its output as the evidence — don't run it yourself: you carry the whole session into every turn, so a suite run in your context is the most expensive place it can happen. A red full run is one more fix round, not a skipped one. A cadence the caller sets (a pipeline brief, or `PLAN.md`'s Testing strategy naming one) overrides all of this. Without the rule, "tests" reads as "the suite", and a three-round loop pays for it three times over.
+
+   For any new test files, follow the `write-tests` skill's discipline (style-matching, no unnecessary mocking, TDD ordering for business logic). For bug fixes specifically, use the `debug-workflow` skill's triage + guardrails (fast path for obvious bugs, full workflow for flaky/env/repeat failures) instead of ad-hoc trial and error.
+
+5. **Review** — ask whether to run `/code-review` (and `/security-review` too, if the change touches auth, sessions, secrets, PII, or untrusted input) on the diff — don't run either automatically. If the user says yes, check `AI_REVIEW_CHECKLIST.md` and don't mark this step done until it's clean. If they decline or want to defer, note that in `PLAN.md` and move on.
+
+6. **Cleanup** — once every task in `PLAN.md` is `Done` and review is resolved (clean, or explicitly declined by the user), archive `PLAN.md` out of the repo root. It stops being a working file for the task, but it doesn't stop being the only written record of *why* the task took this shape — so it moves rather than being deleted. Close out any mirrored tasks in the same pass, so a finished task doesn't leave a stale list behind.
+
+   Two things happen before the archive, both proposed rather than run silently:
+
+   - **Distill, if there's anything durable.** The archive below keeps the narrative — but a narrative isn't an invariant, and only an invariant belongs in a concept file. If the task established or changed a decision, invariant, contract, or constraint — not merely "added a feature" — say so and propose the specific `knowledge/` edit (which concept file, what line). Read the `## Amendments` section first if there is one: a plan that had to be amended usually changed because of something worth writing down. Concepts are per-invariant, not per-task: prefer amending an existing file to adding one, and every new file needs a summary line in `knowledge/index.md` or the validator flags it unreachable. Nothing durable is the common case for routine work — say that and move on rather than inventing a concept to justify the step. Skip entirely if the repo has no `knowledge/` bundle.
+   - **Rebuild the graph, if the task changed code** and `graphify-out/graph.json` exists: propose `graphify update .` (AST-only, zero API cost).
+
+   **Then archive it**, to exactly one of two destinations — never both:
+
+   - **The repo has `knowledge/implementation/`** — create `knowledge/implementation/{YYYY-MM-DD}-{slug}.md`: the `Record` frontmatter from `${CLAUDE_PLUGIN_ROOT}/skills/bigin-harness-setup/references/knowledge-bundle.md` (`source: plan`, `shipped:` the version this landed in) followed by `PLAN.md` **verbatim** — spec, tasks table with its `Notes`, and the `## Amendments` section if there is one. Append one line to `knowledge/implementation/index.md`, newest first. Then delete `PLAN.md`.
+   - **It doesn't** — no `knowledge/` bundle at all, or a bundle predating `implementation/` — copy it to `.claude/memory/PLAN.archive.{ISO}-{slug}.md` with the same verbatim body, then delete `PLAN.md`. Don't create `knowledge/implementation/` just to have somewhere to put it: one record in a folder with no bundle around it is harder to find than the memory file, and it half-scaffolds a bundle nobody asked for.
+
+   **Write the record with this one command, never through `Write`.** It works the same in bash and PowerShell, prepends the `Record` frontmatter from the values you pass as arguments, copies `PLAN.md` verbatim after it, and refuses to overwrite an existing record (take the `-2` suffix then). Don't read the record back.
+
+   ```
+   node -e "const [src,out,title,desc,source,shipped,by,at,tags]=process.argv.slice(1),fs=require('fs'),q=JSON.stringify,l=s=>'['+s.split(',').filter(Boolean).map(q).join(', ')+']';fs.writeFileSync(out,['---','type: Record','title: '+q(title),'description: '+q(desc),'source: '+source,'shipped: '+l(shipped),'generated: { by: '+q(by)+', at: '+q(at)+' }','tags: '+l(tags),'---','',''].join('\n')+fs.readFileSync(src,'utf8'),{flag:'wx'})" PLAN.md knowledge/implementation/{YYYY-MM-DD}-{slug}.md "{title}" "{one-line description}" plan {shipped version} {generated-by, e.g. human:alice} {YYYY-MM-DD} {tag1,tag2}
+   ```
+
+   Lists (`shipped`, `tags`) are comma-separated with no spaces. The memory-file fallback is a plain file copy (`cp` / `Copy-Item`), with no frontmatter.
+
+   Verbatim is the whole point. A summary keeps what won and drops what was considered, and what was considered is the half a record exists for. Slug from the plan's title; if that slug already exists for that date, suffix `-2`.
+
+   **The record and the concept must not restate each other.** The distill bullet moves the *invariant* into a concept — "every read filters by workspace". The record keeps the *narrative* that produced it — the two designs that lost, and why. A record that repeats its own concept, or a concept that recounts the task, means one of the two was written in the wrong place.
+
+## Spec format (when required)
+
+Paste this in the chat and wait for approval before writing any code:
+
+```
+## Spec: {feature name}
+What: {one paragraph — what changes and why}
+Inputs/outputs: {what data flows in and out}
+Edge cases: {anything that could go wrong}
+Security considerations: {who/what is trusted, what input is attacker-controlled, what could go wrong if it's abused — or "N/A, no auth/secrets/PII/untrusted-input surface" if genuinely none}
+Testing strategy: {what will be tested and how — unit/integration/manual, which edge cases get coverage}
+Not in scope: {explicit exclusions}
+```
+
+### Full spec (opt-in)
+
+Only when the user explicitly asks for a "full spec" / "AI-friendly spec" / "spec-driven" spec. Omit any section below that doesn't apply — don't pad. Typical omissions: no Component Tree for a backend-only change, no API Contract for a UI-only change, no Data Model if nothing new is persisted.
+
+```
+## Spec: {feature name} [full-spec]
+User Stories & Scenarios: {Given/When/Then per story, only if there's more than one flow}
+Requirements: {Functional (FR-1, FR-2, ...) as plain bullets — skip the table unless there are 5+; Non-Functional only if there's a real perf/scale/availability constraint}
+API Contract: {typed request/response — only if this introduces or changes an API}
+Data Model: {interfaces/types — only if this introduces or changes persisted/shared data}
+Component Tree (frontend projects only): {file paths + nesting — only for multi-component frontend work}
+Security considerations: {same as default format — always required}
+Verification Checklist: {Automated: tests/lint/typecheck. Manual: happy path, error path, edge cases}
+Not in scope: {explicit exclusions}
+```
+
+See `references/full-spec-example.md` for a filled-in example.
+
+## PLAN.md format
+
+Single file — the approved spec followed by a tracking table, kept in one place and updated in place (no separate progress file):
+
+```
+# Plan: {feature name}
+
+Status: approved
+Branch: {git branch --show-current}
+
+## Spec
+
+{approved spec, as written for the spec gate}
+
+## Tasks
+
+| # | Task | Status | Notes |
+|---|------|--------|-------|
+| 1 | {task} | Not started | |
+```
+
+Valid task statuses: `Not started`, `In progress`, `Done`, `Blocked`.
+
+The plan's own `Status:` line is a different thing, and `spec-gate-guard.mjs` reads it: `approved` lets non-trivial edits through, and **anything else blocks them**. `## Course correction` uses `amending` for exactly that reason. An amended plan also gains a section, appended at the end:
+
+```
+## Amendments
+
+- **{YYYY-MM-DD} — {what changed}.** {why, and which task rows moved}
+```
+
+`Branch:` records the branch the plan was written on, so a plan left behind by an earlier task can't silently govern a later one — `spec-gate-guard.mjs` blocks non-trivial edits when it disagrees with `HEAD`. Omit the line when there's no branch to name (detached HEAD, or not a git repo); the guard skips the check rather than blocking on what it can't verify. On a deliberate rename or rebase onto a new branch, update the line rather than deleting it.
+
+**Full-spec tier only:** add a `Covers` column (e.g. `FR-3`) linking each task to the requirement it implements, and add one tracked row per Verification Checklist manual item (e.g. `Verify: error path for FR-2`, status `Not started`). Cleanup (step 6) can't happen while any of those rows is still open. Don't add the `Covers` column or verification rows for default-tier specs — there are no FR-IDs to reference.
+
+## Course correction
+
+For when the **requirement** moves while the plan is in flight — the user changes their mind, or implementation reveals that a spec assumption was wrong. Three failures look similar from inside step 4 and only one of them lands here:
+
+| What went wrong | Where it's handled |
+| --- | --- |
+| The implementation missed the plan | Verifier `FAIL` → step 4.3 |
+| The task needs work outside its stated scope | `## Scope discipline` → stop and ask, second task |
+| The requirement itself changed | Here |
+
+1. **Freeze the plan.** Set `Status: amending` in `PLAN.md`. That's all it takes — `spec-gate-guard.mjs` only lets non-trivial edits through on `approved`, so implementation is blocked until you re-approve, with no new gate and nothing to remember. If a spawned implementer is mid-flight, let it finish and discard the diff, or `SendMessage` it to stop; never leave two versions of the requirement live at once.
+
+2. **Classify the change**, and say which one it is out loud — the three have different costs and the user is choosing between them:
+
+   - **Additive** — a new requirement, nothing already `Done` is invalidated. Amend the spec section, append task rows (plus their `Covers` cell at full-spec tier), leave completed rows alone.
+   - **Invalidating** — something already `Done` is now wrong. Flip that row back to `Not started` with the reason in `Notes`, and decide revert-or-adapt explicitly. Never leave a `Done` row that no longer describes the code: the verifier audits the diff against the **whole** plan, so one stale row makes it either fail honest work or pass work nobody asked for.
+   - **Premise change** — the goal moved, not the requirements under it. Don't amend. Stop, say so, and start over at step 2 with a fresh spec; the old `PLAN.md` is replaced, not patched. A plan patched past recognition is the worst of both — it reads as approved and describes something nobody agreed to.
+
+3. **Log it.** Append one line to `PLAN.md`'s `## Amendments` section: what changed, why, which rows moved. `PLAN.md` leaves the repo root at cleanup, so this log is the only record that the plan's shape changed — step 6's distill pass reads it, and the archive carries it forward verbatim.
+
+4. **Re-approve.** Present the amended spec sections and the row changes — a diff, not the whole spec re-pasted — and wait. Then set `Status: approved` again.
+
+5. **Resume** at step 4.1. Amendment rounds don't count against the 3 fix-loop rounds; they're a different failure mode, and charging them to that cap would end the task for something the implementer got right. Do reset the fix-loop counter for any row whose spec changed — its earlier rounds were audited against a plan that no longer exists.
+
+**Cap: 2 amendments per plan.** A third means the scope was wrong from the start, not that the requirement keeps moving. Stop and re-scope: one new task, or `epic-workflow` if what's left is several.
+
+## Scope discipline
+
+If implementation reveals the task requires changes outside the stated scope: **stop and ask**. Never expand scope silently. A second task is better than a sprawling first one — and if that second task turns out to be one of several, stop and run `epic-workflow` on what's left rather than growing this plan.
+
+Scope creep is not the same as the requirement changing. This section covers work the task *turns out to need*; `## Course correction` covers the requirement itself moving.
+
+## Running multiple instances
+
+Running more than one Claude Code instance at once (e.g. a separate frontend + backend task) — see `references/parallelization.md` for the worktree-per-instance rule and per-worktree spec-gate/SESSION.md interaction.

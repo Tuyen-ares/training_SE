@@ -1,0 +1,105 @@
+# Fails the build when the lock, the vendored spec and the generated client
+# disagree — i.e. when someone edited one of them outside a session, where the
+# PreToolUse guard could not see it.
+#
+# Re-running sync must be a no-op. If it isn't, something was hand-edited.
+#
+# Needs the App token like contract-bump.yml does: Actions' own GITHUB_TOKEN
+# cannot read the contracts repo.
+
+name: contract-drift
+
+# Only when the contract or its output could have moved. This job re-runs codegen to
+# prove the committed client still matches the spec, and on `mobile` that means pulling
+# a ~1 GB generator image — paying that on a PR which touched only UI code buys nothing.
+# Widen these paths if a repo generates from somewhere else; never drop them for
+# convenience, because the check they gate has no local equivalent.
+on:
+  pull_request:
+    paths:
+      # {SPEC_PATH} — replaced at install time with this repo's vendored spec
+      # path, one line per contract, from:
+      #   node scripts/contract_sync.mjs where
+      # Guessing here is what this placeholder exists to prevent: a paths: entry
+      # naming a file the repo does not contain matches nothing, and the job then
+      # never runs on the one file it exists to guard.
+      - '{SPEC_PATH}'
+      - 'api/generated/**'
+      - 'api-contract.lock'
+      - 'scripts/contract_sync.mjs'
+      - 'tool/generate_api.sh'
+      - '.github/workflows/contract-drift.yml'
+  push:
+    branches: [main]
+    paths:
+      - '{SPEC_PATH}'          # same substitution as above
+      - 'api/generated/**'
+      - 'api-contract.lock'
+      - 'scripts/contract_sync.mjs'
+      - 'tool/generate_api.sh'
+  # Weekly, so drift introduced by a generator or toolchain change — which touches
+  # none of the paths above — surfaces within days rather than at the next bump.
+  schedule:
+    - cron: '17 4 * * 1'
+  workflow_dispatch:
+
+jobs:
+  drift:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Mint an App token
+        id: app
+        uses: actions/create-github-app-token@v1   # pin to a commit SHA in your repo
+        with:
+          app-id: ${{ vars.CONTRACT_APP_ID }}
+          private-key: ${{ secrets.CONTRACT_APP_PRIVATE_KEY }}
+          owner: ${{ github.repository_owner }}
+
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22   # nuxt-scaffold requires 22+, and runners now force 20 onto 24
+
+      # === REPLACE THIS BLOCK — see contract-bump.yml for the three variants. ===
+      # Leaving it commented ships a workflow that fails at codegen.
+      # =========================================================================
+
+      # A repo that has not run `bump` yet holds placeholder pins and vendors nothing.
+      # That is a normal starting state, and without this its CI is red from day one on
+      # every PR — the "always red, so people merge past it" failure. Same premise rule
+      # as the story gates skipping the sync bots:
+      # .claude/rules/skill-authoring.md -> a gate goes where its premise holds.
+      - name: Has this repo vendored a contract yet?
+        id: vendored
+        run: |
+          set -euo pipefail
+          if node scripts/contract_sync.mjs verify | grep -q 'not vendored yet'; then
+            echo "ready=false" >> "$GITHUB_OUTPUT"
+            echo "No contract vendored yet — the drift check does not apply. Run bump first."
+          else
+            echo "ready=true" >> "$GITHUB_OUTPUT"
+          fi
+
+      - name: Re-vendor and regenerate
+        if: steps.vendored.outputs.ready == 'true'
+        env:
+          GITHUB_TOKEN: ${{ steps.app.outputs.token }}
+        run: node scripts/contract_sync.mjs sync
+
+      - name: Fail on any difference
+        if: steps.vendored.outputs.ready == 'true'
+        run: |
+          set -euo pipefail
+          # `git status --porcelain`, not `git diff --exit-code`: diff only inspects
+          # TRACKED files, so a regen that writes a brand-new generated file (a model
+          # the committed client lacks) leaves it untracked and the job goes green on
+          # real drift.
+          if [ -n "$(git status --porcelain)" ]; then
+            git status --short
+            git diff
+            echo
+            echo "The vendored spec or generated client does not match api-contract.lock."
+            echo "Do not commit the changes above: run 'node scripts/contract_sync.mjs sync'"
+            echo "locally and commit THAT, or find who hand-edited a generated file."
+            exit 1
+          fi

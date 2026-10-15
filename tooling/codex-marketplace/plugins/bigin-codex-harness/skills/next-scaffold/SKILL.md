@@ -1,0 +1,108 @@
+---
+name: next-scaffold
+description: "Scaffolds a new Next.js App Router app from scratch (no next.config.ts yet) — OpenNext on Cloudflare, tokenless /api pass-through to the API, TanStack Query, shadcn/ui; dashboard and saas variants. Triggers: 'scaffold next', 'create next app', 'next saas template'."
+argument-hint: [variant]
+effort: low
+allowed-tools: Bash(node ${CLAUDE_SKILL_DIR}/scripts/scaffold.mjs *)
+---
+
+# next-scaffold
+
+This skill is mechanical: gather config, write it, run the script, relay its output. Do not deliberate — no thinking needed on any step here.
+
+Scaffolds a Next.js app (no BFF) from a chosen template. The mechanical work is done by a deterministic script — `scripts/scaffold.mjs` (Node stdlib only, cross-platform, zero prompts). This skill's only jobs: **decide the config values, write them to a JSON file, run the script, report the result.** Do not perform any scaffolding steps yourself.
+
+Stack: Next.js 16.3.8 (App Router, TypeScript, pinned exactly) on Cloudflare Workers via `@opennextjs/cloudflare`, Tailwind CSS v4, shadcn/ui, Zustand, TanStack Query, Zod, Vitest + Testing Library, simple-git-hooks + lint-staged. No BFF: the browser reaches the paired Go API through a tokenless same-origin `/api/v<N>/**` pass-through (a `rewrites()` in `next.config.ts`, server-only build-time `API_ORIGIN`), and the API owns the HttpOnly cookie session and data persistence.
+
+**Templates** (`template` config field, default `starter`):
+
+| slug | source | shape |
+| --- | --- | --- |
+| `starter` (default) | `create-next-app` (no clone, no block) | minimal Next + shadcn/ui base (Button/Card/Tooltip) + the pass-through preset, no auth wired |
+| `dashboard` | `create-next-app` + shadcn `dashboard-01` block | working admin shell straight at `/dashboard` (sidebar, charts, data table on sample data) |
+| `saas` | `create-next-app` + shadcn `input`/`label` primitives + hand-authored pages | public site **+ private `/dashboard`** — cookie-session auth against the paired go-scaffold API: login/signup/logout call its `/api/v1/auth/*` endpoints through the pass-through, the API sets the HttpOnly session cookie, and a client `AuthGate` redirects to `/login` on a 401 from `GET /api/v1/user/profile` (see `references/artifacts.md`) |
+
+Unlike `nuxt-scaffold`'s 9 templates (6 of which clone a whole separate GitHub repo from `nuxt-ui-templates`), shadcn/ui has no equivalent gallery of full standalone app templates — only an official **block registry** (`dashboard-01`, `login-03`, etc.) of individual compositions added into an existing app via `shadcn add`. `next-scaffold` therefore ships exactly the two templates that get real bespoke treatment in the Nuxt world (`saas`, `dashboard`) plus the default — not a 1:1 count match. See `references/bootstrap.md` for the full rationale.
+
+> Governance (CLAUDE.md, `.claude/rules/`, AI guides, `bash-guard.mjs`) is **not** this skill's job — run `bigin-harness-setup` afterward to overlay it.
+
+Prerequisites: Node.js 20+, pnpm. Scaffolding is **in-place** into the target directory (for a brand-new project: `mkdir my-app` first).
+
+---
+
+## When not to use
+
+This skill only ever creates a **new** project. A request about a Next app that already exists belongs elsewhere — even when it names this exact stack. Zustand, TanStack Query, shadcn/ui, Zod and Vitest are what this scaffold *generates*; they are not topics it owns.
+
+- Add a page, component, store, or route handler to an existing Next app → `task-workflow`
+- Fix a bug or a failing check → `debug-workflow`
+- Explain how a library in the stack works → answer directly, no skill
+- Add governance files to an already-scaffolded repo → `bigin-harness-setup`
+
+---
+
+## Step 1: Detect state & confirm
+
+Check the target directory:
+
+- **`next.config.ts` (or `.js`/`.mjs`) exists + both signature files (`vitest.config.ts`, `.claude/settings.json`) + `node_modules/` all exist** → complete scaffold. Say so and stop.
+- **`next.config.*` exists but a signature file or `node_modules/` is missing** → partial scaffold (prior failed run, or a maintainer's `skipInstall: true` run that still needs installing/verifying). Ask: *"Partial scaffold detected — resume (install the preset + apply artifacts + verify)? (yes / no)"*. If yes → set `resume: true` in the config and continue to Step 2. If no → stop.
+- **No `next.config.*`** → ask: *"Scaffold a Next.js app in this repo (non-interactive create-next-app + the /api pass-through preset + OpenNext/Cloudflare config)? (yes / no)"*. If no → stop.
+
+(The script re-checks all of this and fails fast rather than overwriting — but resolving it conversationally first avoids a wasted run.)
+
+## Step 2: Gather config
+
+`AskUserQuestion` accepts up to 4 questions in a **single** call, rendered as one widget. **Exactly one `AskUserQuestion` tool call**, with a `questions` array holding both objects below — not two separate calls. They don't depend on each other, so array order doesn't matter.
+
+1. **Template** — options: `Starter — pass-through preset, no auth` (recommended/default), `Dashboard — shadcn admin shell (dashboard-01 block)`, `SaaS — public site + private dashboard, cookie-session auth`.
+2. **Dependency freshness** — options: `capped — latest minor/patch within the shipped major (safe, default)`, `latest — newest release including a future major` (`next` itself stays pinned to 16.3.8 under both — OpenNext 1.20.9 is only verified against it).
+
+**Then, plain conversational free text** (not `AskUserQuestion`, needs regex validation, so it can't be a 3rd array entry): **Project name** — kebab-case, default = current directory name, must match `^[a-z0-9]+(-[a-z0-9]+)*$` — re-prompt if it doesn't.
+
+No theme/base-color question — as of this writing the shadcn CLI's `init` command has no non-interactive base-color flag (only `--template`/`--base`/`--preset`), so `next-scaffold` accepts whatever its `nova` default preset picks. Re-verify `references/bootstrap.md` if the CLI gains one later.
+
+Show a summary as a bullet list (`AskUserQuestion`'s question text doesn't render markdown tables — pipes/dashes show up literally, only `**bold**` renders), e.g. `- **Project name:** my-app`, one bullet per field, and confirm. If no → stop.
+
+## Step 3: Write config & run the script
+
+Write the answers to a JSON file **outside the target repo** (temp/scratchpad dir):
+
+```jsonc
+{
+  "projectName": "my-app",           // required, kebab-case
+  "targetDir": ".",                  // default "."
+  "packageManager": "pnpm",          // BigIn standard; the script rejects anything else
+  "template": "starter",             // "starter" | "dashboard" | "saas"
+  "versionPolicy": "capped",         // "capped" | "latest"
+  "resume": false,                   // true only when Step 1 detected a partial scaffold
+  "gitCommit": true,                 // final "chore: scaffold Next.js app" commit
+  "skipInstall": false               // advanced/maintainer flag — see below; never set true from Step 2's normal flow
+}
+```
+
+`skipInstall` (default `false`, not part of Step 2's questions) writes every file and merges every `package.json` entry but never runs `create-next-app`'s install, `pnpm add`, `pnpm simple-git-hooks`, `shadcn init`/`add`, or the verify stage — the preset packages land in `package.json` pinned to the `latest` dist-tag, unresolved, and shadcn/ui is not initialized at all. Use it only for fast maintainer iteration on `scaffold.mjs`/templates (see `references/MAINTAINING.md`); the result is not a runnable app until `pnpm install` + `npx shadcn@latest init` are run manually. Never set this from the normal user-facing flow.
+
+Then run it from the target directory, streaming output (it can take several minutes — installs + lint + type-check + tests):
+
+```sh
+node ${CLAUDE_SKILL_DIR}/scripts/scaffold.mjs --config <path-to-config.json>
+```
+
+Zero prompts occur once the script starts. Every step it performs (init, version refresh, preset, shadcn/ui, artifacts, hooks, verify, commit) is internal — do not duplicate any of it.
+
+## Step 4: Report
+
+- **Exit 0** → relay the script's "Next steps" output verbatim.
+- **Exit 2** → config problem; fix the JSON per the error message and re-run.
+- **Exit 1** → runtime failure; the last `[scaffold] ERROR:` line names the failing stage/command. Common causes: Node < 20, pnpm missing, network failure during `create-next-app`, or a `create-next-app@16.3.8`/`shadcn@latest` behavior change (the error will say to re-verify `references/bootstrap.md`). A failed run partway through leaves a partial scaffold — after fixing the cause, re-run with `"resume": true`.
+
+Maintainer notes (design rationale, manual validation after changing the script or templates) live in `references/MAINTAINING.md`. A scaffold run never needs them, so it never reads them.
+
+## References
+
+- `scripts/scaffold.mjs` — the scaffold implementation (single file, Node stdlib only).
+- `scripts/templates/` — **source of truth** for every file written/merged into the project.
+- `references/bootstrap.md` — rationale for the command sequence the script executes.
+- `references/artifacts.md` — rationale + merge semantics for each template.
+- `references/modules.md` — preset packages, shadcn block registry notes.

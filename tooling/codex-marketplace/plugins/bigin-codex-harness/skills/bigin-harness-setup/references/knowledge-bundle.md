@@ -1,0 +1,856 @@
+# Knowledge Bundle Templates
+
+Templates for the optional internal Knowledge Bundle convention — our profile of [Open Knowledge Format v0.2](https://github.com/GoogleCloudPlatform/knowledge-catalog/blob/main/okf/SPEC.md). We own this profile; there is no OKF tooling dependency. Scaffolded by `SKILL.md` Phase 5.5 when the user opts in.
+
+Before writing, replace `{DATE}` with today's date in ISO 8601 (`YYYY-MM-DD`) in every template below.
+
+---
+
+## knowledge.md
+
+Written verbatim, frontmatter included. The `paths:` load it when the bundle, a plan or source code is in play, and keep it out of sessions that touch none of them. The source-extension set is the one `comments.md` uses (`files-shared.md`), plus the contract files.
+
+```markdown
+---
+paths:
+  - "knowledge/**"
+  - "PLAN.md"
+  - "**/openapi*.{yaml,yml,json}"
+  - "**/*.{ts,tsx,js,jsx,mjs,cjs,vue,svelte,go,py,rb,rs,java,kt,cs,php,swift,scala,ex,exs,dart}"
+---
+# Knowledge Bundle Rules
+
+`knowledge/` holds domain knowledge — what the system is and why. Rules (`.claude/rules/`) hold how we work. Don't mix the two.
+
+## Before non-trivial changes
+Read `knowledge/index.md`. The one-line summaries there are usually sufficient. Open a concept file only when the index summary is insufficient for the change at hand — don't read concept files preemptively.
+
+## Writing or updating a concept file
+- One concept per file, kebab-case name, under `knowledge/<folder>/`.
+- `index.md` and `log.md` are reserved — a directory listing and a change log. They carry no frontmatter, so never make one a concept file.
+- Frontmatter is required on every other file: `type` (one of Contract, System, Domain, Table, Metric, Playbook, Constraint), plus `title`, `description`, `tags`.
+- Record who wrote it and when with `generated: { by, at }`, and who confirmed it with `verified`. Actors are `human:<id>`, `process:<id>`, or `<producer>/<version>`.
+- External claims go in the `sources` frontmatter key, not a `# Citations` section.
+- Link relationships with bundle-relative Markdown links (e.g. `/contracts/openapi-contract.md`).
+- Keep it under ~60 lines. Terse beats complete.
+
+## Link, don't copy
+Concept files point to sources of truth (`openapi.yaml`, `.claude/rules/`, source code) — they never duplicate that content. If you're about to paste code or a schema into `knowledge/`, link to it instead. A concept never cites a `Record` under `knowledge/implementation/`: cite the code, schema or rule the record produced.
+
+## Staleness
+A PR that meaningfully changes behavior updates the related concept file(s) in the same PR. Add one entry to `knowledge/log.md` per sprint. Set `stale_after: <YYYY-MM-DD>` on anything with a known expiry.
+
+Full spec: `knowledge/meta/knowledge-bundle-spec.md`.
+```
+
+---
+
+## knowledge/meta/knowledge-bundle-spec.md
+
+```markdown
+---
+type: Constraint
+title: Knowledge Bundle Spec
+description: Frontmatter schema, folder layout, linking, and staleness rules for the knowledge/ bundle.
+tags: [knowledge-bundle, meta, spec]
+status: stable
+generated: { by: process:bigin-harness-setup, at: {DATE}T00:00:00Z }
+sources:
+  - id: okf
+    resource: https://github.com/GoogleCloudPlatform/knowledge-catalog/blob/main/okf/SPEC.md
+    title: Open Knowledge Format v0.2
+    last_modified: {DATE}
+---
+
+# Knowledge Bundle Spec
+
+Our profile of [Open Knowledge Format v0.2](https://github.com/GoogleCloudPlatform/knowledge-catalog/blob/main/okf/SPEC.md). We own this profile — no OKF tooling dependency.
+
+## Purpose
+`knowledge/` answers "what the system is and why." Skills/rules (`.claude/rules/`) answer "how we work." Don't mix the two.
+
+## Structure
+- One concept per Markdown file, under `knowledge/` (the bundle root).
+- **Reserved filenames:** `index.md` (directory listing) and `log.md` (change history). They carry **no frontmatter** — except the bundle-root `index.md`, which declares `okf_version: "0.2"` and nothing else.
+- **Every other** `.md` file under `knowledge/` is a concept file with valid frontmatter — no freeform docs, no exceptions.
+- Folders group by kind: `contracts/`, `domains/`, `constraints/`, `meta/`, etc. Add folders as needed.
+- **`implementation/` is the append-only record** of how the system got here — one `Record` file per finished task or epic, carrying the plan, the tasks table and any amendments. Concepts answer *what the system is*; records answer *how this piece came to be, and what was considered*. It carries its own `index.md`, so appending a record never touches the bundle-root index that the index-first protocol reads. The repo-root `.ignore` keeps it out of repo-wide searches, so open a record by path when you need it.
+- Filenames: kebab-case, singular concept per file (`openapi-contract.md`, not `contracts.md`).
+- Bundle-relative links resolve against `knowledge/` (e.g. `/contracts/openapi-contract.md` = `knowledge/contracts/openapi-contract.md`).
+
+## Frontmatter schema
+Required:
+- `type` — one of: `Contract`, `System`, `Domain`, `Table`, `Metric`, `Playbook`, `Constraint`, `Record`
+
+`Record` is the implementation-log type and the one type that is **not** a concept: it describes one past change rather than a standing truth, lives only under `implementation/`, and is never edited after it is written.
+
+Recommended:
+- `title`, `description`, `resource` (external URL/path this concept documents), `tags` (array)
+
+Trust and lifecycle (all optional; absence is meaningful):
+- `generated: { by, at }` — who produced the content and when it last meaningfully changed. Replaces v0.1's `timestamp`.
+- `verified: [{ by, at }]` — independent confirmations. A bare `{ by, at }` mapping counts as one. No `verified` = unverified; non-human actors only = machine-confirmed; a `human:` actor = human-reviewed.
+- `status` — `draft`, `stable`, or `deprecated`. Absent means `stable`.
+- `stale_after: <YYYY-MM-DD>` — the concept needs re-verification on or after this date.
+- `sources: [{ id, resource, title, author, usage_count, last_modified }]` — what the concept derives from. `resource` is required per entry. `usage_window: { from, to }` frames any `usage_count`.
+
+**Actors** (`generated.by`, `verified[].by`) take one of three forms: `human:<id>`, `process:<id>`, or `<producer>/<version>`.
+
+Extension keys are allowed but must not collide with the above.
+
+## Linking & provenance
+- Relationships between concepts = bundle-relative Markdown links.
+- Concept files **add context and point to sources of truth** (`openapi.yaml`, `.claude/rules/`, source code) — never duplicate their content. Link, don't copy.
+- **A concept never cites a `Record`**, neither in a body link nor in `sources`. Cite the code, schema or rule the record produced instead. A record is a whole working plan, often tens of KB, and an agent that follows a concept's sources would open it with no traceback need. Records are opened by path, from `implementation/index.md`, when someone needs to know why a past change took its shape. The validator warns on a concept that cites one.
+- Any claim depending on an external source (paper, RFC, vendor doc, incident report) goes in `sources`. The v0.1 `# Citations` section is deprecated; the validator warns on it.
+
+## Staleness policy
+- Any PR that meaningfully changes behavior must update the related concept file(s) in the same PR.
+- `knowledge/log.md` gets one entry per sprint summarizing what changed in the bundle.
+- Concept files not linked from an `index.md` are stale by definition — the validator warns on these.
+- A passed `stale_after` date is a warning, not a failure. Re-verify and bump it, or let it keep nagging.
+- **`Record` files are exempt from all of the above.** A record of what shipped in March does not go stale in April — it was true when written and stays true. Never set `stale_after` on one, never re-verify one, and never rewrite one to match current behavior: a record that has been edited to stay accurate is no longer a record of anything.
+
+## Validation
+`tools/knowledge_validate.mjs` enforces: valid frontmatter + `type` on every non-reserved file, `type` in the allowed list, all bundle-relative links resolve, and well-formed `generated`/`verified`/`status`/`stale_after`/`sources` when present. Missing `description`/`tags`, index-unreachable files, leftover v0.1 keys, passed `stale_after` dates, and a concept citing a `Record` are warnings.
+
+**`Record` files are not link-checked.** A record copies its plan verbatim, so a placeholder link in the plan, or a path that was later deleted, would otherwise turn into an error. The only fix for that error is editing the record, which is the one thing a record must never get. The validator therefore skips link and `resource` path checks inside a `Record`. It still checks the record's frontmatter shape.
+
+**Where we're stricter than OKF:** the spec tells *consumers* to tolerate unknown `type` values and broken links. We're the producer, so both are hard failures here — a typo'd link in our own bundle is a bug, not forward compatibility.
+```
+
+---
+
+## knowledge/index.md
+
+The index is the primary read target — one-line summaries must be self-sufficient for routine work. Open a concept file only when the summary is insufficient. It is a reserved file: `okf_version` is the only key it may carry.
+
+**Drop the `## Contracts` section entirely when the repo has no contract file** (`openapi.yaml`/`openapi.json`, root or `api/`) — Phase 5.5 skips the concept in that case, and an index line pointing at a file that was never written is a broken link the validator fails on.
+
+```markdown
+---
+okf_version: "0.2"
+---
+
+# Knowledge Bundle
+
+Root map of everything under `knowledge/`. Read this before non-trivial changes. Format: `* [Title](path) - one-line summary (sufficient for routine reads)`.
+
+## Meta
+* [Knowledge Bundle Spec](/meta/knowledge-bundle-spec.md) - frontmatter schema, folder layout, linking, and staleness rules
+
+## Contracts
+* [OpenAPI Contract](/contracts/openapi-contract.md) - openapi.yaml is the source of truth; FE types generated from it, breaking changes require a version bump
+
+## Constraints
+* [Agent Rules](/constraints/agent-rules.md) - what agents must check before touching handlers, migrations, or security-sensitive code
+
+## Implementation
+* [Implementation Records](/implementation/index.md) - append-only log of finished tasks and epics; not read for routine work, consult when you need why a past change took its shape
+```
+
+---
+
+## knowledge/implementation/index.md
+
+The nested index for the append-only record log. It exists so that appending a record touches this file and not the bundle-root `index.md` — the root index is the index-first read target, and a log that grew it would put every past task in front of every future one. Reachability seeds from **every** `index.md`, so records linked here are reachable without any root-index entry.
+
+Reserved filename, so no frontmatter. Newest first. Scaffolds **empty of records**: the entry list starts blank and grows one line per cleanup, in the format the template states. The format lives in the template, not only here, because the agent appending a line reads the repo's own copy. Each line is capped at about 120 characters, because every traceback starts by reading this file. Don't seed it with an example: a link to a record that doesn't exist is a broken link, which the validator treats as an error.
+
+```markdown
+# Implementation Records
+
+Append-only. One record per finished task or epic — what was planned, what shipped, and what was considered and rejected. Records are never edited after they are written; a wrong record is corrected by the next record, not by a rewrite.
+
+Not part of routine reads. Consult a record when you need to know *why* a past change took the shape it did — the concept files say what is true now, and this says how it got that way.
+
+One line per record, newest first, at most ~120 characters: `* [Title](path) - source, scale; the decision`, where `path` is the record's bundle-relative path (`/implementation/` plus its filename). The record holds the detail.
+```
+
+---
+
+## knowledge/implementation/{DATE}-{slug}.md
+
+One per finished task or epic, written at cleanup from the `PLAN.md` or `EPIC.md` about to be removed. `source` is `plan` or `epic`. The body is the working file's own content — spec, tasks table, amendments — not a summary of it, because the value is in what was considered and not just what won.
+
+```markdown
+---
+type: Record
+title: Rate limiting on the public API
+description: Epic, 4 units - token bucket over sliding window, per-key not per-IP
+source: epic
+shipped: ["1.12.0", "1.13.0"]
+generated: { by: "human:alice", at: "2026-03-14" }
+tags: [api, rate-limiting]
+---
+
+# Rate limiting on the public API
+
+{the EPIC.md or PLAN.md content, verbatim: goal, constraints, the units or tasks
+table with its Notes, and the Amendments section if there was one}
+```
+
+---
+
+## knowledge/contracts/openapi-contract.md
+
+**Conditional — write this only when a contract file exists.** Its `resource:` and `sources[0].resource` both name `openapi.yaml`, so writing it into a repo without one produces a concept that fails resource-path resolution and, worse, tells every later agent the repo has an API contract it does not have.
+
+```markdown
+---
+type: Contract
+title: OpenAPI Contract
+description: openapi.yaml is the source of truth for the API surface between frontend and backend.
+resource: openapi.yaml
+tags: [api, contract, openapi]
+status: stable
+generated: { by: process:bigin-harness-setup, at: {DATE}T00:00:00Z }
+sources:
+  - id: contract
+    resource: openapi.yaml
+    title: The checked-in contract itself
+    last_modified: {DATE}
+  - id: architecture-rule
+    resource: .claude/rules/architecture.md
+    title: Dependency direction + contract policy
+    last_modified: {DATE}
+---
+
+# OpenAPI Contract
+
+`openapi.yaml` (repo root) is the source of truth for every route, request, and response shape between the frontend and backend. See `.claude/rules/architecture.md` for the additive-first change policy.
+
+## Rules
+- Backend leads with backward-compatible (additive) changes.
+- Breaking change = version bump (`/v2/`). Frontend adopts after backend ships.
+- Frontend generates types from `openapi.yaml` — never hand-write response shapes.
+
+## Drift gate
+CI (or the local gate) fails if generated frontend types don't match the checked-in `openapi.yaml`. See the type-generation step in the build/CI config for the exact command.
+```
+
+---
+
+## knowledge/constraints/agent-rules.md
+
+**Two substitutions before writing.** `{CONVENTIONS_RULE}` is the profile's conventions rule path from `rule-files.md`'s matrix — `.claude/rules/conventions.md` for `go`/`nodejs`/`flutter`, `.claude/rules/conventions-frontend.md` for `nuxt`/`next`/`tauri`. On `generic` there is no conventions rule at all: **drop the whole `conventions` source entry and the "Never edit a merged migration" section**, whose only content is a pointer to it. And when Phase 5.5 skipped the contract concept, **drop the "Before touching handlers/routes" section** — it is a link to a concept that was not written.
+
+Both are the same defect in different clothing: a starter file asserting the existence of something this repo does not have. Resource-path resolution now fails the commit on the first one; the second is a broken bundle link, which has always failed.
+
+```markdown
+---
+type: Constraint
+title: Agent Rules
+description: Boundaries agents must respect in this repo, beyond what lint/tests catch.
+tags: [agents, constraints, guardrails]
+status: stable
+generated: { by: process:bigin-harness-setup, at: {DATE}T00:00:00Z }
+sources:
+  - id: conventions
+    resource: {CONVENTIONS_RULE}
+    title: Enforced conventions
+    last_modified: {DATE}
+  - id: security
+    resource: .claude/rules/security.md
+    title: Enforced security rules
+    last_modified: {DATE}
+---
+
+# Agent Rules
+
+## Before touching handlers/routes
+Read `knowledge/contracts/openapi-contract.md` and confirm the change stays additive, or that a version bump is the explicit plan.
+
+## Never edit a merged migration
+Write a new migration instead. See `{CONVENTIONS_RULE}` for the migration pattern.
+
+## Security-sensitive code
+Anything touching auth, secrets, or PII must have its security considerations named in the spec (`/task-workflow` has the format) before implementation starts, and goes through `.claude/rules/security.md` before merging.
+
+## Spec-before-code
+Non-trivial features need an approved spec first — run `/task-workflow`. The spec must include a Security considerations section for features touching auth, secrets, PII, or untrusted input. Don't start implementation on an unapproved spec. `AI_TASK_GUIDE.md` is the human-facing pointer to that workflow.
+```
+
+---
+
+## knowledge/log.md
+
+Reserved file — no frontmatter. Newest entry first, one date heading per sprint. **Drop the `[OpenAPI Contract](…)` link when Phase 5.5 skipped the contract concept** — it would be a broken link, which the validator fails on.
+
+```markdown
+# Knowledge Bundle Log
+
+## {DATE}
+* **Creation**: Established the bundle — [index](/index.md), [OpenAPI Contract](/contracts/openapi-contract.md), [Agent Rules](/constraints/agent-rules.md), [Knowledge Bundle Spec](/meta/knowledge-bundle-spec.md). Validator added at `tools/knowledge_validate.mjs`.
+```
+
+---
+
+## .ignore
+
+Written to the repo root. ripgrep reads `.ignore` with gitignore syntax, and Claude Code's Grep and file search run on ripgrep, so records drop out of every repo-wide search. Old plans would otherwise flood each search with matches nobody asked for. A record can still be opened by path. Git does not read this file, so records stay tracked and committed. The pattern starts with `/`, which anchors it to the repo root, so it hides that one directory and nothing else.
+
+If `.ignore` already exists, append these lines only when the pattern is missing; never rewrite the file.
+
+```gitignore
+# Implementation records: open one by path from knowledge/implementation/index.md.
+# Searches skip them because they are old plans, not current truth.
+/knowledge/implementation/
+```
+
+---
+
+## tools/knowledge_validate.mjs
+
+```javascript
+#!/usr/bin/env node
+// Validate the knowledge/ bundle against our OKF v0.2 profile: frontmatter,
+// allowed types, reserved files, trust/lifecycle keys, link resolution.
+// Zero dependencies — runs on any Node >= 18 (macOS, Linux, Windows).
+import { readFileSync, readdirSync, statSync } from 'node:fs'
+import { basename, dirname, isAbsolute, join, relative, resolve } from 'node:path'
+
+const BUNDLE_ROOT = 'knowledge'
+const OKF_VERSION = '0.2'
+
+// Reserved by OKF v0.2 §8-§9: index.md is a directory listing, log.md is an
+// update history. Neither carries frontmatter — except the bundle-root
+// index.md, which may declare okf_version and nothing else.
+const RESERVED = new Set(['index.md', 'log.md'])
+
+const ALLOWED_TYPES = new Set([
+  'Contract', 'System', 'Domain', 'Table',
+  'Metric', 'Playbook', 'Constraint', 'Record'
+])
+
+// v0.1 types for the two files v0.2 reserves. Accepted so an existing bundle
+// keeps validating, warned so it gets migrated.
+const LEGACY_TYPES = new Set(['Index', 'Log'])
+
+const STATUSES = new Set(['draft', 'stable', 'deprecated'])
+
+const LINK_RE = /\[[^\]]*\]\(([^)]+)\)/g
+const ACTOR_RE = /^(human:.+|process:.+|[^/\s]+\/[^/\s]+)$/
+
+const RESOURCE_SCHEME_RE = /^[A-Za-z][A-Za-z0-9+.-]*:/
+// A letters-first extension is what separates a path from a version or package
+// identifier: `nuxt@4.0.3` ends in `.3`, `@nuxt/content` has no extension.
+const RESOURCE_EXT_RE = /\.[A-Za-z][A-Za-z0-9]{0,7}$/
+
+// --- YAML subset parser ------------------------------------------------------
+// Handles what our frontmatter actually uses: block maps, block lists, inline
+// flow maps/lists, and nesting of those. Not a general YAML implementation —
+// no anchors, no multi-line scalars, no tabs.
+
+function stripQuotes(s) {
+  if (s.length >= 2 && ((s[0] === '"' && s.at(-1) === '"') || (s[0] === '\'' && s.at(-1) === '\''))) {
+    return s.slice(1, -1)
+  }
+  return s
+}
+
+function splitTopLevel(text, sep) {
+  const out = []
+  let depth = 0
+  let quote = null
+  let cur = ''
+  for (const ch of text) {
+    if (quote) {
+      cur += ch
+      if (ch === quote) quote = null
+      continue
+    }
+    if (ch === '"' || ch === '\'') {
+      quote = ch
+      cur += ch
+      continue
+    }
+    if (ch === '[' || ch === '{') depth++
+    if (ch === ']' || ch === '}') depth--
+    if (ch === sep && depth === 0) {
+      out.push(cur)
+      cur = ''
+      continue
+    }
+    cur += ch
+  }
+  out.push(cur)
+  return out.map(s => s.trim()).filter(s => s !== '')
+}
+
+function parseFlow(raw) {
+  const text = raw.trim()
+  if (text.startsWith('[') && text.endsWith(']')) {
+    return splitTopLevel(text.slice(1, -1), ',').map(parseFlow)
+  }
+  if (text.startsWith('{') && text.endsWith('}')) {
+    const map = {}
+    for (const part of splitTopLevel(text.slice(1, -1), ',')) {
+      const kv = part.match(/^([A-Za-z0-9_-]+)\s*:\s*([\s\S]*)$/)
+      if (!kv) throw new Error(`unparseable flow entry: '${part}'`)
+      map[kv[1]] = parseFlow(kv[2])
+    }
+    return map
+  }
+  return stripQuotes(text)
+}
+
+function isListLine(text) {
+  return text === '-' || text.startsWith('- ')
+}
+
+// Returns [value, nextIndex]. `lines` are pre-tokenized {indent, text, no}.
+function parseBlock(lines, start, indent) {
+  if (isListLine(lines[start].text)) {
+    const items = []
+    let i = start
+    while (i < lines.length && lines[i].indent === indent && isListLine(lines[i].text)) {
+      const rest = lines[i].text.slice(1).trim()
+      const cont = []
+      let j = i + 1
+      while (j < lines.length && lines[j].indent > indent) {
+        cont.push(lines[j])
+        j++
+      }
+      if (rest === '') {
+        if (!cont.length) throw new Error(`empty list item on line ${lines[i].no}`)
+        const [value] = parseBlock(cont, 0, cont[0].indent)
+        items.push(value)
+      } else if (rest.startsWith('[') || rest.startsWith('{')) {
+        if (cont.length) throw new Error(`unparseable frontmatter line: '${cont[0].text}'`)
+        items.push(parseFlow(rest))
+      } else if (/^[A-Za-z0-9_-]+\s*:/.test(rest)) {
+        // Block map whose first key sits on the dash line.
+        const mapIndent = cont.length ? Math.min(...cont.map(l => l.indent)) : indent + 2
+        const [value] = parseBlock([{ indent: mapIndent, text: rest, no: lines[i].no }, ...cont], 0, mapIndent)
+        items.push(value)
+      } else {
+        if (cont.length) throw new Error(`unparseable frontmatter line: '${cont[0].text}'`)
+        items.push(stripQuotes(rest))
+      }
+      i = j
+    }
+    return [items, i]
+  }
+
+  const map = {}
+  let i = start
+  while (i < lines.length && lines[i].indent === indent && !isListLine(lines[i].text)) {
+    const kv = lines[i].text.match(/^([A-Za-z0-9_-]+)\s*:\s*(.*)$/)
+    if (!kv) throw new Error(`unparseable frontmatter line: '${lines[i].text}'`)
+    const key = kv[1]
+    const value = kv[2].trim()
+    if (value === '') {
+      const next = lines[i + 1]
+      const nested = next && (next.indent > indent || (next.indent === indent && isListLine(next.text)))
+      if (nested) {
+        const [child, ni] = parseBlock(lines, i + 1, next.indent)
+        map[key] = child
+        i = ni
+      } else {
+        // Bare `key:` — an empty list, matching the v0.1 parser's behavior.
+        map[key] = []
+        i++
+      }
+    } else if (value.startsWith('[') || value.startsWith('{')) {
+      map[key] = parseFlow(value)
+      i++
+    } else {
+      map[key] = stripQuotes(value)
+      i++
+    }
+  }
+  return [map, i]
+}
+
+function parseFrontmatter(raw) {
+  // charCodeAt check, not a \uFEFF regex literal in source: an LLM
+  // transcribing this file into a target repo can render that escape as
+  // the actual BOM character, tripping the target's own lint rule.
+  const text = raw.charCodeAt(0) === 0xfeff ? raw.slice(1) : raw
+  if (!text.startsWith('---')) return { meta: null, body: text, error: null, absent: true }
+  const end = text.indexOf('\n---', 3)
+  if (end === -1) return { meta: null, body: text, error: 'unterminated frontmatter block' }
+  const header = text.slice(text.indexOf('\n') + 1, end)
+  const bodyStart = text.indexOf('\n', end + 1)
+  const body = bodyStart === -1 ? '' : text.slice(bodyStart + 1)
+
+  const lines = []
+  let no = 0
+  for (const line of header.split('\n')) {
+    no++
+    if (!line.trim() || line.trim().startsWith('#')) continue
+    if (/^\s*\t/.test(line)) return { meta: null, body, error: `tab indentation on line ${no}` }
+    lines.push({ indent: line.length - line.trimStart().length, text: line.trim(), no })
+  }
+  if (!lines.length) return { meta: {}, body, error: null }
+  if (lines[0].indent !== 0) return { meta: null, body, error: `unexpected indentation on line ${lines[0].no}` }
+
+  try {
+    const [meta, next] = parseBlock(lines, 0, 0)
+    if (next < lines.length) {
+      return { meta: null, body, error: `unparseable frontmatter line: '${lines[next].text}'` }
+    }
+    return { meta, body, error: null }
+  } catch (err) {
+    return { meta: null, body, error: err.message }
+  }
+}
+
+// --- helpers -----------------------------------------------------------------
+
+function isPlainObject(value) {
+  return value !== null && typeof value === 'object' && !Array.isArray(value)
+}
+
+function iso8601(value) {
+  if (typeof value !== 'string') return false
+  if (!/^\d{4}-\d{2}-\d{2}([T ]\d{2}:\d{2})?/.test(value)) return false
+  return !Number.isNaN(Date.parse(value))
+}
+
+function isDate(value) {
+  return typeof value === 'string' && /^\d{4}-\d{2}-\d{2}$/.test(value) && !Number.isNaN(Date.parse(value))
+}
+
+// A bare `verified: {by, at}` mapping is one verification event (OKF v0.2 §11).
+function asList(value) {
+  if (value === undefined) return []
+  return Array.isArray(value) ? value : [value]
+}
+
+// The path a `resource` value points at, or null when the value is not
+// recognisably one: a URI, prose, or a version/package identifier. Exported so
+// the classification — the whole false-positive surface — is testable alone.
+export function resourcePath(value) {
+  if (typeof value !== 'string') return null
+  const text = value.trim()
+  if (!text || RESOURCE_SCHEME_RE.test(text) || /\s/.test(text)) return null
+  const target = text.split('#')[0]
+  if (!target) return null
+  if (target.endsWith('/')) return target
+  return RESOURCE_EXT_RE.test(target.split('/').pop()) ? target : null
+}
+
+function bundleRelativeLinks(content) {
+  const links = []
+  for (const match of content.matchAll(LINK_RE)) {
+    const target = match[1].trim()
+    if (target.startsWith('/')) links.push(target.split('#')[0])
+  }
+  return links
+}
+
+function loadBundle(root) {
+  const files = new Map()
+  const walk = (dir) => {
+    for (const entry of readdirSync(dir, { withFileTypes: true })) {
+      const full = join(dir, entry.name)
+      if (entry.isDirectory()) walk(full)
+      else if (entry.name.endsWith('.md')) {
+        files.set('/' + relative(root, full).split('\\').join('/'), full)
+      }
+    }
+  }
+  walk(root)
+  return new Map([...files.entries()].sort(([a], [b]) => (a < b ? -1 : 1)))
+}
+
+// --- per-file checks ---------------------------------------------------------
+
+function checkReserved(path, rel, meta, errors, warnings) {
+  const keys = Object.keys(meta ?? {})
+  if (rel === '/index.md') {
+    const extra = keys.filter(key => key !== 'okf_version')
+    if (extra.length) {
+      warnings.push(`${path}: OKF v0.2 reserves index.md — only 'okf_version' belongs in its frontmatter, drop ${extra.map(k => `'${k}'`).join(', ')}`)
+    }
+    if (meta?.okf_version === undefined) {
+      warnings.push(`${path}: bundle root does not declare okf_version: "${OKF_VERSION}"`)
+    } else if (String(meta.okf_version) !== OKF_VERSION) {
+      warnings.push(`${path}: declares okf_version '${meta.okf_version}', this validator implements ${OKF_VERSION}`)
+    }
+    return
+  }
+  if (keys.length) {
+    warnings.push(`${path}: OKF v0.2 reserves ${basename(path)} — it carries no frontmatter, drop all ${keys.length} key(s)`)
+  }
+}
+
+function checkTrust(path, meta, errors, warnings) {
+  if ('timestamp' in meta) {
+    if (!iso8601(String(meta.timestamp))) {
+      errors.push(`${path}: timestamp '${meta.timestamp}' is not valid ISO 8601`)
+    }
+    if (!('generated' in meta)) {
+      warnings.push(`${path}: 'timestamp' is the v0.1 key — replace with generated: { by, at }`)
+    }
+  }
+
+  if ('generated' in meta) {
+    if (!isPlainObject(meta.generated)) {
+      errors.push(`${path}: 'generated' must be a mapping of { by, at }`)
+    } else {
+      if (!meta.generated.by) errors.push(`${path}: 'generated' requires 'by'`)
+      else if (!ACTOR_RE.test(String(meta.generated.by))) {
+        warnings.push(`${path}: generated.by '${meta.generated.by}' is not an OKF actor (human:<id>, process:<id>, or <producer>/<version>)`)
+      }
+      if (meta.generated.at !== undefined && !iso8601(String(meta.generated.at))) {
+        errors.push(`${path}: generated.at '${meta.generated.at}' is not valid ISO 8601`)
+      }
+    }
+  }
+
+  for (const [i, event] of asList(meta.verified).entries()) {
+    if (!isPlainObject(event)) {
+      errors.push(`${path}: verified[${i}] must be a mapping of { by, at }`)
+      continue
+    }
+    if (!event.by) errors.push(`${path}: verified[${i}] requires 'by'`)
+    else if (!ACTOR_RE.test(String(event.by))) {
+      warnings.push(`${path}: verified[${i}].by '${event.by}' is not an OKF actor (human:<id>, process:<id>, or <producer>/<version>)`)
+    }
+    if (event.at !== undefined && !iso8601(String(event.at))) {
+      errors.push(`${path}: verified[${i}].at '${event.at}' is not valid ISO 8601`)
+    }
+  }
+}
+
+function checkLifecycle(path, meta, errors, warnings, today) {
+  if ('status' in meta && !STATUSES.has(String(meta.status))) {
+    errors.push(`${path}: status '${meta.status}' not in allowed list (${[...STATUSES].join(', ')})`)
+  }
+  if ('stale_after' in meta) {
+    if (!isDate(meta.stale_after)) {
+      errors.push(`${path}: stale_after '${meta.stale_after}' is not a YYYY-MM-DD date`)
+    } else if (today >= String(meta.stale_after)) {
+      warnings.push(`${path}: stale — stale_after ${meta.stale_after} has passed, re-verify or bump it`)
+    }
+  }
+}
+
+function checkSources(path, meta, body, errors, warnings) {
+  if ('sources' in meta) {
+    const sources = Array.isArray(meta.sources) ? meta.sources : [meta.sources]
+    for (const [i, source] of sources.entries()) {
+      if (!isPlainObject(source)) {
+        errors.push(`${path}: sources[${i}] must be a mapping with at least 'resource'`)
+        continue
+      }
+      if (!source.resource) errors.push(`${path}: sources[${i}] requires 'resource'`)
+      if (source.last_modified !== undefined && !isDate(source.last_modified)) {
+        errors.push(`${path}: sources[${i}].last_modified '${source.last_modified}' is not a YYYY-MM-DD date`)
+      }
+      if (source.usage_count !== undefined && !/^\d+$/.test(String(source.usage_count))) {
+        warnings.push(`${path}: sources[${i}].usage_count '${source.usage_count}' is not a number`)
+      }
+    }
+  }
+
+  if ('usage_window' in meta) {
+    if (!isPlainObject(meta.usage_window)) {
+      errors.push(`${path}: 'usage_window' must be a mapping of { from, to }`)
+    } else {
+      for (const key of ['from', 'to']) {
+        if (meta.usage_window[key] !== undefined && !isDate(meta.usage_window[key])) {
+          errors.push(`${path}: usage_window.${key} '${meta.usage_window[key]}' is not a YYYY-MM-DD date`)
+        }
+      }
+    }
+  }
+
+  if (/^#+\s+Citations\s*$/m.test(body) && !('sources' in meta)) {
+    warnings.push(`${path}: '# Citations' is the v0.1 provenance form — move it to the 'sources' frontmatter key`)
+  }
+}
+
+// [label, value] for the frontmatter `resource` and every `sources[].resource`.
+function resourceEntries(meta) {
+  const entries = []
+  if (meta.resource !== undefined) entries.push(['resource', meta.resource])
+  for (const [i, source] of asList(meta.sources).entries()) {
+    if (isPlainObject(source) && source.resource) {
+      entries.push([`sources[${i}].resource`, source.resource])
+    }
+  }
+  return entries
+}
+
+// A `/`-prefixed value is bundle-relative like every other reference in the
+// bundle; anything else resolves against the repo root the validator runs from.
+function resolveResource(target, root) {
+  return target.startsWith('/') ? join(root, target.slice(1)) : resolve(target)
+}
+
+function checkResourcePaths(path, meta, root, errors, warnings) {
+  for (const [label, value] of resourceEntries(meta)) {
+    const target = resourcePath(value)
+    if (target === null) continue
+    const wantDir = target.endsWith('/')
+    const full = resolveResource(target, root)
+    let stats
+    try {
+      stats = statSync(full)
+    } catch {
+      errors.push(`${path}: ${label} '${value}' does not exist`)
+      continue
+    }
+    if (wantDir && !stats.isDirectory()) {
+      errors.push(`${path}: ${label} '${value}' is a file, not a directory`)
+    } else if (!wantDir && stats.isDirectory()) {
+      errors.push(`${path}: ${label} '${value}' is a directory, not a file`)
+    }
+  }
+}
+
+// A concept that cites a record sends every reader that follows its sources into
+// a whole archived plan. Records are opened by path from implementation/index.md,
+// so a concept cites the code, schema or rule the record produced instead.
+function checkRecordCitations(path, rel, meta, body, root, warnings) {
+  const recordsDir = resolve(root, 'implementation')
+  const isRecordPath = (full) => {
+    const inside = relative(recordsDir, resolve(full))
+    return inside !== '' && !inside.startsWith('..') && !isAbsolute(inside) && basename(full) !== 'index.md'
+  }
+  const hits = []
+  for (const [label, value] of resourceEntries(meta)) {
+    const target = resourcePath(value)
+    if (target !== null && isRecordPath(resolveResource(target, root))) hits.push(`${label} '${value}'`)
+  }
+  const fileDir = dirname(join(root, rel.slice(1)))
+  for (const match of body.matchAll(LINK_RE)) {
+    const target = match[1].trim().split('#')[0]
+    if (!target || RESOURCE_SCHEME_RE.test(target)) continue
+    const full = target.startsWith('/') ? join(root, target.slice(1)) : join(fileDir, target)
+    if (isRecordPath(full)) hits.push(`link '${target}'`)
+  }
+  for (const hit of hits) {
+    warnings.push(`${path}: cites a Record (${hit}) — a concept cites code, schemas or rules, never knowledge/implementation/`)
+  }
+}
+
+// --- main --------------------------------------------------------------------
+
+function main() {
+  const argv = process.argv.slice(2)
+  let root = BUNDLE_ROOT
+  for (let i = 0; i < argv.length; i++) {
+    if (argv[i] === '--root') root = argv[++i]
+    else if (argv[i].startsWith('--root=')) root = argv[i].slice('--root='.length)
+  }
+
+  const errors = []
+  const warnings = []
+  const today = new Date().toISOString().slice(0, 10)
+
+  let isDir
+  try {
+    isDir = statSync(root).isDirectory()
+  } catch {
+    isDir = false
+  }
+  if (!isDir) {
+    console.log(`ERROR ${root}: bundle root does not exist`)
+    return 1
+  }
+
+  const files = loadBundle(root)
+  if (files.size === 0) {
+    console.log(`ERROR ${root}: no .md files found in bundle`)
+    return 1
+  }
+
+  const parsed = new Map()
+  const indexRels = []
+
+  for (const [rel, path] of files) {
+    const reserved = RESERVED.has(basename(path))
+    if (reserved && basename(path) === 'index.md') indexRels.push(rel)
+
+    const { meta, body, error, absent } = parseFrontmatter(readFileSync(path, 'utf-8'))
+    if (error) {
+      errors.push(`${path}: invalid frontmatter (${error})`)
+      continue
+    }
+
+    parsed.set(rel, { meta: meta ?? {}, body })
+
+    // A Record copies its plan verbatim and is never edited, so a link or path in
+    // it that no longer resolves is history, not a defect: skip those checks.
+    const isRecord = !reserved && meta?.type === 'Record'
+
+    if (reserved) {
+      checkReserved(path, rel, meta, errors, warnings)
+    } else if (absent) {
+      errors.push(`${path}: missing frontmatter block`)
+    } else {
+      if (!('type' in meta)) {
+        errors.push(`${path}: missing required frontmatter key 'type'`)
+      } else if (LEGACY_TYPES.has(meta.type)) {
+        warnings.push(`${path}: type '${meta.type}' belongs to a file OKF v0.2 reserves (index.md / log.md) — rename the file or pick a concept type`)
+      } else if (!ALLOWED_TYPES.has(meta.type)) {
+        errors.push(`${path}: type '${meta.type}' not in allowed list (${[...ALLOWED_TYPES].sort().join(', ')})`)
+      }
+
+      checkTrust(path, meta, errors, warnings)
+      checkLifecycle(path, meta, errors, warnings, today)
+      checkSources(path, meta, body, errors, warnings)
+      if (!isRecord) {
+        checkResourcePaths(path, meta, root, errors, warnings)
+        checkRecordCitations(path, rel, meta, body, root, warnings)
+      }
+
+      if (!meta.description) warnings.push(`${path}: missing recommended key 'description'`)
+      if (!meta.tags || meta.tags.length === 0) warnings.push(`${path}: missing recommended key 'tags'`)
+    }
+
+    for (const link of isRecord ? [] : bundleRelativeLinks(body)) {
+      if (!files.has(link)) {
+        errors.push(`${path}: broken link '${link}' (no file at ${root}${link})`)
+      }
+    }
+  }
+
+  if (indexRels.length === 0) {
+    warnings.push(`${root}: no index.md found — cannot check reachability`)
+  } else {
+    const reachable = new Set(indexRels)
+    const stack = [...indexRels]
+    while (stack.length) {
+      const doc = parsed.get(stack.pop())
+      if (!doc) continue
+      for (const link of bundleRelativeLinks(doc.body)) {
+        if (files.has(link) && !reachable.has(link)) {
+          reachable.add(link)
+          stack.push(link)
+        }
+      }
+    }
+    for (const [rel, path] of files) {
+      if (!reachable.has(rel) && basename(path) !== 'log.md') {
+        warnings.push(`${path}: not reachable from an index.md`)
+      }
+    }
+  }
+
+  for (const msg of errors) console.log(`ERROR ${msg}`)
+  for (const msg of warnings) console.log(`WARN ${msg}`)
+
+  if (errors.length) {
+    console.log(`\n${errors.length} error(s), ${warnings.length} warning(s)`)
+    return 1
+  }
+  console.log(`\n0 errors, ${warnings.length} warning(s)`)
+  return 0
+}
+
+// This file is imported by its test, so main() must run only when it is the
+// process entry point — `node tools/knowledge_validate.mjs` still exits with
+// main()'s code. Derived from import.meta.url rather than node:url to keep the
+// script's node:fs/node:path-only import list.
+const selfPath = decodeURIComponent(new URL(import.meta.url).pathname)
+const selfNative = /^\/[A-Za-z]:/.test(selfPath) ? selfPath.slice(1) : selfPath
+if (process.argv[1] && resolve(process.argv[1]) === resolve(selfNative)) {
+  process.exit(main())
+}
+```

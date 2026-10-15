@@ -1,7 +1,7 @@
 {
   "name": "bigin-codex-harness",
-  "version": "0.1.0+codex.20260720100959",
-  "description": "Codex workflow, architecture, UI, and verification guidance for BigIn Vue and Express repositories.",
+  "version": "1.110.1+codex.20261010",
+  "description": "Codex workflow, architecture, UI, and verification guidance for BigIn Vue and Express repositories. Full sync of upstream tammai/bigin-skills v1.110.1 (spec-gated task/epic/discovery workflows, independent verifier, model-router, knowledge distill) plus repo-specific Vue 3 + Express 5/Prisma adapters.",
   "author": {
     "name": "BigIn SE Team",
     "url": "https://github.com/Tuyen-ares/training_SE"

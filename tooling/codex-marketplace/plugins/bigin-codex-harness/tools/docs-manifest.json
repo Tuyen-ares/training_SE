@@ -1,0 +1,118 @@
+{
+  "skills": {
+    "ask-bigin": {
+      "group": "core",
+      "summary": "Routes a request to the right skill and hands off (/ask-bigin): reads the shared triage ladder for build work, the named subject otherwise."
+    },
+    "bigin-harness-setup": {
+      "group": "core",
+      "summary": "Scaffolds an AI workflow harness — CLAUDE.md, rules, commit gates, Cursor mirror. 8 stack profiles plus the polyrepo repo types specs/contracts/qa."
+    },
+    "task-workflow": {
+      "group": "core",
+      "summary": "On-demand task workflow (/task-workflow): scope → spec → plan (approved) → implement/verify loop (capped, independent verifier) → review → cleanup."
+    },
+    "epic-workflow": {
+      "group": "core",
+      "summary": "Decomposes an initiative into ordered, shippable units plus a one-page design doc, then dispatches the units one at a time through task-workflow."
+    },
+    "discovery-workflow": {
+      "group": "core",
+      "summary": "Vague ask → approved brief + PRD under docs/product/ and architecture decisions in knowledge/, then hands the PRD to epic-workflow."
+    },
+    "nuxt-scaffold": {
+      "group": "core",
+      "summary": "Scaffolds a Nuxt 4 app from scratch via a deterministic Node.js script — npm create nuxt@latest + /api pass-through preset + samples. No GitHub clone."
+    },
+    "next-scaffold": {
+      "group": "core",
+      "summary": "Scaffolds a Next.js App Router app from scratch via a deterministic Node.js script — create-next-app + /api pass-through + OpenNext on Cloudflare + shadcn/ui."
+    },
+    "go-scaffold": {
+      "group": "core",
+      "summary": "Scaffolds a Go modular-monolith REST API — Gin, contract-first oapi-codegen, GORM + Postgres, JWT + cookie-session auth, RBAC, boundaries enforced by a test."
+    },
+    "nodejs-scaffold": {
+      "group": "core",
+      "summary": "Scaffolds a Node.js modular-monolith REST API — users/posts, code-first OpenAPI (TypeBox) + Drizzle, JWT+argon2id, outbox/inbox + job queue."
+    },
+    "sprint-distill": {
+      "group": "core",
+      "summary": "End-of-sprint distillation: merged PRs + touched knowledge/ concepts → proposal-first knowledge/ and bigin-skills updates. Compresses, never just appends."
+    },
+    "knowledge-distill": {
+      "group": "core",
+      "summary": "Distills a library's docs/source at a pinned version into audited knowledge/libraries/<lib>/ concept files, plus a version-drift commit guard."
+    },
+    "write-tests": {
+      "group": "core",
+      "summary": "On-demand test authoring (/write-tests): style-matched, edge-case-first tests for one unit, or for a PRD `FR-n/AC-m` criterion at the lowest tier that sees it."
+    },
+    "debug-workflow": {
+      "group": "core",
+      "summary": "On-demand systematic debugging (/debug-workflow): triage → fast path for obvious bugs, full guarded workflow for flaky/env/repeat-failure bugs."
+    },
+    "model-router": {
+      "group": "core",
+      "summary": "Scores capability and verification needs separately, then routes to the worker or architect tier on a per-project model + effort ladder."
+    },
+    "session-handoff": {
+      "group": "handoff",
+      "summary": "Saves session state (tasks, decisions, uncommitted changes) to SESSION.md and restores it on resume."
+    },
+    "nuxt-ui-figma-handoff": {
+      "group": "handoff",
+      "summary": "Turns a Nuxt UI Figma design handoff into code — theme tokens into main.css, component overrides into app.config.ts. Requires a Figma URL."
+    },
+    "napkin": {
+      "group": "core",
+      "summary": "Explains a topic as a picture (/napkin): offers 2-4 candidate shapes, then draws your pick as an HTML artifact or an embeddable SVG/PNG, geometry-checked."
+    },
+    "nuxt-marketing-scaffold": {
+      "group": "core",
+      "summary": "Scaffolds a multi-locale Nuxt 4 marketing site — @nuxt/content, @nuxtjs/i18n, prerendered to Cloudflare Workers. No auth, so it detects as nuxt-marketing."
+    },
+    "contract-sync": {
+      "group": "core",
+      "summary": "Vendors an OpenAPI contract at a pinned commit and regenerates the client (check/sync/bump); the only writer of the vendored spec and api-contract.lock."
+    },
+    "flutter-figma-handoff": {
+      "group": "handoff",
+      "summary": "Material 3 Figma frame to Flutter: variables become a seeded ColorScheme, components resolve via a mapping table, an unmapped one stops the handoff."
+    },
+    "project-scaffold": {
+      "group": "core",
+      "summary": "Stands up a whole polyrepo project: six repos, the right scaffold in each, locks and workflows wired between them, remotes and CI credentials opt-in."
+    }
+  },
+  "agents": {
+    "worker": {
+      "routed": "`model-router` — `balanced`",
+      "summary": "Worker tier (capability 0–4): mechanical edits through most feature and bug-fix work."
+    },
+    "worker-frontier": {
+      "routed": "`model-router` — `frontier`",
+      "summary": "Same role and body as `worker`, on opus at medium; spawned instead of it on the `frontier` ladder."
+    },
+    "architect": {
+      "routed": "`model-router` — `balanced`",
+      "summary": "Architect tier (capability 5+ or an auto-override): architecture, breaking contract changes, row-transforming migrations, unknown-root-cause bugs, full-spec."
+    },
+    "architect-frontier": {
+      "routed": "`model-router` — `frontier`",
+      "summary": "Same role and body as `architect`, pinned at high; spawned instead of it on the `frontier` ladder."
+    },
+    "verifier": {
+      "routed": "`task-workflow`",
+      "summary": "Read-only — audits a diff against `PLAN.md`, not the implementer's summary. Fresh each round."
+    },
+    "knowledge-auditor": {
+      "routed": "`knowledge-distill`",
+      "summary": "Read-only — audits a distilled bundle against the library's cloned source at the pinned commit. Fresh each round."
+    }
+  },
+  "groups": {
+    "core": "Core Skills",
+    "handoff": "Handoff Skills"
+  }
+}

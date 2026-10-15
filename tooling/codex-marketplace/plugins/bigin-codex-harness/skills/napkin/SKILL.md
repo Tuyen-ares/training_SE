@@ -1,0 +1,126 @@
+---
+name: napkin
+description: "Explicit only — type /napkin <topic>. Explains a topic as a picture with few words: an HTML artifact by default, or a standalone SVG/PNG when you ask for one to embed. Offers candidate shapes to pick from before drawing."
+argument-hint: [topic]
+disable-model-invocation: true
+allowed-tools: AskUserQuestion Bash(node ${CLAUDE_SKILL_DIR}/scripts/check_diagram.mjs *)
+effort: medium
+---
+
+# napkin
+
+Explain like the reader knows nothing about this topic — big picture, few words.
+
+A napkin sketch: the simplest drawing that makes something clear.
+
+Adapted from the MIT-licensed `eli5` plugin v1.0.0 by Thariq Shihipar, installed from the
+claude-community marketplace; no repository URL is published with it, so none is linked here.
+What this version adds: an embeddable SVG/PNG output, and the diagram rules below — each of
+which is here because it shipped as a visible defect first.
+
+Topic: $ARGUMENTS
+
+## Pick the output first
+
+| They want | Give them |
+| --- | --- |
+| To understand something (default) | **HTML artifact** — big visuals, few words, one idea per screen |
+| A diagram for a doc, handbook, or README | **Standalone SVG** |
+| A diagram for a slide, an issue, or chat | **PNG**, converted from that SVG |
+
+Default to the artifact. Choose SVG or PNG only when they say where it's going — "for the
+handbook", "to paste in Slack", "embed this". If the target is a page you can read, match its
+existing diagrams: same CSS custom properties, same arrow marker, same type scale. A diagram
+that doesn't match its neighbours reads as imported.
+
+**PNG needs a converter.** Probe in order and use the first that exists:
+`rsvg-convert -w 1600 in.svg -o out.png` · `magick -density 200 in.svg out.png` ·
+`inkscape in.svg -o out.png -w 1600` · `resvg in.svg out.png` · on macOS,
+`qlmanage -t -s 1600 -o . in.svg` (writes `in.svg.png`). If none is installed, deliver the SVG,
+say which converters would work, and don't pretend a PNG was produced.
+
+## Then pick the shape — offer it, don't assume it
+
+A shape is a claim. A flow says *this happens after that*; a comparison says *these differ along
+the same axes*; a timeline says *the distance between them means something*. Pick the wrong one
+and the diagram is confidently wrong before a single label is written — the one defect careful
+geometry never catches.
+
+| Shape | What it asserts | Wrong when |
+| --- | --- | --- |
+| **Flow** | One thing happens after another; every branch is a decision | The order is arbitrary |
+| **Comparison** | Two or more things differ along the *same* axes | An axis doesn't apply to both |
+| **Timeline** | Order is calendar order, and the gaps carry meaning | You don't know the dates |
+| **Hierarchy** | Children belong to parents — containment or reporting | The links are peer-to-peer |
+| **Cycle** | The last step feeds the first, and it runs again | It terminates |
+| **Layers** | Each level rests on the one below and talks only to its neighbours | Anything skips a level |
+| **Anatomy** | One thing, called out in parts | There is more than one thing |
+
+**Offer 2–4, then draw one — inline.** Ask with `AskUserQuestion`, header `Shape`, one option per
+candidate. Each option's `preview` is an ASCII sketch of the structure: eight marks at most,
+placeholder labels of a word or two, no real content. They render side by side in the terminal and
+answer in a keystroke.
+
+Do not write a chooser file. A picture that costs a file open and a window switch is slower than
+the question it was asking, and it leaves a stray artifact behind for a decision that took two
+seconds.
+
+Put the *claim* in each option's `description`, not just the shape's name — "asserts one thing
+follows another; answers **how a task gets routed**". The name says what it will look like; the
+description says what it would commit you to, which is the thing actually being chosen.
+
+In the message above the question, name the shapes you rejected and why, one line each. That is
+where the table does its visible work, and it is often what changes the pick.
+
+Skip the chooser — and say you skipped it — when:
+
+- They named the shape: "a timeline of", "flowchart of", "compare X and Y".
+- Only one shape is honest. Steps with a decision in the middle are a flow; there is no second
+  reading to offer, and inventing one to look thorough spends a turn on nothing.
+- They asked for a change to a diagram that already exists.
+
+The answer usually arrives as a pick plus an edit; the free-text **Other** option carries it — "B,
+but colour the reject path". Take both.
+Then draw that one at full fidelity, and run the checker on it.
+
+## Diagram rules
+
+**SVG `<text>` does not wrap.** Nearly everything below follows from that one fact.
+
+1. **One line per `<text>`.** A label too long for its box runs past both rounded corners. Split
+   it across two `<text>` elements and grow the box height.
+2. **Never widen one box to fit its label.** A column of steps reads as a column only if the
+   boxes line up; widening one trades a text bug for an alignment bug. Wrap the label, or reword
+   it — the shorter wording is often the more precise one.
+3. **Budget the label before you write it.** Roughly `chars × font-size × 0.5` px, against
+   `box width − 16`. At `font-size: 13` in a 300px box that's ~43 characters; at `10.5`, ~54.
+4. **Compute every edge endpoint from the shape it touches.** An edge meeting a box side belongs
+   at `y + height/2`, not at a number that looked right — that number stops being the centre the
+   moment a height changes, and nothing tells you.
+5. **A third outcome usually needs a second decision node.** If the third branch turns on a
+   *different question*, a third arrow off one diamond states something false. Two nodes in
+   sequence, each with its own question, is the honest shape.
+6. **Theme tokens, not hex.** In a page that has them, use its custom properties so the diagram
+   follows light/dark. Standalone, define them once on the root and use `prefers-color-scheme`.
+7. **The `aria-label` is the diagram in prose.** Every exit, including ones added later. It is
+   the only version a screen reader gets, and the first thing to go stale.
+
+## Check it before you hand it over
+
+```bash
+node ${CLAUDE_SKILL_DIR}/scripts/check_diagram.mjs path/to/file.svg      # or the .html it lives in
+```
+
+Reports label overflow, mixed widths in a centred column, overlapping boxes, anything outside the
+viewBox, and edges that miss a face's centre. Exit 1 on any finding. It skips `<svg>` markup that
+is really a JavaScript string, and it **estimates** label widths — a near-miss is worth looking at
+rather than trusting in either direction.
+
+Run it on what you produced, and on the file you embedded into. Both of the defects that motivated
+this skill passed a visual read and failed this check.
+
+## When not to use
+
+- **A data chart** — bars, lines, pie, a plotted dataset. That's a charting job, not an explainer.
+- **A screenshot would be truer.** Don't draw a UI that already exists; capture it.
+- **The answer is one sentence.** A picture of one sentence is a slower sentence.

@@ -1,0 +1,184 @@
+# Bootstrap — non-interactive Nuxt 4 init + module install
+
+> **Executed by `../scripts/scaffold.mjs`** — this doc is the rationale/maintenance reference for that script's command sequence, not instructions to run by hand. If you change a stage here, change the matching function in `scaffold.mjs` (and vice versa).
+
+The canonical command sequence. Scaffolds **in-place** into the current directory (`.`), installs the pass-through preset, then leaves the project ready for artifact application.
+
+Uses `npm create nuxt@latest` (unpinned) — non-interactive flag behavior (`--template` required, `--modules` atomic install, `--gitInit` quirks) was last verified against `create-nuxt` v3.36.1 (https://nuxt.com/docs/4.x/api/commands/init); a future `create-nuxt` release could change that behavior without notice, so re-verify Stage 1 if it starts failing. Stage 1b separately refreshes the packages the CLI installs to current releases per `VERSION_POLICY`, so scaffolded apps don't inherit a stale `@nuxt/ui`/`tailwindcss`/etc. snapshot regardless of which CLI version ran.
+
+> Requires: Node 22+, pnpm. Run from the repo root (for a brand-new project: `mkdir my-app && cd my-app` first).
+
+**Pre-flight checks** — run before Stage 1:
+
+```sh
+node -e "process.exit(Number(process.version.slice(1).split('.')[0]) >= 22 ? 0 : 1)" || { echo "Node.js 22+ required (found $(node -v))"; exit 1; }
+pnpm --version >/dev/null 2>&1 || { echo "pnpm is required but not installed. Install: corepack enable && corepack prepare pnpm@latest --activate"; exit 1; }
+```
+
+**Monorepo warning:** if a parent `pnpm-workspace.yaml` exists above the target directory, `pnpm add` may hoist dependencies to the root. Scaffold outside the workspace, or use `--ignore-workspace` on each `pnpm add` call.
+
+**Complete vs. partial:** a scaffold is "complete" — and `resume: true` refuses with "nothing to do" — only when `vitest.config.ts`, `.claude/settings.json`, **and** `node_modules/` all exist. The first two are written unconditionally in Stage 3 regardless of `skipInstall`, so they alone can't tell a fully-installed-and-verified scaffold apart from a `skipInstall: true` run that only wrote files. `node_modules/` is the signal a `skipInstall` run never produces.
+
+**Build-script approval:** pnpm 10+ blocks a dependency's postinstall/build scripts by default. `simple-git-hooks` and `esbuild`/`workerd` (via `wrangler`) hit this. For these packages, two things matter here:
+
+1. **The `pnpm add` that introduces the package exits 1 with `ERR_PNPM_IGNORED_BUILDS` — but the package still installs**, just with its build script deferred pending approval. This is *not* the "partial install, stop" failure the stages below otherwise warn about — treat this specific error as expected, run `pnpm approve-builds <pkg>` (named in the error output) immediately after, and continue.
+2. **Naming a package that isn't actually pending approval fails the whole `pnpm approve-builds` call** (`ERR_PNPM_APPROVE_BUILDS_UNKNOWN_PACKAGES`) — which packages end up pending is environment-dependent (already-approved/already-built packages don't need it again). Where a stage below approves more than one package, run each as its own `pnpm approve-builds <pkg> || true` so one non-pending name doesn't block the others.
+
+---
+
+## Stage 1 — Non-interactive init
+
+```sh
+npm create nuxt@latest . -- --template ui --packageManager pnpm --gitInit --force --modules pinia,vueuse
+```
+
+Flag rationale (behavior last verified against `create-nuxt` v3.36.1 — re-validate against whatever `@latest` resolves to if Stage 1 starts failing):
+- `npm create nuxt@latest .` — unpinned; always takes the current `create-nuxt` release. `.` = scaffold into the current dir (in-place).
+- `--` — pass the remaining flags through `npm create` to `create-nuxt`.
+- `--template ui` — **required** in a non-interactive terminal (create-nuxt aborts with "Missing required argument: --template" without it). `ui` = the official Nuxt UI starter, which already installs and registers `@nuxt/ui` + `@nuxt/eslint`, sets the eslint stylistic config, and ships `app.vue` / `app.config.ts` / `pages/index.vue` / `eslint.config.mjs`.
+- `--packageManager pnpm` — non-interactive package-manager choice (no prompt).
+- `--gitInit` — initialize the git repo as part of init. It **only fires when the install step runs**, so do **not** pair it with `--no-install` (create-nuxt silently skips gitInit under `--no-install`). Do not omit `--gitInit`.
+- `--force` — proceed when the dir is non-empty (e.g. one that already has `.git`). **Warning:** `--force` replaces any conflicting files with template files — not just Nuxt artifacts. Non-trivial existing files (hand-authored README, config) may be destroyed. The preflight guard checks for `nuxt.config.ts` only; warn the user if the directory contains other valuable files.
+- `--modules pinia,vueuse` — installs and registers both Nuxt modules atomically during init, eliminating the separate `nuxi module add` calls (and the partial-state risk they carry). Stage 2 only needs the plain packages.
+
+> Base dependencies install as part of init, and `--gitInit` creates a clean repo (the giget template carries no git history — no manual reset needed). If `--gitInit` ever does not fire, run `git init` explicitly.
+
+**Registration check** (the CLI is unpinned now, so `--modules` silently changing behavior on a future release is exactly the risk the old pin was covering — a failed registration here would otherwise only surface confusingly at Stage 5 or later):
+```sh
+grep -q "@pinia/nuxt" nuxt.config.ts && grep -q "@vueuse/nuxt" nuxt.config.ts || { echo "Stage 1's --modules flag did not register pinia/vueuse in nuxt.config.ts — create-nuxt@latest's --modules behavior may have changed; stop and re-verify Stage 1"; exit 1; }
+```
+
+Set `package.json` `name` → `{PROJECT_NAME}` (kebab-case — SKILL.md Step 2 validates this against `^[a-z0-9]+(-[a-z0-9]+)*$` before it reaches here; never substitute an unvalidated value into the command below):
+```sh
+PROJECT_NAME='{PROJECT_NAME}' node -e "const p=require('./package.json');p.name=process.env.PROJECT_NAME;require('fs').writeFileSync('package.json',JSON.stringify(p,null,2)+'\n')"
+```
+
+If `npm create` does not forward a flag in your environment, the direct primitive is `npx nuxi@latest init . --template ui --packageManager pnpm --gitInit --force --modules pinia,vueuse`.
+
+If `npm create` exits non-zero:
+1. Check Node ≥ 22 (`node -v`).
+2. If ENOENT or network error, retry once after `npm cache clean --force`.
+3. Fall back to `npx nuxi@latest init . --template ui --packageManager pnpm --gitInit --force`.
+4. If still failing, report the error and stop.
+
+---
+
+## Stage 1 (cloned templates) — every `template` other than `starter`
+
+`create-nuxt@latest`'s `--template`/`--modules` flags only work for its own official template set (`ui`, `ui-pro`, etc.) — an arbitrary community/org repo isn't one of those, so this path skips `npm create` entirely and uses `nuxi init`'s giget passthrough instead (the same tool `stage1Init`'s starter path already falls back to, not a new dependency):
+
+```sh
+npx nuxi@latest init . --template gh:nuxt-ui-templates/<slug> --packageManager pnpm --gitInit --force
+```
+
+`TEMPLATE_REPOS` in `scaffold.mjs` maps `template` → `<slug>` (`saas`, `dashboard`, `landing`, `docs`, `portfolio`, `chat`, `changelog`, `editor` — all under the `nuxt-ui-templates` GitHub org, the same one `ui.nuxt.com/templates` links to). `--modules` is **not** passed here — arbitrary giget templates don't support it, so the preset's core modules are added explicitly right after clone instead of during init:
+
+```sh
+pnpm add @pinia/nuxt @vueuse/nuxt
+```
+
+followed by `ensureModuleRegistered()` for each (the same helper Stage 2 uses for `@pinia/colada-nuxt` when `nuxi module add` silently fails to register) — this puts the cloned-template path at parity with what `--modules` gives the `starter` path *before* Stage 1b runs, so Stage 1b's refresh + safety checks work unmodified across every template.
+
+Shape verified against all 8 slugs (fetched live from GitHub, v1.68.1). Every one ships `app/app.config.ts` with `ui: { colors: { primary, neutral } }`, `eslint.config.mjs`, `app/assets/css/main.css` with a quoted `--font-sans`, and `modules`/`devtools: { enabled: true }`/`css:`/`compatibilityDate` in `nuxt.config.ts` — so Stage 1b's checks and every `applyArtifacts` anchor hold. Two shape differences the scaffold has to absorb, both of which cost a release to learn:
+
+| Slug | `routeRules`? | Existing `runtimeConfig`? |
+| --- | --- | --- |
+| `saas`, `dashboard`, `changelog` | yes | no |
+| `landing`, `docs`, `portfolio`, `chat` | **no** | no |
+| `editor` | **no** | **yes** (`public.partykitHost`) |
+
+Before v1.68.1 Stage 1b required `routeRules` and `applyArtifacts` anchored the `runtimeConfig` insert on it, so 5 of the 8 templates aborted with "template shape changed" when nothing had; `editor` would additionally have been skipped by a bare `includes('runtimeConfig')` test and shipped without its server-only setting (`backendUrl` then, `apiOrigin` now). Both are now key-order-driven (see `artifacts.md`). End-to-end scaffolds (through Stage 5 lint/type-check/test) were run for `starter`, `landing`, `docs`, and `editor`; the remaining four rely on Stage 1b's generic checks to fail loudly rather than silently. Re-verify a slug's shape the first time a real scaffold with that `template` value is attempted.
+
+---
+
+## Stage 1b — Refresh template-installed packages
+
+`create-nuxt@latest`'s `--template ui` and `--modules` flags install whatever `@nuxt/ui` / `@nuxt/eslint` / `eslint` / `tailwindcss` / `vue-tsc` / `typescript` / `@pinia/nuxt` / `@vueuse/nuxt` / `nuxt` versions were current when that `create-nuxt` release was published — not necessarily current *now* (this is how a scaffolded app can end up on a Tailwind release that predates newer palettes like `mauve`/`olive`/`mist`/`taupe`). This stage re-pins all of them to fresh releases, per `VERSION_POLICY` (set in `SKILL.md` Step 2; default `capped`):
+
+Do this in a single `node -e` script, not a shell loop — a shell `for` loop over an unquoted variable relies on word-splitting that **zsh does not do by default** (unlike bash/sh), which silently collapses the whole package list into one bogus argument and corrupts `pnpm add`. Reading each package's version via plain `require('<pkg>/package.json')` also breaks for any package with a restrictive `exports` map (`@nuxt/ui`, `@nuxt/eslint`, `@pinia/nuxt` all throw `ERR_PACKAGE_PATH_NOT_EXPORTED`) — read the file directly instead. Calling `pnpm` via `execFileSync` with an argument array sidesteps shell parsing entirely, so neither problem can recur:
+
+```sh
+node -e "
+const fs = require('fs');
+const { execFileSync } = require('child_process');
+const policy = process.env.VERSION_POLICY || 'capped';
+const pkgs = 'nuxt @nuxt/ui @nuxt/eslint eslint tailwindcss vue-tsc typescript @pinia/nuxt @vueuse/nuxt'.split(' ');
+const specs = pkgs.map(function (p) {
+  if (policy === 'latest') return p + '@latest';
+  var pkgPath = 'node_modules/' + p + '/package.json';
+  if (!fs.existsSync(pkgPath)) { console.error('Stage 1b: ' + p + ' was not installed by Stage 1 — create-nuxt@latest template package set may have changed; stop and re-verify Stage 1'); process.exit(1); }
+  var v = JSON.parse(fs.readFileSync(pkgPath, 'utf8')).version;
+  return p + '@^' + v.split('.')[0];
+});
+execFileSync('pnpm', ['add'].concat(specs), { stdio: 'inherit' });
+"
+```
+
+- `capped` (default) resolves the latest release within each package's *currently installed* major — fixes staleness without risking a silent major bump.
+- `latest` always takes the newest release, including a future major, if the user opted in during SKILL.md Step 2.
+- pnpm preserves each package's existing `dependencies`/`devDependencies` placement on a bare `pnpm add <pkg>@<version>` — this step only refreshes versions, not sections.
+- Pre-1.0 packages (`@pinia/nuxt` at the time of writing) only get patch-level bumps under `capped` — npm's caret range is stricter for `0.x` versions. This is a known, minor gap in "latest minor/patch" framing for that case, not a bug.
+
+**Safety check** (catches an unwanted major, and a changed template shape, before Stage 2/3 do more work on top of it):
+```sh
+NUXT_MAJOR=$(node -e "console.log(require('nuxt/package.json').version.split('.')[0])")
+[ "$NUXT_MAJOR" = "4" ] || { echo "nuxt is now v$NUXT_MAJOR (expected v4) — stop, re-validate this skill before continuing"; exit 1; }
+test -f app/app.config.ts && test -f eslint.config.mjs && grep -q "css:" nuxt.config.ts || { echo "template shape changed — re-verify Stage 3's merge instructions (nuxt.config.ts key order, app.config.ts) before continuing"; exit 1; }
+```
+
+If any `pnpm add` fails, report which package and stop — do not continue with a partial install. (`ERR_PNPM_IGNORED_BUILDS` is the one exception — see "Build-script approval" above.)
+
+---
+
+## Stage 2 — Install the preset
+
+The `--template ui` init already installed `@nuxt/ui`, `@nuxt/eslint`, `vue-tsc`, and `tailwindcss`. The `--modules pinia,vueuse` flag in Stage 1 already installed and registered `@pinia/nuxt` and `@vueuse/nuxt` in `nuxt.config.ts`. Stage 2 adds the rest:
+
+```sh
+pnpm add @pinia/colada @pinia/colada-nuxt zod
+pnpm add -D vitest @nuxt/test-utils happy-dom simple-git-hooks lint-staged
+pnpm approve-builds simple-git-hooks || true
+```
+
+`starter` only, additionally:
+```sh
+pnpm add -D openapi-typescript
+```
+`openapi-typescript` only makes sense alongside `starter`'s `openapi.yaml` stub + `openapi-types` script (Stage 3) — every other template has no backend contract to describe by default, so it stays out of the universally-installed set above rather than shipping as a dead devDependency on templates that never wire up a script to run it.
+
+`zod` and the dev tooling are plain packages (not Nuxt modules) — consumed in code, no `nuxt.config.ts` registration needed. `@pinia/colada-nuxt` **is** a Nuxt module and must be registered in `nuxt.config.ts`'s `modules` array — per the [official Nuxt guide](https://pinia-colada.esm.dev/nuxt.html), this isn't an optional SSR nicety, it's required for `useQuery`/`useMutation` to work at all; the module also auto-installs the `PiniaColadaSSRNoGc` plugin so SSR caching needs no extra `await`. `nuxi module add` is unreliable non-interactively, so the script registers it directly via `ensureModuleRegistered('@pinia/colada-nuxt')` right after `pnpm add` rather than shelling out to `nuxi`. `happy-dom` is required by `@nuxt/test-utils`'s `environment: 'nuxt'` (set in `vitest.config.ts`, Stage 3) — without it `pnpm test` fails outright with "Could not resolve happy-dom". The second `pnpm add` line above will exit 1 with `ERR_PNPM_IGNORED_BUILDS` because of `simple-git-hooks` — that's expected (see "Build-script approval" above); the `approve-builds` line immediately after handles it.
+
+If any `pnpm add` fails, report which package failed and stop — do not continue with a partial install. (`ERR_PNPM_IGNORED_BUILDS` is the one exception — see "Build-script approval" above.)
+
+> `@nuxt/icon`, `@nuxt/fonts`, and `@nuxtjs/color-mode` are already installed as dependencies of `@nuxt/ui` (the `ui` template) — do not re-add them. There is no optional-module stage — `@nuxt/image`/`@nuxt/content` are never installed by this scaffolder.
+
+---
+
+## Stage 3 — Apply artifacts
+
+Write/merge the files in `references/artifacts.md` (substitute `{PROJECT_NAME}`, `{PRIMARY}`, `{NEUTRAL}`). `nuxt.config.ts`, `package.json`, `.claude/settings.json`, and `.vscode/settings.json` are **merged**, never overwritten.
+
+---
+
+## Stage 4 — Activate the project commit gate
+
+```sh
+pnpm simple-git-hooks
+```
+
+Wires the `pre-commit` → `pnpm exec lint-staged` hook declared in `package.json`. (This is the project-level git gate, distinct from the Claude-level `bash-guard` PreToolUse hook that `bigin-harness-setup` adds later.) Stage 2 already ran `pnpm approve-builds simple-git-hooks` right after installing it — if this command still fails with `ERR_PNPM_IGNORED_BUILDS`, run `pnpm approve-builds simple-git-hooks` again here before retrying.
+
+---
+
+## Stage 5 — Verify
+
+```sh
+pnpm dedupe
+pnpm lint
+pnpm type-check
+pnpm test
+```
+
+`pnpm dedupe` runs first (stage 4b in `scaffold.mjs`) because stages 1, 1b and 2 install in four separate passes and pnpm keeps whatever each pass already resolved. With `nuxt-auth-utils` in the set (since removed), `docs` ended up with two copies of `h3` in the server type graph — v1 via that module, v2 via nitro — and `nuxt typecheck` failed on the template's own `server/routes/**` as well as the scaffolded server code; the step is kept because it is cheap and the install order is unchanged. Installing the same package set in one pass resolves a single `h3` and type-checks clean, so it's an install-order artifact rather than a version conflict; `dedupe` collapses it.
+
+`lint`, `type-check`, and `test` must pass before the scaffold is considered complete. (`tests/server/pass-through.test.ts` and `tests/app/composables/queries/users.test.ts` are written in Stage 3, so `pnpm test` validates the Vitest + Nuxt + Pinia Colada chain.) Verify the Nuxt major version (`node -e "console.log(require('nuxt/package.json').version)"` — must start with `4`). Stop and fix any errors before the initial commit.

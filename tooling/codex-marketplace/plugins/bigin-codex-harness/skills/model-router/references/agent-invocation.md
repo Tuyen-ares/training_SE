@@ -1,0 +1,67 @@
+# Agent invocation
+
+## Spawn call shape
+
+Use the Agent tool. Both arguments come from Step 3c's resolved `routing`, never from the tier name:
+
+- `subagent_type` — `bigin-skills:` + `routing.agents[tier]`.
+- `model` — `routing.models[tier]` (`fable` | `opus` | `sonnet` | `haiku`), passed on every spawn, including when it equals the agent's frontmatter default.
+
+There is no effort option on the Agent tool: effort comes from the spawned agent file's own frontmatter and cannot be changed at the call site. That's why a tier can map to more than one agent — a **variant** is the same role at a different pin, and picking one is how a profile sets that tier's effort:
+
+| Tier      | `balanced` agent         | `frontier` variant                  |
+| --------- | ------------------------ | ----------------------------------- |
+| Worker    | `worker` (high)          | `worker-frontier` (medium)          |
+| Architect | `architect` (medium)     | `architect-frontier` (high)         |
+| Verifier  | `verifier` (high)        | —                                   |
+
+The variant fixes only the effort — the model still comes from `routing.models[tier]`, so a `models` override runs on whichever agent the profile picked.
+
+Spawning the base agent under a profile that resolved to the variant runs the task at the wrong effort, silently — `routing.agents[tier]` already accounts for this, so use it verbatim. If the user asks for an effort level no variant carries, say so plainly rather than accepting the request and dropping it.
+
+The prompt is self-contained — the spawned agent has no memory of this conversation. Include:
+
+- **Scope** — one sentence: what's changing and why.
+- **Plan reference** — `PLAN.md` path, if one exists (the agent should read it, not have it pasted in full).
+- **Touched files** — the `touchedFiles` list from `classify.mjs`, if any (empty for net-new work).
+- **Routing rationale** — the tier, the model it's running on (and its source when not the default), and the deciding signal(s), e.g. "Routed to worker on sonnet (balanced default): 3 files touched, follows existing CRUD pattern, no contract change." This lets the agent sanity-check the tier against its own read of the task and flag a mismatch early rather than silently over- or under-delivering.
+- **Graph availability** (if `graphify-out/graph.json` exists in the repo) — say so, plus a pointer to `docs/graph-usage.md`, so the subagent queries the graph for structural navigation before falling back to grep. Omit this line entirely when no graph exists — don't tell the agent to check for one.
+- **Objective** — one sentence: why this task exists, not just what it is. Distinct from Scope (the what); this is the reason, so the agent can judge trade-offs an under-specified scope doesn't cover.
+- **Constraints** — what the result must respect (e.g. "no new dependencies," "must not change the public API," "keep it under 50 lines"). Omit if genuinely none — don't pad.
+- **Output file** — when the return will be long (research, an investigation, a design comparison) or another agent reads it next, name a file for it, outside the repo or in a gitignored path. The agent writes there and replies with the path and a short status, and you read the file in slices, or not at all if the next agent is the reader. Omit it for ordinary implementation: the diff is in git and the report is capped.
+- **Definition of done** — what a sufficient return contains, as a short checklist. This is the exact contract Step 6 checks the return against, so make it concrete and checkable ("tests pass and are shown, not claimed"; "the new endpoint is wired into the router"), not vague ("code quality is good").
+
+These three are a fixed template, not prose advice — write them the same way every time rather than improvising phrasing per task, so Step 6's evaluation has something stable to check against.
+
+Example prompt body:
+
+```
+Scope: add a DELETE endpoint for /api/contacts/:id, following the existing
+CRUD pattern in handlers/contacts.go.
+Plan: PLAN.md (task #4)
+Touched files (expected): handlers/contacts.go, handlers/contacts_test.go
+Routing: worker on sonnet (balanced default) — 2 files, existing pattern,
+no contract file touched.
+Graph: graphify-out/graph.json exists — see docs/graph-usage.md for query recipes.
+Objective: contacts currently can't be removed via the API, which blocks the
+GDPR-deletion flow this sprint depends on.
+Constraints: no new dependencies; must not change existing endpoint signatures.
+Definition of done:
+- DELETE /api/contacts/:id returns 204 on success, 404 for an unknown id
+- handlers/contacts_test.go covers both cases
+- `go test ./handlers/...` (the touched package) passes, with its summary line shown, not just claimed
+```
+
+## Return evaluation contract
+
+The spawned agent's final reply should let the orchestrator check it against the payload's definition-of-done without re-deriving the work. State, per definition-of-done item: **met** (with the evidence — e.g. the test output, the file path), **partial** (what's missing), or **unmet**. An agent that just says "done" with no evidence per item should be treated as **unmet** for any item it didn't address — Step 6 does not infer completion from a confident tone.
+
+## Handback contract
+
+If a spawned agent determines mid-task that its tier is wrong — the task needs an architectural decision it wasn't scoped for, or turns out to be far simpler than routed — it replies with a line in this exact form instead of pushing through:
+
+```
+ROUTING_MISMATCH: <one-sentence reason>; suggested tier: <worker|architect>
+```
+
+On receiving this, re-run Step 2/Step 3 of `SKILL.md` with the new information, re-resolve the model for the new tier (Step 3c), and respawn. Don't attempt to change the model or effort of the already-running subagent — both are fixed once it's spawned (model via the call-site override, effort via frontmatter), not mutable in place.

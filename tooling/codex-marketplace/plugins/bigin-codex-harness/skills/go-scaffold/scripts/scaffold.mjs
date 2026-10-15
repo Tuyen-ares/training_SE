@@ -1,0 +1,304 @@
+#!/usr/bin/env node
+/**
+ * scaffold.mjs — deterministic Go modular-monolith REST API scaffold
+ * (Gin + GORM, contract-first).
+ *
+ * Usage:
+ *   node scaffold.mjs --module github.com/acme/orders-api [--dir orders-api]
+ *                      [--project orders-api] [--cors https://app.example.com]
+ *                      [--force] [--no-commit] [--skip-verify]
+ *
+ * Contract-first: openapi.yaml is the single source of truth. One oapi-codegen
+ * run (gin-server + models) produces internal/openapi/openapi.gen.go;
+ * everything else is hand-written. This script runs the generator itself so the
+ * repo it leaves behind builds and tests green, not a skeleton needing fixup.
+ *
+ * All decisions are pre-resolved via CLI flags — never prompts, never stdin.
+ * Node stdlib only. Exit codes: 0 ok, 1 runtime failure, 2 bad usage/args.
+ *
+ * go/git/docker are native binaries on every platform (unlike npm/pnpm's .cmd
+ * shims on Windows) — spawnSync needs no shell:true workaround here.
+ */
+
+import fs from 'node:fs'
+import path from 'node:path'
+import { fileURLToPath } from 'node:url'
+import { spawnSync } from 'node:child_process'
+import { parseArgs } from 'node:util'
+
+const SCRIPT_DIR = path.dirname(fileURLToPath(import.meta.url))
+const TEMPLATES = path.join(SCRIPT_DIR, 'templates', 'files')
+
+// Pinned via `go run pkg@version` — never added to the scaffolded module's own
+// go.mod (that would drag unrelated transitive deps into go.sum just to pin a
+// dev tool). Bump here and the Makefile stays in sync (its template is written
+// from this constant).
+const OAPI_CODEGEN_VERSION = 'v2.4.1'
+
+// Config consumed by the single oapi-codegen run. Its `output:` key points at
+// OAPI_OUTPUT_DIR/openapi.gen.go, relative to the project root this script
+// generates from.
+const OAPI_CONFIG = 'oapi-codegen.yaml'
+const OAPI_SPEC = 'openapi.yaml'
+
+// Holds nothing but generated output, so no template file creates it — and
+// oapi-codegen won't create a missing output directory itself. Kept in sync
+// with oapi-codegen.yaml's `output:` key.
+const OAPI_OUTPUT_DIR = path.join('internal', 'openapi')
+
+const NAME_RE = /^[a-z0-9]+(-[a-z0-9]+)*$/
+const MODULE_RE = /^[A-Za-z0-9][A-Za-z0-9._~-]*(\/[A-Za-z0-9][A-Za-z0-9._~-]*)*$/
+// An origin is scheme://host[:port] and nothing else — the rule the generated
+// server's config.NormalizeOrigin applies to WEB_ORIGINS at boot, where an
+// entry with a path, query, fragment or userinfo refuses to start. --cors seeds
+// that variable, so it has to pass the same rule here (one trailing slash is
+// tolerated on both sides).
+const ORIGIN_RE = /^https?:\/\/[^/?#@\s,"]+$/i
+function isOrigin(raw) {
+  const o = raw.endsWith('/') ? raw.slice(0, -1) : raw
+  if (!ORIGIN_RE.test(o)) return false
+  try {
+    return new URL(o).hostname !== ''
+  } catch {
+    return false
+  }
+}
+
+function log(msg) {
+  console.log(`[scaffold] ${msg}`)
+}
+
+function fail(msg, code = 1) {
+  console.error(`[scaffold] ERROR: ${msg}`)
+  process.exit(code)
+}
+
+// ── args ────────────────────────────────────────────────────────────────
+
+function parseCliArgs() {
+  let values
+  try {
+    ;({ values } = parseArgs({
+      options: {
+        module: { type: 'string' },
+        dir: { type: 'string', default: '.' },
+        project: { type: 'string' },
+        cors: { type: 'string', default: 'http://localhost:3000' },
+        force: { type: 'boolean', default: false },
+        'no-commit': { type: 'boolean', default: false },
+        'skip-verify': { type: 'boolean', default: false },
+        help: { type: 'boolean', default: false }
+      }
+    }))
+  } catch (e) {
+    fail(`bad arguments: ${e.message}`, 2)
+  }
+
+  if (values.help) {
+    console.log(`node scaffold.mjs --module <path> [options]
+
+Required:
+  --module <path>    Go module path, e.g. github.com/acme/orders-api
+
+Optional:
+  --dir <dir>        Target directory (default: .)
+  --project <name>   kebab-case project name (default: last segment of --module)
+  --cors <origins>   Comma-separated default CORS origins (default: http://localhost:3000)
+  --force            Write into a non-empty directory
+  --no-commit        Skip the final git commit
+  --skip-verify      Skip codegen / tidy / build / vet / test / commit (template iteration only)
+`)
+    process.exit(0)
+  }
+
+  if (!values.module) fail('missing required --module <path>', 2)
+  if (!MODULE_RE.test(values.module)) fail(`--module "${values.module}" doesn't look like a Go module path`, 2)
+
+  const defaultProject = values.module.split('/').pop().toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-+|-+$/g, '')
+  const project = values.project ?? defaultProject
+  if (!NAME_RE.test(project)) fail(`--project must be kebab-case (${NAME_RE}), got ${JSON.stringify(project)}`, 2)
+
+  const origins = values.cors.split(',').map((s) => s.trim())
+  for (const o of origins) {
+    if (!isOrigin(o)) fail(`--cors origin "${o}" must be an http(s) origin — scheme://host[:port], no path, query, fragment or userinfo`, 2)
+  }
+
+  return {
+    module: values.module,
+    dir: values.dir,
+    project,
+    dbSlug: project.replace(/-/g, '_'),
+    cors: origins.join(','),
+    force: values.force,
+    commit: !values['no-commit'],
+    skipVerify: values['skip-verify']
+  }
+}
+
+// ── fs helpers ──────────────────────────────────────────────────────────
+
+function substitute(content, cfg) {
+  return content
+    .replaceAll('{{MODULE}}', cfg.module)
+    .replaceAll('{{PROJECT_NAME}}', cfg.project)
+    .replaceAll('{{DB_SLUG}}', cfg.dbSlug)
+    .replaceAll('{{CORS}}', cfg.cors)
+    .replaceAll('{{OAPI_CODEGEN_VERSION}}', OAPI_CODEGEN_VERSION)
+}
+
+// Recursively collect every template file (dotfiles/dotdirs included). Nothing
+// is compiled until AFTER codegen runs below, so write order doesn't matter —
+// everything is written in one pass, then generated.
+function walkFiles(dir, base = dir) {
+  const out = []
+  for (const entry of fs.readdirSync(dir, { withFileTypes: true })) {
+    const full = path.join(dir, entry.name)
+    if (entry.isDirectory()) out.push(...walkFiles(full, base))
+    else out.push(path.relative(base, full))
+  }
+  return out
+}
+
+function writeFiles(relPaths, targetDir, cfg) {
+  for (const rel of relPaths) {
+    const src = path.join(TEMPLATES, rel)
+    const dest = path.join(targetDir, rel)
+    fs.mkdirSync(path.dirname(dest), { recursive: true })
+    fs.writeFileSync(dest, substitute(fs.readFileSync(src, 'utf8'), cfg), 'utf8')
+    log(`wrote ${rel}`)
+  }
+}
+
+// ── subprocess ──────────────────────────────────────────────────────────
+
+function run(cmd, args, cwd, { optional = false } = {}) {
+  log(`$ ${cmd} ${args.join(' ')}`)
+  const res = spawnSync(cmd, args, { cwd, encoding: 'utf8', stdio: 'pipe' })
+  if (res.error) {
+    if (res.error.code === 'ENOENT') {
+      if (optional) return { ok: false, missing: true }
+      fail(`${cmd} not found on PATH`)
+    }
+    fail(`${cmd} ${args.join(' ')} failed to spawn: ${res.error.message}`)
+  }
+  if (res.stdout?.trim()) process.stdout.write(res.stdout)
+  if (res.status !== 0) {
+    if (res.stderr?.trim()) process.stderr.write(res.stderr)
+    if (optional) return { ok: false, missing: false }
+    fail(`${cmd} ${args.join(' ')} exited ${res.status}`)
+  }
+  return { ok: true, stdout: res.stdout, stderr: res.stderr }
+}
+
+// ── main ────────────────────────────────────────────────────────────────
+
+async function main() {
+  const cfg = parseCliArgs()
+  const targetDir = path.resolve(cfg.dir)
+
+  if (fs.existsSync(targetDir)) {
+    const entries = fs.readdirSync(targetDir)
+    if (entries.length > 0 && !cfg.force) {
+      fail(`${targetDir} exists and is not empty. Re-run with --force to proceed.`, 2)
+    }
+  } else {
+    fs.mkdirSync(targetDir, { recursive: true })
+  }
+
+  run('go', ['version'], targetDir)
+
+  log(`scaffolding into ${targetDir} (module: ${cfg.module}, project: ${cfg.project})`)
+  writeFiles(walkFiles(TEMPLATES), targetDir, cfg)
+
+  fs.mkdirSync(path.join(targetDir, OAPI_OUTPUT_DIR), { recursive: true })
+
+  if (cfg.skipVerify) {
+    log('--skip-verify set: skipping codegen, build, and commit. Files written only.')
+    return
+  }
+
+  log('running codegen (oapi-codegen) — the first run downloads and builds the tool, which can take a minute')
+  run('go', ['run', `github.com/oapi-codegen/oapi-codegen/v2/cmd/oapi-codegen@${OAPI_CODEGEN_VERSION}`, '-config', OAPI_CONFIG, OAPI_SPEC], targetDir)
+
+  log('go mod tidy')
+  run('go', ['mod', 'tidy'], targetDir)
+
+  log('gofmt')
+  run('gofmt', ['-l', '-s', '-w', '.'], targetDir)
+
+  log('go vet')
+  run('go', ['vet', './...'], targetDir)
+
+  log('go build')
+  // -buildvcs=false: this build only proves the tree compiles, and bin/server is
+  // thrown away. Go stamps VCS metadata by default, which walks UP from the target
+  // looking for a repo — and this scaffold has not run `git init` yet (that is ~30
+  // lines below). So it finds whatever ancestor repo happens to exist; if that one
+  // is unreadable or malformed — a dotfiles `.git` in $HOME is the common case — git
+  // exits 128 and the scaffold dies at "go build" with a message about VCS rather
+  // than about the code. Stamping a throwaway verification binary buys nothing and
+  // costs a dependency on ambient state the scaffold does not control.
+  run('go', ['build', '-buildvcs=false', '-o', 'bin/server', './cmd/server'], targetDir)
+
+  // Includes internal/arch, the architecture test — so a template edit that
+  // breaks a module boundary fails here rather than in the user's first PR.
+  log('go test')
+  run('go', ['test', './...', '-count=1'], targetDir)
+
+  // Scoped to hand-written code — internal/openapi is oapi-codegen output the
+  // scaffold's own tooling regenerates, and staticcheck's generated-file
+  // heuristic doesn't recognise its marker (it's folded into the package doc
+  // comment).
+  const pkgList = run('go', ['list', './...'], targetDir, { optional: true })
+  const pkgs = pkgList.ok
+    ? pkgList.stdout.split('\n').filter((p) => p.trim() && !/\/internal\/openapi$/.test(p.trim()))
+    : []
+  const staticcheck = pkgs.length
+    ? run('staticcheck', pkgs, targetDir, { optional: true })
+    : { missing: true }
+  if (staticcheck.missing) {
+    log('staticcheck not found on PATH — skipped. Install: go install honnef.co/go/tools/cmd/staticcheck@latest')
+  }
+
+  if (cfg.commit) {
+    const inRepo = spawnSync('git', ['rev-parse', '--is-inside-work-tree'], { cwd: targetDir, encoding: 'utf8' })
+    if (inRepo.status !== 0) {
+      run('git', ['init'], targetDir)
+    }
+    run('git', ['add', '-A'], targetDir)
+    const commit = spawnSync('git', ['commit', '-m', 'chore: scaffold Go modular-monolith REST API (gin + oapi-codegen + GORM)'], { cwd: targetDir, encoding: 'utf8' })
+    if (commit.status !== 0) {
+      log(`git commit skipped: ${(commit.stderr || commit.stdout || '').trim() || 'nothing to commit or no git identity configured'}`)
+    } else {
+      log('committed the scaffold')
+    }
+  }
+
+  log(`
+done.
+
+Next steps:
+  cd ${cfg.dir}
+  cp .env.example .env          # set JWT_SECRET (openssl rand -base64 48)
+  go install -tags 'postgres' github.com/golang-migrate/migrate/v4/cmd/migrate@latest   # one-time, only tool not go-run-able
+  make dev-setup                 # docker compose up -d db + migrate-up
+  make run                       # or \`make dev\` for hot reload (go install github.com/air-verse/air@latest)
+
+Editable surface: openapi.yaml, migrations/, cmd/server/, and internal/
+(modules/<mod>/{domain,application,infrastructure,api}, shared/, api/).
+internal/openapi/openapi.gen.go regenerates via \`make generate\` — never
+hand-edit it.
+
+Adding a module: create internal/modules/<name>/ with the four layers plus
+module.go, embed its Handlers in internal/api/server.go, construct it in
+cmd/server/main.go. Only module.go is importable from outside the module —
+internal/arch fails \`go test ./...\` on anything deeper.
+
+Routing is generated from the contract; SECURITY IS NOT. A new path prefix that
+needs auth or a rate limit must be added to internal/api/middleware/selector.go,
+or the route is public and nothing fails loudly. internal/api/router_test.go
+asserts both directions.
+`)
+}
+
+main().catch((err) => fail(err?.stack || String(err)))

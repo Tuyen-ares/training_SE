@@ -1,0 +1,15 @@
+import { defineCollection, defineContentConfig } from '@nuxt/content'
+import { pageSchema } from './content.schema'
+
+// One collection per locale directory. A schema and the content written
+// against it change together — never one without the other; the schema itself
+// is `content.schema.ts`, so tests can reach it without a Nuxt build.
+export default defineContentConfig({
+  collections: {
+    pages: defineCollection({
+      type: 'page',
+      source: '**/*.md',
+      schema: pageSchema
+    })
+  }
+})

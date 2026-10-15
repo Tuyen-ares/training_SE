@@ -11,6 +11,13 @@
             "commandWindows": "node \"%PLUGIN_ROOT%\\scripts\\session-start.mjs\"",
             "timeout": 10,
             "statusMessage": "Loading BigIn repository profile"
+          },
+          {
+            "type": "command",
+            "command": "node \"$PLUGIN_ROOT/hooks/harness-drift-check.mjs\"",
+            "commandWindows": "node \"%PLUGIN_ROOT%\\hooks\\harness-drift-check.mjs\"",
+            "timeout": 10,
+            "statusMessage": "Checking harness drift vs upstream"
           }
         ]
       }

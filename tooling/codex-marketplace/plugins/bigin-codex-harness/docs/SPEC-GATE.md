@@ -1,0 +1,203 @@
+# Spec Gate — User Guide
+
+When a spec is required, which of the two formats to write, and what the gate actually blocks.
+
+This is the mechanism `USER_GUIDE.md` calls "the whole point" of the harness, seen from both sides: the discipline in `task-workflow`, and `spec-gate-guard.mjs` enforcing it at edit time. For the surrounding loop see [`USER_GUIDE.md` §4](USER_GUIDE.md#4-day-2-onward--the-daily-loop); for the gate's sibling guards, [§6](USER_GUIDE.md#6-living-with-the-gates).
+
+**Contents**
+
+1. [What the gate is for](#1-what-the-gate-is-for)
+2. [When a spec is required](#2-when-a-spec-is-required)
+3. [The two formats](#3-the-two-formats)
+4. [Choosing between them](#4-choosing-between-them)
+5. [PLAN.md — what both produce](#5-planmd--what-both-produce)
+6. [What the guard actually checks](#6-what-the-guard-actually-checks)
+7. [Getting blocked](#7-getting-blocked)
+
+---
+
+## 1. What the gate is for
+
+**Problem it solves:** an agent that starts editing before the shape of the change is agreed produces a large, plausible diff that isn't quite what you wanted — and you discover that at review, when correcting it costs a rewrite rather than a sentence.
+
+The gate forces one decision to happen first: **what are we building, and what are we explicitly not building.** Everything downstream depends on that artifact existing. The verifier audits the diff against `PLAN.md`, never against the implementer's own account of what it did. `model-router` scores the tier from the planned file list. Step 6 can't close while a task row is open. Remove the plan and each of those loses its reference point.
+
+It's enforced in two places, which is why it holds:
+
+- **`task-workflow`** — the discipline. Write the spec, wait for approval, then write `PLAN.md`.
+- **`spec-gate-guard.mjs`** — a pre-tool-use hook that blocks non-trivial `Edit`/`Write`/`MultiEdit`/`NotebookEdit` when no approved plan exists. It doesn't trust the agent to have followed the skill. Registered on `PreToolUse` in Claude Code and `preToolUse` in Cursor — one script, both hosts, same verdict ([GATES.md §7](GATES.md#7-the-same-gates-in-cursor)).
+
+---
+
+## 2. When a spec is required
+
+Non-trivial feature work. **Skipped** for bug fixes, copy changes, config tweaks, and changes under ~20 lines of logic.
+
+Before any of that, `task-workflow` step 1 checks the request against the shared triage ladder, and **only rung 1 reaches the spec gate at all** — a rung-2 request stops and goes to `epic-workflow`, a rung-3 one to `discovery-workflow`. So everything below is about a request that already belongs to one plan; the question is only which format it needs.
+
+If the request doesn't carry enough information to fill the required sections with confidence, the workflow asks **up to three targeted questions** before drafting. It does not fill gaps with silent assumptions and hand you an approved-looking spec built on them — that's the failure the gate exists to prevent, reintroduced one level up.
+
+Two things are always required, in both formats:
+
+**Security considerations.** If the feature touches auth, sessions, secrets, PII, or untrusted input (user-controlled data, URLs, redirects, file paths), the section must name concrete risks — not "we'll be careful." Otherwise `N/A` with the reason. The economics are the argument: a threat found at spec time is a sentence; the same threat found at code review is a rewrite.
+
+**Not in scope.** Explicit exclusions. This is the line that makes "stop and ask" enforceable later — without it, scope creep has nothing to violate.
+
+---
+
+## 3. The two formats
+
+### Default
+
+Six fields, pasted in chat, approved before any code:
+
+```
+## Spec: {feature name}
+What: {one paragraph — what changes and why}
+Inputs/outputs: {what data flows in and out}
+Edge cases: {anything that could go wrong}
+Security considerations: {concrete risks, or N/A with the reason}
+Testing strategy: {unit/integration/manual, which edge cases get coverage}
+Not in scope: {explicit exclusions}
+```
+
+This is the right format for nearly everything. It's short enough to read properly, which matters more than completeness — an unread spec approves nothing.
+
+### Full spec (opt-in)
+
+Marked `[full-spec]` in the heading. Eight sections, and **you omit the ones that don't apply** — no Component Tree for backend work, no API Contract for UI-only work, no Data Model if nothing new is persisted. Padding it defeats the purpose.
+
+```
+## Spec: {feature name} [full-spec]
+User Stories & Scenarios: {Given/When/Then, only if more than one flow}
+Requirements: {FR-1, FR-2, … as bullets; table only at 5+}
+API Contract: {typed request/response — only if an API changes}
+Data Model: {interfaces/types — only if persisted/shared data changes}
+Component Tree: {frontend only, multi-component work only}
+Security considerations: {always required}
+Verification Checklist: {Automated: tests/lint/typecheck. Manual: happy, error, edge}
+Not in scope: {explicit exclusions}
+```
+
+A filled-in example lives in [`skills/task-workflow/references/full-spec-example.md`](../skills/task-workflow/references/full-spec-example.md).
+
+What the full format buys you is **traceability**, not length. Numbered `FR-` requirements give the `PLAN.md` task table something to point at, and the Verification Checklist becomes tracked rows that must close before the task can. That's the whole difference — if you don't need requirement IDs, you don't need this format.
+
+---
+
+## 4. Choosing between them
+
+There are exactly two ways the full format gets used. Everything else is the default.
+
+```mermaid
+flowchart TD
+    A["Request arrives"] --> B{"Non-trivial<br/>feature?"}
+    B -->|"no — bugfix, copy,<br/>config, ≤20 lines"| S["No spec.<br/>Implement, then gates"]
+    B -->|yes| C{"User said<br/>'full spec'?"}
+    C -->|yes| F["Full spec"]
+    C -->|no| D["model-router scores<br/>the described scope"]
+    D -->|"architect tier"| E["Offer full format once,<br/>with the rubric's rationale"]
+    D -->|"worker tier"| G["Default spec"]
+    E -->|user picks| F
+    E -->|user picks| G
+    F --> P["PLAN.md · Status: approved"]
+    G --> P
+```
+
+**Path one — you ask for it.** "Full spec", "AI-friendly spec", "spec-driven". That's an explicit signal and it's honored.
+
+**Path two — the rubric offers it.** `model-router`'s capability scoring runs against the *described* scope, using the files the request implies via `--paths`, since no `PLAN.md` exists yet. If that scores the `architect` tier, the full format is offered **once**, with the rationale, and you pick.
+
+The rule that keeps this from inflating: **a `worker` score is not a reason to raise formats at all**, and the format is never upgraded because a task *feels* big. That judgment belongs to the rubric, not to a vibe. Step 4 reuses the same score rather than re-running it, unless the approved spec moved the scope out from under it.
+
+Worth knowing in the other direction: a full-spec `PLAN.md` on disk sets `fullSpecDetected`, which is an **auto-override to the architect tier** in later scoring. Choosing the full format is therefore also a routing decision — it commits the implementation to the most expensive tier.
+
+---
+
+## 5. PLAN.md — what both produce
+
+One file. The approved spec, then a tracking table, updated in place — never a second progress doc.
+
+```
+# Plan: {feature name}
+
+Status: approved
+Branch: {git branch --show-current}
+
+## Spec
+{the approved spec}
+
+## Tasks
+| # | Task | Status | Notes |
+|---|------|--------|-------|
+| 1 | {task} | Not started | |
+```
+
+Statuses: `Not started`, `In progress`, `Done`, `Blocked`.
+
+**`Status: approved` is what the guard greps for.** A plan you're still drafting doesn't let edits through.
+
+**That's also the freeze switch.** If the requirement moves mid-task, `task-workflow`'s course-correction path sets `Status: amending` — the same gate then blocks non-trivial edits until the amended spec is re-approved, so nobody builds against a spec that's mid-rewrite. No second gate, no flag to remember: any value other than `approved` blocks. The amendment itself is logged in a `## Amendments` section, which is the only record of why the plan's shape changed — cleanup carries it forward verbatim into the archived plan.
+
+**An `EPIC.md` never satisfies the gate, deliberately.** When `epic-workflow` decomposes an initiative, approving that decomposition approves *what the units are* — not any unit's spec. The queue lives at `.claude/memory/EPIC.md` — outside the repo root, and the guard only ever looks for a plan at the root of the worktree the edited file lives in (since 1.90.1; before that it looked at the session's working directory, which is not the same thing in a parallel-worktree run). It does carry its own `Status:` line (`approved`, or `amending` mid-change), but no guard reads it; what it deliberately has no `Branch:` line for is that an epic legitimately spans branches. So one epic-level approval can never stand in for five unwritten specs. Every unit still writes its own root `PLAN.md` and faces this gate on its own merits. Don't try to make the queue file pass the guard — that's the exact drift the gate exists to stop.
+
+**`Branch:` stops a leftover plan from governing the wrong task.** If it disagrees with `HEAD`, non-trivial edits are blocked. Omit it when there's no branch to name (detached `HEAD`, not a repo) and the check is skipped — the guard never blocks on what git can't answer. On a deliberate rename or rebase, update the line rather than deleting it.
+
+**Full-spec tier adds two things** the default tier must not have: a `Covers` column linking each task to its `FR-`, and one tracked row per manual Verification Checklist item. Cleanup can't run while any of those rows is open. Default-tier plans have no FR-IDs to reference, so adding the column there is noise.
+
+After the coverage check, tasks are mirrored into Claude Code's task list for visibility — **one-way and disposable**, and skipped entirely for plans with fewer than 3 rows, where the overhead outweighs the visibility. `PLAN.md` is the source of truth. The guard and the verifier both read the file off disk and can't see session task state at all; that asymmetry is deliberate.
+
+`PLAN.md` leaves the repo root at step 6. It stops being a working file, but it isn't deleted: step 6 archives it verbatim as an implementation record, and separately proposes moving anything durable in it into a `knowledge/` concept (see [`KNOWLEDGE.md` §4](KNOWLEDGE.md#4-role-in-each-task-workflow-step)).
+
+---
+
+## 6. What the guard actually checks
+
+`spec-gate-guard.mjs` runs on every `Edit`, `Write`, `MultiEdit` and `NotebookEdit`, in this order. Path rules judge the real path relative to the edited file's own worktree, so `src/test/../app.ts` is not a test and a file in a parallel worktree is judged against that worktree's `PLAN.md`. Knowing the order explains most surprises.
+
+1. **No `file_path`** → allow.
+1b. **Not write-shaped** → allow. A payload carrying no `content`/`old_string`/`edits` is a read, and `.cursor/hooks.json` registers `preToolUse` with no matcher, so every Read would otherwise arrive here and get gated. The filter is shape-driven rather than tool-name-driven because Cursor's tool names aren't Claude Code's.
+1c. **One of the gates' own files** → ask, whatever the size and whatever the plan says (deny under Cursor, which can't ask). The list is in [§7](#7-getting-blocked); `bash-guard.mjs` asks the same way for a shell command that writes one of them.
+2. **Trivial path** → allow, regardless of plan status. Anything under `tests/`, any `_test.dart` by filename (an `integration_test/` flow test is never ≤20 lines and no directory rule catches it), any `.md`, `.env.example`, `graphify-out/`, and the common config files (`eslint`, `prettier`, `tsconfig`, `vite`, `vitest`, `nuxt`, `.editorconfig`, `.gitignore`, `.npmrc`).
+3. **Git-ignored path** → allow. Build output isn't reviewable source. This check is deliberately **index-aware**: a *tracked* file that merely matches a `.gitignore` pattern is still gated, which is exactly why `graphify-out/` needs its own rule in step 2 — it's committed by design.
+4. **Approved plan for this branch** → allow.
+5. **Otherwise, measure the change.** Over 20 lines → block.
+
+The size measure is worth knowing precisely, because it's a **proxy** for the skill's "≤20 lines of logic" rule, not the same thing:
+
+| Tool | Counted as |
+|---|---|
+| `Edit` | `max(old_string, new_string)` line count |
+| `MultiEdit` | the **sum** of each edit's max — several small edits add up |
+| `Write` (existing file) | the lines it changes, by a bounded diff — replacing a file with an equally long one still counts |
+| `Write` (new file) | the full content length |
+| `NotebookEdit` | the cell's `new_source` against the cell it replaces (`insert` counts the new lines, `delete` the removed cell's) |
+| anything else | `Infinity` — always gated |
+
+So creating a 50-line file needs a plan, and so does rewriting 50 lines of an existing one. That's a deliberate trade for a check that has to be instant and can't read intent.
+
+The guard **fails closed**: an unparsable hook payload prints a diagnostic and exits 2. A bare parse error would exit 1, which Claude Code treats as non-blocking — the gate would silently stop gating.
+
+And you can't route around it: `bash-guard.mjs` blocks `--no-verify`, `git commit -n`, hook-disabling config and every force-push spelling on any branch ([GATES.md §2](GATES.md#2-bash-guard--you-cant-disable-your-own-gates)) — `--force-with-lease` is the sanctioned way through.
+
+---
+
+## 7. Getting blocked
+
+Two messages, two different causes — plus one case where the block is deliberate and yours.
+
+**`PLAN.md missing or not approved`** — the gate working as designed. Legitimate ways forward:
+
+- Get the spec approved and write `PLAN.md`. The normal path.
+- Keep the change ≤20 lines, if it genuinely is that small.
+- Notice the file should have been trivial — a test, a doc, a config — and check whether the path pattern actually covers it.
+
+**`PLAN.md is for branch 'X' but HEAD is 'Y'`** — a plan left over from another task. Finish it, update its `Branch:` line if you deliberately rebased or renamed, or delete it. Don't blank the `Status:` line to get moving; that leaves a plan on disk that the verifier may still pick up.
+
+**Blocked while `Status: amending`** — not a failure, the freeze working. The requirement moved mid-task, so `task-workflow`'s course-correction path parked the plan until the amended spec is re-approved. Read the amended sections and the row changes, approve them, and the `Status:` line goes back to `approved`. Don't flip it back yourself to keep working — that's approving your own amendment, which is the one thing the gate is there to prevent.
+
+Neither of the first two is an invitation to bypass. If the gate blocks something it shouldn't, the fix is the path allowlist (`TRIVIAL_PATTERNS`) or the threshold (`LINE_THRESHOLD`) in `.claude/guards/spec-gate-guard.mjs`, changed deliberately — not `--no-verify`, which is blocked anyway.
+
+**An approval prompt on a gate's own file** — also deliberate. Since v1.104.0 the guard asks before any agent edit to `.claude/guards/**`, `.claude/settings*.json`, `.cursor/hooks.json`, `.cursor/hooks/**`, `.husky/**`, `.git/hooks/**`, `.git/config`, `scripts/git-hooks/**` or the commit-hook scripts (`scripts/pre-commit*.sh`, `scripts/commit-msg.sh`), at any size and whatever the plan says, so an agent can't loosen the gate that binds it. Approve it in Claude Code when you expected the change (a `patch` run applying a guard fix asks once per block). Cursor's editor hook can't ask, so it denies; make the edit yourself.
+
+> One workflow note: running several tasks at once needs a worktree per instance, because `PLAN.md` and the gate are per-directory. See [`references/parallelization.md`](../skills/task-workflow/references/parallelization.md).

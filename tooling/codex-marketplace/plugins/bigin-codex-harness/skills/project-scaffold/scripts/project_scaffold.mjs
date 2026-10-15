@@ -1,0 +1,498 @@
+#!/usr/bin/env node
+/**
+ * project_scaffold.mjs — stands up a complete polyrepo project.
+ *
+ * Usage:
+ *   node project_scaffold.mjs --project acme [--dir .] [--owner <login>]
+ *                             [--app-id <id> --app-key <path/to.pem>]
+ *                             [--repos specs,contracts,api,web,mobile,qa]
+ *                             [--web-origin <origin>] [--api-origin <origin>]
+ *                             [--no-install] [--force]
+ *
+ * Node >=20 stdlib only. Exit 0 ok, 1 runtime failure, 2 bad usage.
+ *
+ * WHAT THIS DOES NOT DO, ON PURPOSE
+ *
+ * It writes no guard, no `.claude/rules/`, no `settings.json` and no `CLAUDE.md`.
+ * `bigin-harness-setup` owns the governance overlay, and a second implementation of
+ * it here would drift the day either changed. This writes the CONNECTIVE TISSUE the
+ * harness has no way to know about — which repo pairs with which, what the lock
+ * points at, which toolchain each workflow needs — and hands off.
+ *
+ * It also never scaffolds an app itself: `go-scaffold`, `nuxt-scaffold` and
+ * `flutter create` already do that, and are invoked as they are.
+ *
+ * `--owner` is required to create anything remote. There is no inferred default,
+ * because the accident it prevents is six repos appearing in an organisation
+ * nobody meant to touch.
+ */
+
+import { existsSync, mkdirSync, writeFileSync, readFileSync, readdirSync, copyFileSync } from 'node:fs'
+import { join, dirname, resolve } from 'node:path'
+import { fileURLToPath } from 'node:url'
+import { spawnSync } from 'node:child_process'
+import { parseArgs } from 'node:util'
+
+const SCRIPT_DIR = dirname(fileURLToPath(import.meta.url))
+const PLUGIN = resolve(SCRIPT_DIR, '..', '..', '..')          // repo root of bigin-skills
+const REF = join(PLUGIN, 'skills', 'bigin-harness-setup', 'references')
+
+const TYPES = ['specs', 'contracts', 'api', 'web', 'mobile', 'qa']
+const CONSUMERS = ['api', 'web', 'mobile']          // vendor a contract
+const STORY_CONSUMERS = ['api', 'web', 'mobile', 'qa']  // receive synced stories
+
+// Per repo type: the CI toolchain block its codegen needs. The commented
+// placeholder in the shipped workflow template is what broke both consumer repos
+// in the pilot — this is the fix, applied at write time.
+//
+// No `spec:` here on purpose. Where a repo vendors its contract is resolved by
+// contract_sync.mjs (`where`), never restated — see fillSpecPath() below.
+const ADAPTER = {
+  api: {
+    toolchain: '      - uses: actions/setup-go@v5\n        with:\n          go-version-file: go.mod\n'
+  },
+  web: {
+    // No `version:` — package.json's packageManager is the pin, and passing both
+    // makes pnpm/action-setup fail outright.
+    toolchain: '      - uses: pnpm/action-setup@v4\n      - run: pnpm install --no-frozen-lockfile\n'
+  },
+  mobile: {
+    toolchain: '      - uses: subosito/flutter-action@v2\n        with:\n          channel: stable\n'
+  }
+}
+
+// Where the browser-facing apps run, and where the pass-through sends /api/v*. The
+// defaults are the scaffolds' local-dev values: nuxt on 3000, go-scaffold on 8090.
+const DEFAULT_WEB_ORIGIN = 'http://localhost:3000'
+const DEFAULT_API_ORIGIN = 'http://localhost:8090'
+
+const PROJECT_RE = /^[a-z][a-z0-9]*(-[a-z0-9]+)*$/
+
+function fail(msg, code = 1) {
+  console.error(`[project-scaffold] ERROR: ${msg}`)
+  process.exit(code)
+}
+function log(msg) { console.log(`[project-scaffold] ${msg}`) }
+const notes = []
+function note(msg) { notes.push(msg); log(msg) }
+
+function run(cmd, args, cwd, { quiet = true } = {}) {
+  return spawnSync(cmd, args, {
+    cwd, encoding: 'utf8',
+    stdio: quiet ? ['ignore', 'pipe', 'pipe'] : 'inherit',
+    shell: process.platform === 'win32' && /^(pnpm|npm|npx)$/.test(cmd)
+  })
+}
+function has(cmd) {
+  const probe = process.platform === 'win32' ? 'where' : 'which'
+  return spawnSync(probe, [cmd], { stdio: 'ignore' }).status === 0
+}
+
+// First fenced block of `lang` under `## heading` in one of the plugin's references.
+function block(file, heading, lang) {
+  const md = readFileSync(join(REF, file), 'utf8')
+  const i = md.indexOf(`\n## ${heading}\n`)
+  if (i === -1) fail(`${file} has no "## ${heading}" — the plugin and this script disagree`)
+  const open = md.indexOf('```' + lang, i)
+  const start = open + 3 + lang.length + 1
+  return md.slice(start, md.indexOf('\n```', start)) + '\n'
+}
+
+// ── args ────────────────────────────────────────────────────────────────
+
+let values
+try {
+  ;({ values } = parseArgs({
+    options: {
+      'project': { type: 'string' },
+      'dir': { type: 'string', default: '.' },
+      'owner': { type: 'string' },
+      'app-id': { type: 'string' },
+      'app-key': { type: 'string' },
+      'repos': { type: 'string', default: TYPES.join(',') },
+      'web-origin': { type: 'string', default: DEFAULT_WEB_ORIGIN },
+      'api-origin': { type: 'string', default: DEFAULT_API_ORIGIN },
+      'no-install': { type: 'boolean', default: false },
+      'force': { type: 'boolean', default: false },
+      'help': { type: 'boolean', default: false }
+    }
+  }))
+} catch (e) {
+  fail(`bad arguments: ${e.message}`, 2)
+}
+
+if (values.help || !values.project) {
+  console.log(`Usage: project_scaffold.mjs --project <slug> [--dir .] [--owner <login>]
+                            [--app-id <id> --app-key <path.pem>]
+                            [--repos ${TYPES.join(',')}]
+                            [--web-origin ${DEFAULT_WEB_ORIGIN}] [--api-origin ${DEFAULT_API_ORIGIN}]
+                            [--no-install] [--force]`)
+  process.exit(values.help ? 0 : 2)
+}
+if (!PROJECT_RE.test(values.project)) fail(`--project must be kebab-case, got "${values.project}"`, 2)
+
+const wanted = values.repos.split(',').map(s => s.trim()).filter(Boolean)
+for (const r of wanted) if (!TYPES.includes(r)) fail(`unknown repo type "${r}"`, 2)
+if ((values['app-id'] && !values['app-key']) || (!values['app-id'] && values['app-key'])) {
+  fail('--app-id and --app-key go together', 2)
+}
+if (values['app-key'] && !existsSync(values['app-key'])) fail(`no such key file: ${values['app-key']}`, 2)
+if (values['app-id'] && !values.owner) fail('--app-id needs --owner: credentials are set on remote repos', 2)
+
+// The API matches Origin exactly and the pass-through forwards to it verbatim, so an
+// origin here is scheme://host[:port] and nothing else — a trailing slash, a path, a
+// wildcard or a non-canonical spelling would silently never match.
+function checkOrigin(flag, v) {
+  const bad = why => fail(`--${flag} ${why}, got "${v}"`, 2)
+  if (v.endsWith('/')) bad('must not end with a slash (origin matching is exact)')
+  let u
+  try { u = new URL(v) } catch { bad('must be an origin like https://app.example.com') }
+  if (!/^https?:$/.test(u.protocol) || u.origin !== v) {
+    bad('must be exactly scheme://host[:port] — http(s), lowercase, no path, credentials or default port')
+  }
+}
+checkOrigin('web-origin', values['web-origin'])
+checkOrigin('api-origin', values['api-origin'])
+
+const PROJECT = values.project
+const WEB_ORIGIN = values['web-origin']
+const API_ORIGIN = values['api-origin']
+const ROOT = resolve(values.dir)
+const OWNER = values.owner ?? null
+const repoName = t => `${PROJECT}-${t}`
+const repoDir = t => join(ROOT, repoName(t))
+const slug = t => (OWNER ? `${OWNER}/${repoName(t)}` : `<owner>/${repoName(t)}`)
+
+// ── seeds ───────────────────────────────────────────────────────────────
+
+function seedSpecs(dir) {
+  for (const d of ['docs/prd', 'docs/architecture', 'docs/epics', 'docs/stories', 'docs/qa', 'ux', 'scripts']) {
+    mkdirSync(join(dir, d), { recursive: true })
+  }
+  const map = readFileSync(join(PLUGIN, 'docs', 'polyrepo', 'templates', 'REPO_MAP.md'), 'utf8')
+    .replaceAll('{{project}}', PROJECT)
+    // replaceAll, not replace: the template names it twice, and the explanatory
+    // HTML comment below has done its job once the value is substituted.
+    // Per repo, not per repo type — each consumer's lock records its own, and the
+    // REPO_MAP comment below says where to read it from.
+    .replaceAll('{{vendored-spec-path}}', 'see each repo\'s api-contract.lock -> vendoredTo')
+    .replace(/<!--[^>]*is per repo type[\s\S]*?-->\n\n?/, '')
+    .replace(/\{\{deprecation-window[^}]*\}\}/, 'TODO: agree a window, e.g. 90 days after mobile release adoption')
+    .replace('{{tunnel-url}}', 'TODO: not yet provisioned')
+  writeFileSync(join(dir, 'REPO_MAP.md'), map)
+  copyFileSync(join(PLUGIN, 'skills', 'bigin-harness-setup', 'scripts', 'story_lint.mjs'), join(dir, 'scripts', 'story_lint.mjs'))
+  writeFileSync(join(dir, 'ux', 'figma-links.md'),
+    `# Figma\n\nDesign system links live here. Per-story frames are linked from each consumer repo's\n\`docs/story-meta/<ID>.yaml\` — never from the story itself.\n`)
+  writeFileSync(join(dir, 'docs', 'stories', '.gitkeep'), '')
+}
+
+function seedContracts(dir) {
+  mkdirSync(join(dir, 'openapi'), { recursive: true })
+  writeFileSync(join(dir, 'openapi', 'core.v1.yaml'),
+    `# Owned by ${repoName('contracts')}. Consumers vendor this at a pinned commit; nobody edits a copy.\n`
+    + `openapi: 3.0.3\ninfo:\n  title: ${PROJECT} core API\n  version: "1.0.0"\npaths: {}\ncomponents:\n  schemas: {}\n`)
+  writeFileSync(join(dir, 'CHANGELOG.md'),
+    `# Contract changelog\n\nOne entry per published tag. Name the consumers expected to move, not just the change.\n\n## Unreleased\n- Initial contract skeleton.\n`)
+}
+
+function seedQa(dir) {
+  for (const d of ['cases', 'e2e', 'traceability', 'docs/stories', 'docs/story-meta']) {
+    mkdirSync(join(dir, d), { recursive: true })
+  }
+  writeFileSync(join(dir, 'traceability', 'README.md'),
+    '# Traceability\n\n| Story | Manual cases | E2E specs |\n|---|---|---|\n')
+  writeFileSync(join(dir, 'cases', '.gitkeep'), '')
+}
+
+// ── connective tissue ───────────────────────────────────────────────────
+
+function wireConsumer(dir, type) {
+  mkdirSync(join(dir, 'scripts'), { recursive: true })
+  mkdirSync(join(dir, 'docs', 'stories'), { recursive: true })
+  mkdirSync(join(dir, 'docs', 'story-meta'), { recursive: true })
+  writeFileSync(join(dir, 'docs', 'story-meta', '.gitkeep'), '')
+
+  for (const [from, to] of [
+    [join(PLUGIN, 'skills', 'bigin-harness-setup', 'scripts', 'story_sync.mjs'), 'story_sync.mjs'],
+    [join(PLUGIN, 'skills', 'bigin-harness-setup', 'scripts', 'story_gate.mjs'), 'story_gate.mjs']
+  ]) copyFileSync(from, join(dir, 'scripts', to))
+
+  writeFileSync(join(dir, 'story-sync.json'),
+    `${JSON.stringify({ repo: slug('specs'), ref: 'main' }, null, 2)}\n`)
+
+  if (CONSUMERS.includes(type)) {
+    copyFileSync(join(PLUGIN, 'skills', 'contract-sync', 'scripts', 'contract_sync.mjs'), join(dir, 'scripts', 'contract_sync.mjs'))
+    const lock = JSON.parse(readFileSync(join(PLUGIN, 'skills', 'contract-sync', 'templates', 'api-contract.lock.json'), 'utf8'))
+    lock.contracts.core.repo = slug('contracts')
+    writeFileSync(join(dir, 'api-contract.lock'), `${JSON.stringify(lock, null, 2)}\n`)
+  }
+}
+
+// The whole point of this script: the shipped workflow ships its toolchain block
+// COMMENTED OUT, and a harness install that leaves it there produces a workflow which
+// gets through checkout, setup and token minting and then dies at codegen. Both of the
+// pilot's consumer repos did exactly that.
+function fillToolchain(yaml, type) {
+  const start = yaml.indexOf('      # === REPLACE THIS BLOCK')
+  if (start === -1) return yaml   // template changed shape; leave it rather than guess
+  const endMark = yaml.indexOf('=========================================================================', start)
+  const end = yaml.indexOf('\n', endMark) + 1
+  return yaml.slice(0, start) + (ADAPTER[type]?.toolchain ?? '') + yaml.slice(end)
+}
+
+// The drift job's triggers have to name this repo's actual spec path, and only
+// one thing knows it. Asking the resolver costs a subprocess and removes the
+// fourth copy of a constant that was wrong in three of them.
+function fillSpecPath(yaml, dir, type) {
+  const cs = join(PLUGIN, 'skills', 'contract-sync', 'scripts', 'contract_sync.mjs')
+  const r = run('node', [cs, 'where', '--repo-type', type], dir)
+  const paths = (r.status === 0 ? r.stdout : '').trim().split('\n').filter(Boolean)
+  if (paths.length === 0) {
+    note(`${repoName(type)}: could not resolve the vendored spec path — contract-drift.yml still says {SPEC_PATH}, fill it in with \`node scripts/contract_sync.mjs where\``)
+    return yaml
+  }
+  // One placeholder line becomes one line per contract, at the placeholder's indent.
+  return yaml.replace(/^(\s*)- '\{SPEC_PATH\}'.*$/gm,
+    (_, indent) => paths.map(p => `${indent}- '${p}'`).join('\n'))
+}
+
+function writeWorkflows(dir, type) {
+  const wf = join(dir, '.github', 'workflows')
+  mkdirSync(wf, { recursive: true })
+  if (type === 'specs') {
+    writeFileSync(join(wf, 'story-dispatch.yml'), block('ci.md', 'story-sync workflow: github (specs repo)', 'yaml'))
+    return
+  }
+  if (!STORY_CONSUMERS.includes(type)) return
+  writeFileSync(join(wf, 'story-sync.yml'), block('ci.md', 'story-sync workflow: github (consumer repos)', 'yaml'))
+  writeFileSync(join(wf, 'story-gates.yml'), block('ci.md', 'story gates: github (consumer repos)', 'yaml'))
+  if (!CONSUMERS.includes(type)) return
+  const tmplDir = join(PLUGIN, 'skills', 'contract-sync', 'templates', 'workflows')
+  for (const f of ['contract-bump.yml', 'contract-drift.yml']) {
+    let yaml = fillToolchain(readFileSync(join(tmplDir, f), 'utf8'), type)
+    if (f === 'contract-drift.yml') yaml = fillSpecPath(yaml, dir, type)
+    writeFileSync(join(wf, f), yaml)
+  }
+}
+
+// ── app scaffolds, delegated ────────────────────────────────────────────
+
+function scaffoldApp(dir, type) {
+  if (type === 'api') {
+    if (!has('go')) { note(`${repoName(type)}: go not installed — repo created, run go-scaffold there later`); return false }
+    const r = run('node', [join(PLUGIN, 'skills', 'go-scaffold', 'scripts', 'scaffold.mjs'),
+      '--module', `github.com/${OWNER ?? 'CHANGE-ME'}/${repoName('api')}`,
+      '--dir', dir, '--project', repoName('api'), '--no-commit'], ROOT, { quiet: false })
+    if (r.status !== 0) { note(`${repoName(type)}: go-scaffold failed — see its output above`); return false }
+    return true
+  }
+  if (type === 'web') {
+    if (!has('pnpm')) { note(`${repoName(type)}: pnpm not installed — repo created, run nuxt-scaffold there later`); return false }
+    const cfg = join(dir, '.project-scaffold-nuxt.json')
+    writeFileSync(cfg, JSON.stringify({
+      projectName: repoName('web'), targetDir: dir, template: 'starter',
+      skipInstall: values['no-install'], gitCommit: false
+    }))
+    const r = run('node', [join(PLUGIN, 'skills', 'nuxt-scaffold', 'scripts', 'scaffold.mjs'), '--config', cfg], ROOT, { quiet: false })
+    try { readdirSync(dir) } catch { /* ignore */ }
+    if (r.status !== 0) { note(`${repoName(type)}: nuxt-scaffold failed — see its output above`); return false }
+    return true
+  }
+  if (type === 'mobile') {
+    if (!has('flutter')) { note(`${repoName(type)}: flutter not installed — repo created, run \`flutter create\` there later`); return false }
+    const r = run('flutter', ['create', '--project-name', repoName('mobile').replace(/-/g, '_'),
+      '--org', 'com.example', '--platforms=ios,android', '--empty', '.'], dir, { quiet: false })
+    if (r.status !== 0) { note(`${repoName(type)}: flutter create failed`); return false }
+    return true
+  }
+  return false
+}
+
+// ── origin wiring ───────────────────────────────────────────────────────
+//
+// The pass-through only works when two values agree: the API's WEB_ORIGINS (its CSRF
+// allowlist) and the web app's server-only NUXT_API_ORIGIN. Both land in the repo's
+// `.env.example` — never `.env`, which is the developer's own and may hold secrets.
+// An existing value is never overwritten; the one thing replaced besides an empty value
+// is the app scaffold's own placeholder (`replaceable`), because a fresh go-scaffold
+// ships WEB_ORIGINS=http://localhost:3000 and that is exactly what a custom origin must
+// displace. A repo with no such line (scaffold skipped or failed) is named, not guessed at.
+const WIRING = {
+  api: { key: 'WEB_ORIGINS', value: () => WEB_ORIGIN, replaceable: DEFAULT_WEB_ORIGIN },
+  web: { key: 'NUXT_API_ORIGIN', value: () => API_ORIGIN, replaceable: '' }
+}
+
+function wireOrigins(dir, type) {
+  const { key, value, replaceable } = WIRING[type]
+  const want = value()
+  const file = join(dir, '.env.example')
+  const body = existsSync(file) ? readFileSync(file, 'utf8') : null
+  const re = new RegExp(`^${key}=(.*)$`, 'm')
+  const m = body === null ? null : re.exec(body)
+  if (!m) {
+    note(`${repoName(type)}: no ${key}= line in .env.example — nothing written. Set ${key}=${want} wherever that app reads its environment.`)
+    return
+  }
+  const current = m[1].trim()
+  if (current === want) return
+  if (current !== '' && current !== replaceable) {
+    note(`${repoName(type)}: ${key} is already ${current} in .env.example — left alone (this run asked for ${want})`)
+    return
+  }
+  writeFileSync(file, body.replace(re, () => `${key}=${want}`))
+  log(`${repoName(type)}: .env.example ${key}=${want}`)
+}
+
+// ── build ───────────────────────────────────────────────────────────────
+
+log(`project "${PROJECT}" → ${ROOT}`)
+mkdirSync(ROOT, { recursive: true })
+
+const built = []
+for (const type of wanted) {
+  const dir = repoDir(type)
+  const existed = existsSync(dir) && readdirSync(dir).length > 0
+  if (existed && !values.force) { note(`${repoName(type)}: already exists — adopted, nothing overwritten`); }
+  mkdirSync(dir, { recursive: true })
+
+  if (!existed || values.force) {
+    if (type === 'specs') seedSpecs(dir)
+    else if (type === 'contracts') seedContracts(dir)
+    else if (type === 'qa') seedQa(dir)
+    else scaffoldApp(dir, type)
+  }
+  if (STORY_CONSUMERS.includes(type)) wireConsumer(dir, type)
+  if (type in WIRING) wireOrigins(dir, type)
+  writeWorkflows(dir, type)
+
+  if (!existsSync(join(dir, '.git'))) run('git', ['init', '-q', '-b', 'main', '.'], dir)
+  run('git', ['add', '-A'], dir)
+  const c = run('git', ['-c', 'user.name=project-scaffold', '-c', 'user.email=project-scaffold@local',
+    'commit', '-q', '-m', `chore: scaffold ${repoName(type)} for the ${PROJECT} polyrepo project`], dir)
+  if (c.status !== 0 && !(c.stdout + c.stderr).includes('nothing to commit')) {
+    note(`${repoName(type)}: nothing committed — ${(c.stderr || c.stdout).trim().split('\n')[0]}`)
+  }
+  built.push(type)
+  log(`${repoName(type)}: ready`)
+}
+
+// ── remotes, opt-in ─────────────────────────────────────────────────────
+
+let ghLive = false   // gh is installed and the API answered: everything remote hangs off this
+if (OWNER) {
+  if (!has('gh')) {
+    note('gh is not installed — no remote was created. Everything above is local and complete.')
+  } else if (run('gh', ['api', 'user'], ROOT).status !== 0) {
+    note('gh cannot reach the GitHub API — no remote was created. Everything above is local and complete.')
+  } else {
+    ghLive = true
+    for (const type of built) {
+      const dir = repoDir(type)
+      const name = `${OWNER}/${repoName(type)}`
+      if (run('gh', ['repo', 'view', name], ROOT).status !== 0) {
+        const r = run('gh', ['repo', 'create', name, '--private'], ROOT)
+        if (r.status !== 0) { note(`${name}: could not create (${(r.stderr || '').trim().split('\n')[0]})`); continue }
+      } else note(`${name}: already on GitHub — adopted`)
+      run('git', ['remote', 'remove', 'origin'], dir)
+      run('git', ['remote', 'add', 'origin', `https://github.com/${name}.git`], dir)
+      const p = run('git', ['push', '-q', '-u', 'origin', 'main'], dir)
+      log(p.status === 0 ? `${name}: pushed` : `${name}: PUSH FAILED — ${(p.stderr || '').trim().split('\n')[0]}`)
+    }
+  }
+}
+
+// `STORY_CONSUMERS` on the specs repo is a project-level fact, not a per-run one, and
+// deriving it from `built` alone got an incremental add wrong twice over: `--repos mobile`
+// left the variable untouched, so the repo just created never received a story, while
+// `--repos specs,mobile` rewrote it to that run's consumers and silently dropped the three
+// already listed. So: read what is there, union, and never write a subset. Anything that
+// makes the current value unreadable — an API error, a value that is not a JSON array of
+// repos — leaves it alone and says so, because a wrong list here fails silently.
+function setStoryConsumers() {
+  const specsRepo = `${OWNER}/${repoName('specs')}`
+  const mine = STORY_CONSUMERS.filter(t => built.includes(t)).map(t => `${OWNER}/${repoName(t)}`)
+  if (!mine.length) return
+
+  let existing = []
+  const got = run('gh', ['api', `repos/${specsRepo}/actions/variables/STORY_CONSUMERS`, '--jq', '.value'], ROOT)
+  if (got.status !== 0) {
+    // A 404 is the one failure that means "no variable yet" and is safe to write over.
+    if (!/404|not found/i.test(got.stderr || '')) {
+      note(`${specsRepo}: could not read STORY_CONSUMERS — left alone. Set it by hand to ${JSON.stringify(mine)} plus any consumer already there.`)
+      return
+    }
+  } else {
+    try {
+      const v = JSON.parse((got.stdout || '').trim())
+      if (!Array.isArray(v) || v.some(e => typeof e !== 'string')) throw new Error('not a JSON array of repo names')
+      existing = v
+    } catch (e) {
+      note(`${specsRepo}: STORY_CONSUMERS is ${e.message} — left alone rather than overwritten. Add ${JSON.stringify(mine)} by hand.`)
+      return
+    }
+  }
+
+  const merged = [...new Set([...existing, ...mine])].sort()
+  if (merged.length === existing.length) {   // merged ⊇ existing, so equal length means nothing new
+    log(`STORY_CONSUMERS already lists every consumer this run built (${existing.length})`)
+    return
+  }
+  const r = run('gh', ['variable', 'set', 'STORY_CONSUMERS', '--repo', specsRepo,
+    '--body', JSON.stringify(merged)], ROOT)
+  if (r.status !== 0) note(`${specsRepo}: could not set STORY_CONSUMERS — ${(r.stderr || '').trim().split('\n')[0]}`)
+  else log(`STORY_CONSUMERS on ${repoName('specs')}: ${merged.length} consumer(s)`)
+}
+
+// ── credentials, opt-in ─────────────────────────────────────────────────
+
+if (values['app-id'] && ghLive) {
+  for (const type of built) {
+    const name = `${OWNER}/${repoName(type)}`
+    run('gh', ['variable', 'set', 'CONTRACT_APP_ID', '--repo', name, '--body', values['app-id']], ROOT)
+    // The key is read here only to be piped to `gh secret set` on stdin. It is never
+    // logged, never passed as an argument, and never written anywhere else. `input:`
+    // is the only way spawnSync feeds a child's stdin: a Buffer placed in the stdio
+    // array is not delivered, so gh got no key (or sat on an inherited terminal).
+    const r = spawnSync('gh', ['secret', 'set', 'CONTRACT_APP_PRIVATE_KEY', '--repo', name], {
+      cwd: ROOT, input: readFileSync(values['app-key']), stdio: ['pipe', 'ignore', 'pipe'], encoding: 'utf8'
+    })
+    if (r.status !== 0) note(`${name}: could not set the private key — ${(r.stderr || '').trim().split('\n')[0]}`)
+  }
+  log('CI credentials set on every repo')
+}
+
+// Not a credential: the specs repo's story-dispatch workflow reads this list whoever
+// created the App, so `--owner` alone is enough to keep it right. It stays after the
+// credentials block only because it needs the repos to exist on GitHub first.
+if (ghLive) setStoryConsumers()
+
+// ── summary ─────────────────────────────────────────────────────────────
+
+console.log(`
+[project-scaffold] ${built.length} repo(s) ready for "${PROJECT}"${OWNER ? ` under ${OWNER}` : ' (local only)'}.
+
+Next, and this script deliberately does none of it:
+  1. Run bigin-harness-setup in each repo. Phase 0a reads the name suffix and installs
+     the profile plus, on api/web/mobile, the consumer overlay and its guard.
+  2. Write the first contract in ${repoName('contracts')}, tag it, then
+     \`node scripts/contract_sync.mjs bump <tag>\` in each consumer.
+  3. ${OWNER ? 'Install your GitHub App on ' + OWNER + ' with access to these repos.' : 'Re-run with --owner <login> when you want remotes.'}
+`)
+if (built.some(t => t in WIRING)) {
+  console.log(`Origins (local-dev values unless you passed the flags; only .env.example is written):
+  web origin  ${WEB_ORIGIN}  → ${repoName('api')}: WEB_ORIGINS
+  API origin  ${API_ORIGIN}  → ${repoName('web')}: NUXT_API_ORIGIN
+At deploy time, none of this carries over by itself:
+  - Set NUXT_API_ORIGIN on the deployed web app (server-only, never NUXT_PUBLIC_*) to the API's
+    public origin, and WEB_ORIGINS on the API to the web app's deployed origin — exact, no wildcard.
+    Redeploy the web app after changing either.
+  - Browsers reach the API only through the web app's /api/v* pass-through. Don't expose it on the
+    API's own domain for browsers.
+  - Behind the pass-through the API sees the web app's egress address as the client, so every browser
+    user shares one rate-limit bucket (see docs/polyrepo/SPEC-polyrepo-standard.md).
+`)
+}
+if (notes.length > 0) {
+  console.log('[project-scaffold] worth knowing:')
+  for (const n of notes) console.log(`  - ${n}`)
+}

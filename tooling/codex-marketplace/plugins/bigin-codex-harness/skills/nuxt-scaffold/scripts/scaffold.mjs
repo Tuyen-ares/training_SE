@@ -1,0 +1,890 @@
+#!/usr/bin/env node
+/**
+ * scaffold.mjs — deterministic Nuxt 4 scaffold.
+ *
+ * Usage: node scaffold.mjs --config <path-to-json>
+ *
+ * All decisions are pre-resolved in the config file — this script never
+ * prompts, never reads stdin. Node stdlib only; no npm install step.
+ * Exit codes: 0 ok, 1 runtime failure, 2 bad usage/config.
+ *
+ * The command sequence and its rationale live in ../references/bootstrap.md;
+ * per-file rationale in ../references/artifacts.md. Update those docs and
+ * this script together.
+ *
+ * ── Windows notes (platform-risky paths, flagged for manual validation) ──
+ * - npm/npx/pnpm are .cmd shims on win32. Since Node's CVE-2024-27980 fix,
+ *   spawning a .cmd without a shell throws EINVAL — so run() sets
+ *   `shell: true` ON WINDOWS ONLY, always with an argument array (never a
+ *   concatenated command string). Args are individually quoted for cmd.exe
+ *   (winQuote), which also protects `^` in semver specs like `nuxt@^4` —
+ *   cmd.exe would otherwise eat the caret. Every user-supplied value is
+ *   regex-validated before it can reach an argv.
+ * - All file writes use "\n" line endings. If the target repo checks out
+ *   with core.autocrlf=true, `@stylistic` lint rules may flag CRLF — the
+ *   verify stage (pnpm lint) surfaces that immediately.
+ * - Subprocess output is decoded as utf8 explicitly (cmd.exe defaults to a
+ *   legacy codepage otherwise).
+ * - Paths are built with node:path exclusively; no hardcoded separators.
+ */
+
+import fs from 'node:fs'
+import path from 'node:path'
+import { fileURLToPath } from 'node:url'
+import { spawnSync } from 'node:child_process'
+
+const IS_WIN = process.platform === 'win32'
+const SCRIPT_DIR = path.dirname(fileURLToPath(import.meta.url))
+const TEMPLATES = path.join(SCRIPT_DIR, 'templates')
+
+const PRIMARY_COLORS = ['blue', 'green', 'emerald', 'teal', 'cyan', 'sky', 'indigo', 'violet', 'purple', 'fuchsia', 'pink', 'rose', 'amber', 'yellow', 'lime', 'orange', 'red']
+const NEUTRAL_COLORS = ['slate', 'gray', 'zinc', 'neutral', 'stone', 'taupe', 'mauve', 'mist', 'olive']
+const PROJECT_NAME_RE = /^[a-z0-9]+(-[a-z0-9]+)*$/
+// Packages create-nuxt's `ui` template + `--modules` install; Stage 1b re-pins them.
+const TEMPLATE_PKGS = ['nuxt', '@nuxt/ui', '@nuxt/eslint', 'eslint', 'tailwindcss', 'vue-tsc', 'typescript', '@pinia/nuxt', '@vueuse/nuxt']
+// `starter` = today's from-scratch `--template ui` path (no repo). Everything else clones the
+// matching official ui.nuxt.com template (github.com/nuxt-ui-templates/<slug>) via `nuxi init`.
+const TEMPLATE_REPOS = {
+  saas: 'nuxt-ui-templates/saas',
+  dashboard: 'nuxt-ui-templates/dashboard',
+  landing: 'nuxt-ui-templates/landing',
+  docs: 'nuxt-ui-templates/docs',
+  portfolio: 'nuxt-ui-templates/portfolio',
+  chat: 'nuxt-ui-templates/chat',
+  changelog: 'nuxt-ui-templates/changelog',
+  editor: 'nuxt-ui-templates/editor'
+}
+const TEMPLATES_ENUM = ['starter', ...Object.keys(TEMPLATE_REPOS)]
+
+function log(msg) {
+  console.log(`[scaffold] ${msg}`)
+}
+
+function fail(msg, code = 1) {
+  console.error(`[scaffold] ERROR: ${msg}`)
+  process.exit(code)
+}
+
+// ── config ──────────────────────────────────────────────────────────────
+
+function loadConfig() {
+  const idx = process.argv.indexOf('--config')
+  if (idx === -1 || !process.argv[idx + 1]) fail('usage: node scaffold.mjs --config <path>', 2)
+  const configPath = path.resolve(process.argv[idx + 1])
+  let raw
+  try {
+    raw = fs.readFileSync(configPath, 'utf8')
+  } catch (e) {
+    fail(`cannot read config ${configPath}: ${e.message}`, 2)
+  }
+  let cfg
+  try {
+    cfg = JSON.parse(raw)
+  } catch (e) {
+    fail(`config is not valid JSON: ${e.message}`, 2)
+  }
+  return validateConfig(cfg)
+}
+
+function validateConfig(cfg) {
+  const KNOWN = ['projectName', 'targetDir', 'packageManager', 'template', 'theme', 'versionPolicy', 'resume', 'gitCommit', 'skipInstall']
+  for (const k of Object.keys(cfg)) {
+    if (!KNOWN.includes(k)) fail(`unknown config key "${k}" (known: ${KNOWN.join(', ')})`, 2)
+  }
+  const bad = (msg) => fail(`config: ${msg}`, 2)
+
+  if (typeof cfg.projectName !== 'string' || !PROJECT_NAME_RE.test(cfg.projectName)) {
+    bad(`projectName must be kebab-case (${PROJECT_NAME_RE}), got ${JSON.stringify(cfg.projectName)}`)
+  }
+  const out = {
+    projectName: cfg.projectName,
+    targetDir: path.resolve(cfg.targetDir ?? '.'),
+    packageManager: cfg.packageManager ?? 'pnpm',
+    template: cfg.template ?? 'starter',
+    theme: { primary: cfg.theme?.primary ?? 'blue', neutral: cfg.theme?.neutral ?? 'slate' },
+    versionPolicy: cfg.versionPolicy ?? 'capped',
+    resume: cfg.resume ?? false,
+    gitCommit: cfg.gitCommit ?? true,
+    skipInstall: cfg.skipInstall ?? false
+  }
+  if (out.packageManager !== 'pnpm') bad(`packageManager must be "pnpm" (BigIn standard), got ${JSON.stringify(out.packageManager)}`)
+  if (!TEMPLATES_ENUM.includes(out.template)) bad(`template must be one of ${TEMPLATES_ENUM.join('/')}`)
+  if (!PRIMARY_COLORS.includes(out.theme.primary)) bad(`theme.primary must be one of ${PRIMARY_COLORS.join('/')}`)
+  if (!NEUTRAL_COLORS.includes(out.theme.neutral)) bad(`theme.neutral must be one of ${NEUTRAL_COLORS.join('/')}`)
+  if (!['capped', 'latest'].includes(out.versionPolicy)) bad('versionPolicy must be "capped" or "latest"')
+  if (typeof out.resume !== 'boolean') bad('resume must be a boolean')
+  if (typeof out.gitCommit !== 'boolean') bad('gitCommit must be a boolean')
+  if (typeof out.skipInstall !== 'boolean') bad('skipInstall must be a boolean')
+  return out
+}
+
+// ── subprocess helpers ──────────────────────────────────────────────────
+
+function resolveBin(name) {
+  // npm/npx/pnpm are .cmd shims on Windows; git ships as git.exe and needs no suffix.
+  if (IS_WIN && ['npm', 'npx', 'pnpm'].includes(name)) return `${name}.cmd`
+  return name
+}
+
+function winQuote(arg) {
+  // Inside double quotes cmd.exe treats ^ & | < > literally; escape embedded quotes by doubling.
+  if (/[\s&|<>^"()%!]/.test(arg)) return `"${arg.replace(/"/g, '""')}"`
+  return arg
+}
+
+function run(bin, args, opts = {}) {
+  const res = spawnSync(resolveBin(bin), IS_WIN ? args.map(winQuote) : args, {
+    cwd: opts.cwd ?? CFG.targetDir,
+    stdio: opts.capture ? ['ignore', 'pipe', 'pipe'] : ['ignore', 'inherit', 'inherit'],
+    encoding: 'utf8',
+    shell: IS_WIN, // .cmd shims need a shell post-CVE-2024-27980; args stay an array, quoted above
+    env: process.env
+  })
+  if (res.error) {
+    if (opts.allowFail) return { status: 1, stdout: '', stderr: String(res.error.message) }
+    fail(`${bin} ${args.join(' ')} failed to start: ${res.error.message}`)
+  }
+  return { status: res.status ?? 1, stdout: res.stdout ?? '', stderr: res.stderr ?? '' }
+}
+
+function must(bin, args, what) {
+  const res = run(bin, args)
+  if (res.status !== 0) fail(`${what} failed (exit ${res.status}): ${bin} ${args.join(' ')}`)
+}
+
+/**
+ * pnpm add wrapper. `ERR_PNPM_IGNORED_BUILDS` exits 1 but the packages DO
+ * install (build scripts deferred pending approval) — treat it as expected,
+ * approve the named packages, continue. Any other failure is fatal.
+ * Each approve runs separately with allowFail: naming a package that isn't
+ * actually pending fails the whole `pnpm approve-builds` call.
+ */
+function pnpmAdd(args, approvable = []) {
+  const res = run('pnpm', ['add', ...args], { capture: true })
+  process.stdout.write(res.stdout)
+  process.stderr.write(res.stderr)
+  if (res.status === 0) return
+  if ((res.stdout + res.stderr).includes('ERR_PNPM_IGNORED_BUILDS') && approvable.length > 0) {
+    for (const pkg of approvable) {
+      log(`approving deferred build scripts: ${pkg}`)
+      run('pnpm', ['approve-builds', pkg], { capture: true, allowFail: true })
+    }
+    return
+  }
+  fail(`pnpm add ${args.join(' ')} failed — partial install, not continuing`)
+}
+
+// ── file helpers ────────────────────────────────────────────────────────
+
+function substitute(text, subs) {
+  let out = text
+  for (const [token, value] of Object.entries(subs)) out = out.split(`{${token}}`).join(value)
+  return out
+}
+
+function writeFileEnsured(target, content) {
+  fs.mkdirSync(path.dirname(target), { recursive: true })
+  fs.writeFileSync(target, content.endsWith('\n') ? content : content + '\n')
+}
+
+function listFilesRecursive(dir) {
+  const out = []
+  for (const entry of fs.readdirSync(dir, { withFileTypes: true })) {
+    const p = path.join(dir, entry.name)
+    if (entry.isDirectory()) out.push(...listFilesRecursive(p))
+    else out.push(p)
+  }
+  return out
+}
+
+/** Deep merge `fragment` into `base`: objects recurse, arrays union (by string identity), existing scalars win. */
+function deepMerge(base, fragment, targetPath) {
+  for (const [k, v] of Object.entries(fragment)) {
+    if (Array.isArray(v) && Array.isArray(base[k])) {
+      const seen = new Set(base[k].map(x => JSON.stringify(x)))
+      for (const item of v) if (!seen.has(JSON.stringify(item))) base[k].push(item)
+    } else if (v && typeof v === 'object' && !Array.isArray(v) && base[k] && typeof base[k] === 'object' && !Array.isArray(base[k])) {
+      deepMerge(base[k], v, targetPath)
+    } else if (!(k in base)) {
+      base[k] = v
+    } else if (v && typeof v === 'object') {
+      // fragment wants to merge an array/object into an existing key of a different shape — dropped, not applied.
+      log(`WARNING: ${targetPath}: existing "${k}" has a different shape than expected — skipped merging it in, verify manually`)
+    } // else: existing scalar wins — expected merge-never-overwrite behavior, no warning needed
+  }
+  return base
+}
+
+function mergeJsonFile(targetPath, fragment) {
+  if (!fs.existsSync(targetPath)) {
+    writeFileEnsured(targetPath, JSON.stringify(fragment, null, 2))
+    return
+  }
+  const base = JSON.parse(fs.readFileSync(targetPath, 'utf8'))
+  writeFileEnsured(targetPath, JSON.stringify(deepMerge(base, fragment, targetPath), null, 2))
+}
+
+function readTemplate(relPath, subs = {}) {
+  return substitute(fs.readFileSync(path.join(TEMPLATES, relPath), 'utf8'), subs)
+}
+
+// ── stages ──────────────────────────────────────────────────────────────
+
+function preflight() {
+  const nodeMajor = Number(process.version.slice(1).split('.')[0])
+  if (nodeMajor < 22) fail(`Node.js 22+ required (running ${process.version})`)
+  const pnpmCheck = run('pnpm', ['--version'], { capture: true, allowFail: true, cwd: process.cwd() })
+  if (pnpmCheck.status !== 0) fail('pnpm is required but not installed. Install: corepack enable && corepack prepare pnpm@latest --activate')
+
+  fs.mkdirSync(CFG.targetDir, { recursive: true })
+
+  const nuxtConfig = path.join(CFG.targetDir, 'nuxt.config.ts')
+  const hasNuxtConfig = fs.existsSync(nuxtConfig)
+  // node_modules is the signal a skipInstall run never produces — the two signature files alone
+  // are written unconditionally in Stage 3 regardless of skipInstall, so they can't distinguish
+  // "actually installed and verified" from "files written, nothing installed."
+  const complete = fs.existsSync(path.join(CFG.targetDir, 'vitest.config.ts')) && fs.existsSync(path.join(CFG.targetDir, '.claude', 'settings.json')) && fs.existsSync(path.join(CFG.targetDir, 'node_modules'))
+
+  if (CFG.resume) {
+    if (!hasNuxtConfig) fail('resume=true but no nuxt.config.ts in targetDir — nothing to resume; run without resume')
+    if (complete) fail('resume=true but the scaffold looks complete (vitest.config.ts + .claude/settings.json + node_modules present) — nothing to do')
+    log('partial scaffold detected — resuming from the preset stage')
+  } else if (hasNuxtConfig) {
+    fail(complete
+      ? 'nuxt.config.ts found and the scaffold looks complete — refusing to overwrite. Nothing to do.'
+      : 'nuxt.config.ts found but vitest.config.ts, .claude/settings.json, or node_modules is missing — partial scaffold. Re-run with "resume": true to continue from the preset stage.')
+  }
+
+  // Monorepo hoisting warning (informational, matches bootstrap.md)
+  for (let dir = path.dirname(CFG.targetDir); ; dir = path.dirname(dir)) {
+    if (fs.existsSync(path.join(dir, 'pnpm-workspace.yaml'))) {
+      log(`WARNING: parent pnpm workspace at ${dir} — pnpm may hoist dependencies to the workspace root`)
+      break
+    }
+    if (dir === path.dirname(dir)) break
+  }
+  log(`preflight ok — Node ${process.version}, pnpm ${pnpmCheck.stdout.trim()}, target ${CFG.targetDir}`)
+}
+
+const CORE_MODULES = ['@pinia/nuxt', '@vueuse/nuxt']
+// The runtime backend client (shared/api-client) is Nuxt's global `$fetch` typed against the
+// generated schema — no HTTP-client dependency to install.
+// `pinia` is explicit (not just a transitive peer of @pinia/nuxt): @pinia/colada peer-depends on it,
+// and on the CLONED templates — where stage 1 installs @pinia/nuxt via pnpm add, not create-nuxt's
+// `--modules pinia` — pnpm won't hoist the peer, so vitest can't resolve `pinia` without this.
+const PRESET_DEPS = ['pinia', '@pinia/colada', '@pinia/colada-nuxt', 'zod']
+// openapi-typescript regenerates the committed client-types snapshot (pnpm openapi-types) —
+// universal now that openapi.yaml + shared/api-client ship in every template's base preset.
+const PRESET_DEV_DEPS = ['vitest', '@nuxt/test-utils', 'happy-dom', 'simple-git-hooks', 'lint-staged', 'openapi-typescript']
+// starter-only: the Layers restructuring adds eslint-plugin-boundaries (+ its typescript import
+// resolver, load-bearing — see starter/eslint.boundaries.mjs) to enforce cross-layer boundaries.
+// The 8 cloned ui.nuxt.com templates are NOT restructured into Layers (see SKILL.md), so these
+// stay out of the universal preset.
+const STARTER_DEV_DEPS = ['eslint-plugin-boundaries', 'eslint-import-resolver-typescript']
+
+/** skipInstall-only: declare deps in package.json as the "latest" dist-tag (no registry lookup, no pnpm add) so a later `pnpm install` resolves them. */
+function declareDepsUnresolved(deps, devDeps) {
+  const fragment = {
+    dependencies: Object.fromEntries(deps.map((d) => [d, 'latest'])),
+    devDependencies: Object.fromEntries(devDeps.map((d) => [d, 'latest']))
+  }
+  mergeJsonFile(path.join(CFG.targetDir, 'package.json'), fragment)
+}
+
+function verifyCoreModulesRegistered(context) {
+  const nuxtConfig = fs.readFileSync(path.join(CFG.targetDir, 'nuxt.config.ts'), 'utf8')
+  for (const mod of CORE_MODULES) {
+    if (!nuxtConfig.includes(mod)) {
+      fail(`${context}: ${mod} is not registered in nuxt.config.ts — re-verify bootstrap.md Stage 1`)
+    }
+  }
+}
+
+function stage1Init() {
+  // --no-install only skips the base template's own dependency install (create-nuxt/nuxi
+  // still write files + package.json). --gitInit is silently skipped alongside it, so the
+  // explicit git-init fallback right below always covers both cases. --modules ALSO can't be
+  // combined with --no-install: without installed node_modules create-nuxt can't detect the
+  // Nuxt version, treats @pinia/nuxt as incompatible, and blocks on an interactive "continue
+  // anyway?" prompt that silently defaults to "No" non-interactively — so --modules is atomic
+  // install-and-register and only ever passed when an install is actually happening.
+  const noInstall = CFG.skipInstall ? ['--no-install'] : []
+  const modulesFlag = CFG.skipInstall ? [] : ['--modules', 'pinia,vueuse']
+  const noInstallLabel = CFG.skipInstall ? ', --no-install' : ''
+  if (CFG.template === 'starter') {
+    log(`stage 1: npm create nuxt@latest (non-interactive, ui template, in-place${noInstallLabel})`)
+    const createArgs = ['create', 'nuxt@latest', '.', '--', '--template', 'ui', '--packageManager', CFG.packageManager, '--gitInit', '--force', ...modulesFlag, ...noInstall]
+    let res = run('npm', createArgs)
+    if (res.status !== 0) {
+      log('npm create failed — clearing npm cache and retrying once')
+      run('npm', ['cache', 'clean', '--force'], { allowFail: true })
+      res = run('npm', createArgs)
+    }
+    if (res.status !== 0) {
+      log('npm create failed twice — falling back to npx nuxi init')
+      must('npx', ['nuxi@latest', 'init', '.', '--template', 'ui', '--packageManager', CFG.packageManager, '--gitInit', '--force', ...modulesFlag, ...noInstall], 'nuxi init fallback')
+    }
+  } else {
+    const repo = TEMPLATE_REPOS[CFG.template]
+    log(`stage 1: npx nuxi init (non-interactive, cloning gh:${repo}, in-place${noInstallLabel})`)
+    must('npx', ['nuxi@latest', 'init', '.', '--template', `gh:${repo}`, '--packageManager', CFG.packageManager, '--gitInit', '--force', ...noInstall], `nuxi init --template gh:${repo}`)
+  }
+
+  // --gitInit only fires when the install step runs; make sure a repo exists either way.
+  if (!fs.existsSync(path.join(CFG.targetDir, '.git'))) {
+    log('--gitInit did not fire — running git init explicitly')
+    must('git', ['init'], 'git init')
+  }
+
+  if (CFG.template === 'starter' && !CFG.skipInstall) {
+    // Registration check: create-nuxt@latest is unpinned, so --modules silently
+    // changing behavior is the risk a version pin used to cover.
+    verifyCoreModulesRegistered("Stage 1's --modules flag did not register core modules")
+  } else {
+    // Either a cloned template (arbitrary giget templates don't support --modules) or
+    // skipInstall (which drops --modules on every template, see above) — add and register
+    // the preset's core modules ourselves so Stage 1b's refresh step (which assumes
+    // they're already installed) sees the same shape as the starter+install path.
+    const registerVerb = CFG.skipInstall ? 'declaring' : 'installing'
+    const registerReason = CFG.template === 'starter' ? 'skipInstall drops --modules' : 'not supported by --modules on a cloned template'
+    const registerContext = CFG.template === 'starter' ? '(skipInstall path)' : 'after cloning the template'
+    log(`stage 1: ${registerVerb} core modules (pinia, vueuse) — ${registerReason}`)
+    if (CFG.skipInstall) declareDepsUnresolved(CORE_MODULES, [])
+    else pnpmAdd(CORE_MODULES)
+    for (const mod of CORE_MODULES) ensureModuleRegistered(mod)
+    verifyCoreModulesRegistered(`failed to register core modules ${registerContext}`)
+  }
+
+  if (CFG.template !== 'starter') dropOgImage()
+
+  const pkgPath = path.join(CFG.targetDir, 'package.json')
+  const pkg = JSON.parse(fs.readFileSync(pkgPath, 'utf8'))
+  pkg.name = CFG.projectName
+  writeFileEnsured(pkgPath, JSON.stringify(pkg, null, 2))
+  log(`stage 1 done — package.json name set to ${CFG.projectName}`)
+}
+
+/**
+ * Remove `nuxt-og-image` and its `defineOgImage(...)` calls from a cloned template (saas, docs and
+ * portfolio ship it). The scaffold sets `ssr: false`, and the module registers no `defineOgImage`
+ * auto-import without SSR, so `pnpm type-check` fails and the call throws in the browser. OG
+ * images are rendered on the server; an SPA has nowhere to render them. `useSiteConfig()` (docs'
+ * PageHeaderLinks) came in with the module's nuxt-site-config, so it is replaced by the request origin. `useSeoMeta({ ogImage })`
+ * meta tags stay — they need no module. Idempotent (resume re-runs it), and run right after the
+ * clone, before any `pnpm add`, so the lockfile is rewritten without the package.
+ */
+function dropOgImage() {
+  const root = CFG.targetDir
+  const pkgPath = path.join(root, 'package.json')
+  const pkg = JSON.parse(fs.readFileSync(pkgPath, 'utf8'))
+  let dropped = false
+  for (const field of ['dependencies', 'devDependencies']) {
+    if (pkg[field]?.['nuxt-og-image']) {
+      delete pkg[field]['nuxt-og-image']
+      dropped = true
+    }
+  }
+  if (dropped) writeFileEnsured(pkgPath, JSON.stringify(pkg, null, 2))
+
+  const configPath = path.join(root, 'nuxt.config.ts')
+  const config = fs.readFileSync(configPath, 'utf8')
+  const nextConfig = config
+    .replace(/^[ \t]*'nuxt-og-image',?[ \t]*\n/m, '')
+    .replace(/(,?)\n[ \t]*\n?[ \t]*ogImage:[ \t]*\{[^{}]*\}[ \t]*,?(?=\n)/, '')
+    .replace(/,(\s*\n[ \t]*\](?=,?\n))/, '$1') // `modules` loses its last entry: no trailing comma
+    .replace(/,(\s*\n\}\)\s*$)/, '$1') // the config object loses its last key
+  if (nextConfig !== config) fs.writeFileSync(configPath, nextConfig)
+
+  const appDir = path.join(root, 'app')
+  if (!fs.existsSync(appDir)) return
+  const call = String.raw`defineOgImage\((?:[^()]|\([^()]*\))*\)`
+  const elseCall = new RegExp(String.raw`[ \t]*else[ \t]*\{\s*${call}\s*\}`)
+  const lineCall = new RegExp(String.raw`^[ \t]*${call}[ \t]*\n`, 'gm')
+  for (const file of listFilesRecursive(appDir)) {
+    if (!/\.(vue|ts)$/.test(file)) continue
+    const src = fs.readFileSync(file, 'utf8')
+    if (!src.includes('defineOgImage') && !src.includes('useSiteConfig()')) continue
+    // `if (x) { useSeoMeta(...) } else { defineOgImage(...) }` → drop the else, keep the if.
+    // The if's closing brace and the else sit on one line (`} else {`), so match from that brace.
+    // `docs` reads its own origin from `useSiteConfig()`, which came with nuxt-og-image (nuxt-site-config).
+    const out = src.replace('const site = useSiteConfig()', 'const site = { url: useRequestURL().origin }').replace(new RegExp(String.raw`(\})[ \t]*${elseCall.source.trimStart()}`), '$1').replace(lineCall, '')
+      .replace(/\n{3,}/g, '\n\n') // a removed call leaves blank lines the stylistic rules reject
+      .replace(/\n\n(<\/script>)/g, '\n$1')
+    if (out.includes('defineOgImage') || out.includes('useSiteConfig')) fail(`${path.relative(root, file)}: a defineOgImage or useSiteConfig use this script cannot remove — template shape changed; re-verify artifacts.md`)
+    fs.writeFileSync(file, out)
+  }
+}
+
+function stage1bRefresh() {
+  if (CFG.skipInstall) {
+    log('stage 1b: skipped (skipInstall) — package.json keeps whatever versions create-nuxt@latest shipped, unrefreshed')
+    return
+  }
+  log(`stage 1b: refreshing template-installed packages (policy: ${CFG.versionPolicy})`)
+  const specs = TEMPLATE_PKGS.map((p) => {
+    if (CFG.versionPolicy === 'latest') return `${p}@latest`
+    const pkgJson = path.join(CFG.targetDir, 'node_modules', ...p.split('/'), 'package.json')
+    if (!fs.existsSync(pkgJson)) {
+      fail(`stage 1b: ${p} was not installed by stage 1 — create-nuxt@latest's template package set may have changed; re-verify bootstrap.md Stage 1`)
+    }
+    // Read the file directly — require()/import of '<pkg>/package.json' breaks on restrictive `exports` maps.
+    const v = JSON.parse(fs.readFileSync(pkgJson, 'utf8')).version
+    return `${p}@^${v.split('.')[0]}`
+  })
+  pnpmAdd(specs)
+
+  // Safety checks: catch an unwanted major or a changed template shape before later stages build on it.
+  const nuxtVersion = JSON.parse(fs.readFileSync(path.join(CFG.targetDir, 'node_modules', 'nuxt', 'package.json'), 'utf8')).version
+  if (nuxtVersion.split('.')[0] !== '4') {
+    fail(`nuxt is now v${nuxtVersion} (expected v4) — stop, re-validate this skill before continuing`)
+  }
+  const nuxtConfig = fs.readFileSync(path.join(CFG.targetDir, 'nuxt.config.ts'), 'utf8')
+  // `routeRules` is deliberately NOT part of this gate: 5 of the 8 cloned ui.nuxt.com templates
+  // (landing, docs, portfolio, chat, editor) ship no routeRules key at all, and requiring it here
+  // rejected them as "shape changed" when nothing had. mergeNuxtConfig() positions the merge
+  // by key order instead of anchoring on that key.
+  const missing = [
+    !fs.existsSync(path.join(CFG.targetDir, 'app', 'app.config.ts')) && 'app/app.config.ts',
+    !fs.existsSync(path.join(CFG.targetDir, 'eslint.config.mjs')) && 'eslint.config.mjs',
+    !nuxtConfig.includes('css:') && 'a css: key in nuxt.config.ts'
+  ].filter(Boolean)
+  if (missing.length) {
+    fail(`template shape changed — missing ${missing.join(', ')}; re-verify artifacts.md merge instructions (nuxt.config.ts key order, app.config.ts) before continuing`)
+  }
+  log('stage 1b done — nuxt v4 confirmed, template shape ok')
+}
+
+function stage2Preset() {
+  const devDeps = CFG.template === 'starter' ? [...PRESET_DEV_DEPS, ...STARTER_DEV_DEPS] : PRESET_DEV_DEPS
+  if (CFG.skipInstall) {
+    log('stage 2: skipped installing preset packages (skipInstall) — declaring them in package.json as "latest" for a later `pnpm install`')
+    declareDepsUnresolved(PRESET_DEPS, devDeps)
+    // Required for useQuery/useMutation to work at all — registration is a text edit, not an install.
+    ensureModuleRegistered('@pinia/colada-nuxt')
+    return
+  }
+  log('stage 2: installing preset packages')
+  pnpmAdd(PRESET_DEPS)
+  // Required for useQuery/useMutation to work at all (SSR-safe cache, auto PiniaColadaSSRNoGc) — not optional.
+  ensureModuleRegistered('@pinia/colada-nuxt')
+  // simple-git-hooks trips ERR_PNPM_IGNORED_BUILDS — expected; approved right after.
+  pnpmAdd(['-D', ...devDeps], ['simple-git-hooks'])
+  log('stage 2 done')
+}
+
+function ensureModuleRegistered(moduleName) {
+  const nuxtConfigPath = path.join(CFG.targetDir, 'nuxt.config.ts')
+  let content = fs.readFileSync(nuxtConfigPath, 'utf8')
+  if (!content.includes(moduleName)) {
+    // nuxi can silently skip registration when a native-dep build-approval prompt defaults to "No".
+    log(`${moduleName} missing from nuxt.config.ts modules — adding it`)
+    const m = content.match(/modules:\s*\[/)
+    if (!m) fail(`cannot find a modules array in nuxt.config.ts to register ${moduleName}`)
+    const at = m.index + m[0].length
+    content = `${content.slice(0, at)}\n    '${moduleName}',${content.slice(at)}`
+    fs.writeFileSync(nuxtConfigPath, content)
+  }
+}
+
+// Top-level nuxt.config key order, mirroring ORDER_KEYS in @nuxt/eslint-plugin's
+// nuxt/nuxt-config-keys-order (the plugin's `$`-prefixed env-key regex included). `pnpm lint` at
+// stage 5 is not run with --fix, so a misplaced key fails the scaffold rather than self-healing.
+// A key the rule doesn't know sorts last — Infinity here.
+const NUXT_KEY_ORDER = [
+  'appId', 'buildId', 'extends', 'theme', 'modules', 'plugins', /^\$/, 'ssr', 'pages', 'components',
+  'imports', 'devtools', 'app', 'css', 'vue', 'router', 'unhead', 'site', 'colorMode', 'content', 'mdc',
+  'ui', 'spaLoadingTemplate', 'appConfig', 'runtimeConfig', 'dir', 'rootDir', 'srcDir', 'appDir',
+  'workspaceDir', 'serverDir', 'buildDir', 'modulesDir', 'analyzeDir', 'alias', 'extensions', 'ignore',
+  'ignoreOptions', 'ignorePrefix', 'builder', 'build', 'generate', 'routeRules', 'sourcemap',
+  'optimization', 'dev', 'devServer', 'watch', 'watchers', 'future', 'features', 'experimental',
+  'compatibilityDate', 'nitro', 'hub', 'serverHandlers', 'devServerHandlers', 'vite', 'webpack',
+  'typescript', 'postcss', 'test', 'telemetry', 'debug', 'logLevel', 'hooks'
+]
+
+function keyRank(name) {
+  const i = NUXT_KEY_ORDER.findIndex((k) => (typeof k === 'string' ? k === name : k.test(name)))
+  return i === -1 ? Infinity : i
+}
+
+/**
+ * Insert a new top-level key (`text`: one or more whole lines, 2-space indented) into
+ * defineNuxtConfig({ … }) where nuxt/nuxt-config-keys-order wants it: before the first existing
+ * top-level key that ranks after it. Anchoring on one fixed key (`routeRules`, `css`) broke
+ * templates that ship without it, so the position comes from the rank table instead. The insert
+ * point backs up over a comment block directly above that key, so the comment stays with its key.
+ */
+function insertTopLevelKey(source, name, text) {
+  const open = source.match(/defineNuxtConfig\(\{[ \t]*\n/)
+  if (!open) fail('cannot find defineNuxtConfig({ in nuxt.config.ts — template shape changed; re-verify artifacts.md')
+  const start = open.index + open[0].length
+  const rank = keyRank(name)
+  const next = [...source.slice(start).matchAll(/^[ \t]{2}(\$?[A-Za-z_][\w$]*)\s*:/gm)]
+    .find((m) => keyRank(m[1]) > rank)
+  // Every template ends on keys that rank after what we insert (`compatibilityDate`, `eslint`, …),
+  // so no anchor at all means a shape this script hasn't seen — fail rather than guess.
+  if (!next) fail(`no nuxt.config.ts key ranks after ${name} — template shape changed; re-verify artifacts.md`)
+  let at = start + next.index
+  const lines = source.slice(0, at).split('\n')
+  lines.pop() // the partial line before the key
+  while (lines.length && /^\s*\/\//.test(lines[lines.length - 1])) lines.pop()
+  at = lines.join('\n').length + 1
+  return source.slice(0, at) + text + source.slice(at)
+}
+
+/**
+ * Merge the pass-through's three settings into nuxt.config.ts: `ssr: false` (no SSR, ever),
+ * the `cloudflare_module` Nitro preset, and `runtimeConfig.apiOrigin` — the server-only
+ * NUXT_API_ORIGIN the /api pass-through forwards to. A template that already sets `ssr`, a
+ * `nitro` block or a `runtimeConfig` (`editor` ships `public.partykitHost`) is merged into rather
+ * than given a second key, which the old `includes('runtimeConfig')` check would have skipped
+ * silently. Idempotent — resume re-runs it.
+ */
+function mergeNuxtConfig(source) {
+  let out = source
+  if (/^[ \t]{2}ssr:/m.test(out)) out = out.replace(/^([ \t]{2}ssr:)[ \t]*\w+/m, '$1 false')
+  else out = insertTopLevelKey(out, 'ssr', '  ssr: false,\n')
+
+  const nitro = out.match(/^([ \t]{2})nitro:[ \t]*\{/m)
+  if (!nitro) out = insertTopLevelKey(out, 'nitro', "  nitro: { preset: 'cloudflare_module' },\n")
+  else if (/\bpreset:/.test(out.slice(nitro.index))) {
+    out = out.slice(0, nitro.index) + out.slice(nitro.index).replace(/\bpreset:[ \t]*(['"])[\w-]+\1/, "preset: 'cloudflare_module'")
+  }
+  else {
+    const at = nitro.index + nitro[0].length
+    out = `${out.slice(0, at)}\n${nitro[1]}  preset: 'cloudflare_module',${out.slice(at)}`
+  }
+
+  if (!/\bapiOrigin\b/.test(out)) {
+    const comment = '// server-only; set via NUXT_API_ORIGIN env'
+    const existing = out.match(/^([ \t]*)runtimeConfig:\s*\{/m)
+    if (existing) {
+      const at = existing.index + existing[0].length
+      const indent = `${existing[1]}  `
+      out = `${out.slice(0, at)}\n${indent}${comment}\n${indent}apiOrigin: '',${out.slice(at)}`
+    } else {
+      out = insertTopLevelKey(out, 'runtimeConfig', `  ${comment}\n  runtimeConfig: { apiOrigin: '' },\n`)
+    }
+  }
+  return out
+}
+
+function applyArtifacts() {
+  log('stage 3: applying artifacts')
+  const subs = {
+    PROJECT_NAME: CFG.projectName,
+    PRIMARY: CFG.theme.primary,
+    NEUTRAL: CFG.theme.neutral
+  }
+
+  // Write-fresh files (ours — safe to overwrite on resume).
+  const filesRoot = path.join(TEMPLATES, 'files')
+  for (const src of listFilesRecursive(filesRoot)) {
+    const rel = path.relative(filesRoot, src)
+    writeFileEnsured(path.join(CFG.targetDir, rel), substitute(fs.readFileSync(src, 'utf8'), subs))
+  }
+  // Template-specific overlays (same write-fresh mechanism as `files/`, gated by CFG.template):
+  // `starter` gets the Nuxt Layers scaffolding (per-layer nuxt.config.ts + eslint.boundaries.mjs)
+  // that restructureStarterLayers() then wires up — openapi.yaml + the api-client are universal now,
+  // shipped via `files/`; `saas` gets the cookie-session pages (login/signup) + private
+  // dashboard the official template doesn't ship.
+  const templateOverlay = CFG.template === 'starter' ? 'starter' : CFG.template === 'saas' ? 'saas' : null
+  if (templateOverlay) {
+    const overlayRoot = path.join(TEMPLATES, templateOverlay)
+    for (const src of listFilesRecursive(overlayRoot)) {
+      if (path.relative(overlayRoot, src).startsWith(`merge${path.sep}`)) continue // handled below, JSON-merged not overwritten
+      const rel = path.relative(overlayRoot, src)
+      writeFileEnsured(path.join(CFG.targetDir, rel), substitute(fs.readFileSync(src, 'utf8'), subs))
+    }
+  }
+  if (CFG.template !== 'starter') dropOgImage()
+  // nuxt.config.ts merge: ssr false, cloudflare_module preset, runtimeConfig.apiOrigin, each placed
+  // per nuxt/nuxt-config-keys-order (comment on its own line — a trailing comment trips
+  // @stylistic/no-multi-spaces).
+  const nuxtConfigPath = path.join(CFG.targetDir, 'nuxt.config.ts')
+  let nuxtConfig = mergeNuxtConfig(fs.readFileSync(nuxtConfigPath, 'utf8'))
+  // devtools: the preset ships with devtools off by default.
+  if (!nuxtConfig.includes('devtools: { enabled: false }')) {
+    const before = nuxtConfig
+    nuxtConfig = nuxtConfig.replace(/devtools:\s*\{\s*enabled:\s*true\s*\}/, 'devtools: { enabled: false }')
+    if (nuxtConfig === before) fail('cannot find devtools: { enabled: true } in nuxt.config.ts — template shape changed; re-verify artifacts.md')
+  }
+  // The ui template ships nuxt.config.ts without a trailing newline (@stylistic/eol-last fails lint).
+  if (!nuxtConfig.endsWith('\n')) nuxtConfig += '\n'
+  fs.writeFileSync(nuxtConfigPath, nuxtConfig)
+
+  // app/app.config.ts: set theme colors in place (template ships green/slate).
+  const appConfigPath = path.join(CFG.targetDir, 'app', 'app.config.ts')
+  let appConfig = fs.readFileSync(appConfigPath, 'utf8')
+  const before = appConfig
+  appConfig = appConfig
+    .replace(/primary:\s*(['"])[a-z]+\1/, `primary: '${CFG.theme.primary}'`)
+    .replace(/neutral:\s*(['"])[a-z]+\1/, `neutral: '${CFG.theme.neutral}'`)
+  if (appConfig === before && (!appConfig.includes(`'${CFG.theme.primary}'`) || !appConfig.includes(`'${CFG.theme.neutral}'`))) {
+    fail('could not set theme colors in app/app.config.ts — template shape changed; re-verify artifacts.md')
+  }
+  fs.writeFileSync(appConfigPath, appConfig)
+
+  // app/assets/css/main.css: BigIn brand default is Google Sans, regardless of
+  // which font a given ui-templates repo ships (most ship 'Public Sans'; landing
+  // ships 'Instrument Sans') — replace whatever's quoted after --font-sans.
+  const mainCssPath = path.join(CFG.targetDir, 'app', 'assets', 'css', 'main.css')
+  let mainCss = fs.readFileSync(mainCssPath, 'utf8')
+  if (!mainCss.includes("--font-sans: 'Google Sans'")) {
+    const before = mainCss
+    mainCss = mainCss.replace(/--font-sans:\s*'[^']+'/, "--font-sans: 'Google Sans'")
+    if (mainCss === before) fail('cannot find --font-sans in app/assets/css/main.css — template shape changed; re-verify artifacts.md')
+  }
+  fs.writeFileSync(mainCssPath, mainCss)
+
+  // JSON merges — merge, never overwrite.
+  mergeJsonFile(path.join(CFG.targetDir, 'package.json'), JSON.parse(readTemplate(path.join('merge', 'package.json'), subs)))
+  mergeJsonFile(path.join(CFG.targetDir, '.claude', 'settings.json'), JSON.parse(readTemplate(path.join('merge', 'claude-settings.json'), subs)))
+  mergeJsonFile(path.join(CFG.targetDir, '.vscode', 'settings.json'), JSON.parse(readTemplate(path.join('merge', 'vscode-settings.json'), subs)))
+
+  // starter-only: fold the flat app/composables + shared/api-client into Nuxt
+  // Layers and wire the boundary lint (ADR §5.1/5.3). The 8 cloned templates keep
+  // their upstream layout — see SKILL.md's documented asymmetry.
+  if (CFG.template === 'starter') restructureStarterLayers()
+  // Universal: ignore the generated openapi schema in lint (+ append boundaries on starter).
+  patchEslintConfig()
+
+  // .env must never be committed.
+  const gitignorePath = path.join(CFG.targetDir, '.gitignore')
+  const gitignore = fs.existsSync(gitignorePath) ? fs.readFileSync(gitignorePath, 'utf8') : ''
+  if (!gitignore.split(/\r?\n/).includes('.env')) {
+    fs.writeFileSync(gitignorePath, `${gitignore}${gitignore.endsWith('\n') || gitignore === '' ? '' : '\n'}.env\n`)
+  }
+  log('stage 3 done — artifacts written/merged')
+}
+
+/**
+ * starter-only Nuxt Layers restructuring (ADR §5.1/5.3). The base `files/` overlay
+ * writes the api-client + users composable at flat root locations (the layout the
+ * 8 cloned templates keep); here we relocate them into layers/ and wire the
+ * boundary lint. Deliberately NOT applied to any cloned template — retrofitting
+ * Layers onto an externally-cloned upstream layout risks fighting it (see SKILL.md).
+ *
+ * The layer nuxt.config.ts files + eslint.boundaries.mjs already landed via the
+ * `starter/` overlay; this only moves files, fixes their import paths, and patches
+ * the root nuxt.config.ts (extends) + eslint.config.mjs (boundariesConfig).
+ */
+function restructureStarterLayers() {
+  log('stage 3b: restructuring starter into Nuxt Layers (feature boundaries)')
+
+  const move = (fromRel, toRel) => {
+    const from = path.join(CFG.targetDir, ...fromRel.split('/'))
+    const to = path.join(CFG.targetDir, ...toRel.split('/'))
+    if (!fs.existsSync(from)) fail(`starter Layers: expected ${fromRel} before restructuring — files/ overlay shape changed; re-verify artifacts.md`)
+    fs.mkdirSync(path.dirname(to), { recursive: true })
+    // Idempotent on resume: applyArtifacts() rewrites the `files/` overlay sources
+    // fresh on every run, so a second pass finds the destination already populated
+    // from the first — renameSync would throw ENOTEMPTY. The overlay copy is
+    // authoritative, so drop the stale destination and move the fresh one in.
+    fs.rmSync(to, { recursive: true, force: true })
+    fs.renameSync(from, to)
+    // Prune now-empty ancestor dirs left behind by the move (e.g. shared/,
+    // app/composables/queries/) so the tree has no confusing empty stubs.
+    for (let dir = path.dirname(from); dir !== CFG.targetDir; dir = path.dirname(dir)) {
+      try {
+        if (fs.readdirSync(dir).length === 0) fs.rmdirSync(dir)
+        else break
+      } catch { break }
+    }
+  }
+  const rewrite = (rel, from, to) => {
+    const p = path.join(CFG.targetDir, ...rel.split('/'))
+    fs.writeFileSync(p, fs.readFileSync(p, 'utf8').split(from).join(to))
+  }
+
+  // shared kernel → layers/shared; users feature → layers/users.
+  move('shared/api-client', 'layers/shared/api-client')
+  move('app/composables/queries/users.ts', 'layers/users/app/composables/queries/users.ts')
+
+  // Fix the cross-layer import (feature → shared, allowed by the boundary policy)
+  // and the test's import of the now-relocated composable.
+  rewrite('layers/users/app/composables/queries/users.ts', '~~/shared/api-client', '~~/layers/shared/api-client')
+  rewrite('tests/app/composables/queries/users.test.ts', '~~/app/composables/queries/users', '~~/layers/users/app/composables/queries/users')
+
+  // Root nuxt.config.ts: register the layers via `extends` (must be the first key —
+  // nuxt/nuxt-config-keys-order sorts `extends` ahead of `modules`).
+  const nuxtConfigPath = path.join(CFG.targetDir, 'nuxt.config.ts')
+  let nuxtConfig = fs.readFileSync(nuxtConfigPath, 'utf8')
+  if (!nuxtConfig.includes('extends:')) {
+    const m = nuxtConfig.match(/defineNuxtConfig\(\{\n/)
+    if (!m) fail('starter Layers: cannot find defineNuxtConfig({ in nuxt.config.ts — template shape changed; re-verify artifacts.md')
+    const at = m.index + m[0].length
+    nuxtConfig = `${nuxtConfig.slice(0, at)}  extends: ['./layers/shared', './layers/users'],\n${nuxtConfig.slice(at)}`
+    fs.writeFileSync(nuxtConfigPath, nuxtConfig)
+  }
+
+  // The universal `openapi-types` script (merged into package.json earlier) writes
+  // `-o shared/api-client/schema.d.ts`, but the move above relocated that dir to
+  // layers/shared/api-client. Repoint the output so `pnpm openapi-types`
+  // regenerates the client in place instead of recreating a stray root-level
+  // shared/api-client/. Idempotent (resume-safe) via the layers/ guard.
+  const pkgPath = path.join(CFG.targetDir, 'package.json')
+  const pkg = JSON.parse(fs.readFileSync(pkgPath, 'utf8'))
+  const openapiScript = pkg.scripts?.['openapi-types']
+  if (openapiScript?.includes('shared/api-client/schema.d.ts') && !openapiScript.includes('layers/shared/api-client')) {
+    pkg.scripts['openapi-types'] = openapiScript.replace('shared/api-client/schema.d.ts', 'layers/shared/api-client/schema.d.ts')
+    writeFileEnsured(pkgPath, JSON.stringify(pkg, null, 2))
+  }
+  // Boundary lint wiring (import + composer .append) is done by patchEslintConfig.
+}
+
+/**
+ * Patch the create-nuxt eslint.config.mjs via @nuxt/eslint's FlatConfigComposer
+ * chain (withNuxt(...).append(...)) — NOT by injecting call arguments, which
+ * trips @stylistic/comma-dangle. Universal: every template must ignore the
+ * generated openapi-typescript schema (4-space/double-quote/semicolon output that
+ * conflicts with @stylistic). starter additionally appends the layer boundary
+ * config. Idempotent (resume-safe): re-running detects the marker and skips.
+ */
+function patchEslintConfig() {
+  const p = path.join(CFG.targetDir, 'eslint.config.mjs')
+  if (!fs.existsSync(p)) fail('eslint.config.mjs not found — create-nuxt/nuxi template shape changed; re-verify artifacts.md')
+  let content = fs.readFileSync(p, 'utf8')
+  if (content.includes('api-client/schema.d.ts')) return // already patched (resume-safe)
+
+  const starter = CFG.template === 'starter'
+  if (starter) {
+    content = content.replace(
+      /(import\s+withNuxt\s+from\s+['"]\.\/\.nuxt\/eslint\.config\.mjs['"]\n?)/,
+      `$1import { boundariesConfig } from './eslint.boundaries.mjs'\n`
+    )
+    if (!content.includes('eslint.boundaries.mjs')) fail('cannot add boundariesConfig import to eslint.config.mjs — shape changed; re-verify artifacts.md')
+  }
+
+  // Chain onto withNuxt(...)'s closing paren via @nuxt/eslint's FlatConfigComposer
+  // (.append) — appending call ARGUMENTS instead would trip @stylistic/comma-dangle.
+  // Same-line to sidestep chained-member indent rules. The generated openapi-typescript
+  // schema is ignored everywhere (its formatting conflicts with @stylistic); starter
+  // additionally appends the layer boundary config.
+  const chain = `.append({ ignores: ['**/api-client/schema.d.ts'] })${starter ? '.append(boundariesConfig)' : ''}`
+  const trimmed = content.replace(/\s+$/, '')
+  const m = trimmed.match(/\)(;?)$/)
+  if (!m) fail('cannot find the withNuxt(...) closing paren in eslint.config.mjs — shape changed; re-verify artifacts.md')
+  const cut = trimmed.length - m[0].length + 1 // index just after the closing ')'
+  content = `${trimmed.slice(0, cut)}${chain}${m[1]}\n`
+  fs.writeFileSync(p, content)
+}
+
+function activateHooks() {
+  log('stage 4: activating simple-git-hooks pre-commit gate')
+  let res = run('pnpm', ['simple-git-hooks'], { capture: true, allowFail: true })
+  process.stdout.write(res.stdout)
+  if (res.status !== 0 && (res.stdout + res.stderr).includes('ERR_PNPM_IGNORED_BUILDS')) {
+    run('pnpm', ['approve-builds', 'simple-git-hooks'], { capture: true, allowFail: true })
+    res = run('pnpm', ['simple-git-hooks'], { capture: true, allowFail: true })
+    process.stdout.write(res.stdout)
+  }
+  if (res.status !== 0) {
+    process.stderr.write(res.stderr)
+    fail('pnpm simple-git-hooks failed')
+  }
+}
+
+function verify() {
+  // Collapse duplicate transitive versions the staged `pnpm add` sequence leaves behind.
+  // Stages 1/1b/2 install in four passes, and pnpm keeps whatever a pass already resolved —
+  // on the `docs` template that stranded two h3 majors in the server type graph, and
+  // `nuxt typecheck` failed on the template's OWN routes as well as ours. A single `pnpm install` of the same package set resolves one h3
+  // and type-checks clean, so this is an install-order artifact, not a version conflict.
+  log('stage 4b: pnpm dedupe — collapsing duplicate transitive versions from the staged installs')
+  must('pnpm', ['dedupe'], 'pnpm dedupe')
+  log('stage 5: verify — lint, type-check, test must all pass')
+  must('pnpm', ['lint'], 'pnpm lint')
+  must('pnpm', ['type-check'], 'pnpm type-check')
+  must('pnpm', ['test'], 'pnpm test')
+  log('stage 5 done — lint, type-check, test all green')
+}
+
+function commitIfDirty() {
+  if (!CFG.gitCommit || !fs.existsSync(path.join(CFG.targetDir, '.git'))) return
+  const status = run('git', ['status', '--porcelain'], { capture: true })
+  if (status.stdout.trim() === '') return
+  log('creating initial commit')
+  must('git', ['add', '-A'], 'git add')
+  must('git', ['commit', '-m', 'chore: scaffold Nuxt 4 app'], 'git commit')
+}
+
+function printNextSteps() {
+  const lines = [
+    '',
+    `Nuxt 4 app scaffolded (template: ${CFG.template}).`,
+    '',
+    'Next:'
+  ]
+  const apiOrigin = [
+    '  1. Copy .env.example → .env and set NUXT_API_ORIGIN (the paired API\'s origin, e.g. https://api.example.com;',
+    '     server-only). The app\'s /api/v<N>/** pass-through forwards there, so the API\'s HttpOnly session cookie',
+    '     is first-party to this app; the browser never holds a token. Set WEB_ORIGINS on the API to this app\'s origin.',
+    '     Client IP: the API sees this app\'s egress address, so all browser users share one rate-limit bucket —',
+    '     nothing forwards X-Forwarded-For / CF-Connecting-IP and TRUSTED_PROXY must stay unset (see .env.example).'
+  ]
+  if (CFG.template === 'starter') {
+    lines.push(
+      ...apiOrigin,
+      '  2. openapi.yaml is a placeholder contract. Standalone: copy the backend\'s openapi.yaml over it,',
+      '     set apiClient\'s baseURL to \'/api/v1\' (shared/api-client or layers/shared/api-client), and run:',
+      '     pnpm openapi-types. In a polyrepo project the contracts repo owns it — use contract-sync.',
+      '  3. Structure: layers/<feature>/app + layers/shared (api-client), boundaries lint on.',
+      '  4. Overlay governance: run bigin-harness-setup (CLAUDE.md, rules, bash-guard).',
+      '  5. Start: pnpm dev'
+    )
+  } else if (CFG.template === 'saas') {
+    lines.push(
+      ...apiOrigin,
+      '  2. Login/signup call POST /api/v1/auth/session and POST /api/v1/auth/signup; sign-out is',
+      '     DELETE /api/v1/auth/session; the current user is GET /api/v1/user/profile (a 401 sends the',
+      '     visitor to /login). Local dev needs HTTPS for the __Host- cookie, or the API\'s SESSION_COOKIE_SECURE=false.',
+      '  3. Overlay governance: run bigin-harness-setup (CLAUDE.md, rules, bash-guard).',
+      '  4. Start: pnpm dev — public site at /, private area at /dashboard (needs the API running).'
+    )
+  } else {
+    lines.push(
+      ...apiOrigin,
+      `  2. This is the official nuxt-ui-templates/${CFG.template} starter layered with the pass-through preset — see its own README for template-specific usage.`,
+      '  3. Overlay governance: run bigin-harness-setup (CLAUDE.md, rules, bash-guard).',
+      '  4. Start: pnpm dev'
+    )
+  }
+  if (CFG.versionPolicy === 'latest') {
+    lines.push('  ⚠ versionPolicy=latest — skim the changelogs for nuxt/@nuxt/ui/tailwindcss (and the other refreshed packages) for breaking changes before shipping.')
+  }
+  if (CFG.skipInstall) {
+    lines.push(
+      '  ⚠ skipInstall=true — no dependency is installed and nothing was verified. Before anything else:',
+      '     a. pnpm install',
+      '     b. pnpm approve-builds simple-git-hooks   (deferred build script)',
+      '     c. pnpm simple-git-hooks                  (activates the pre-commit hook)',
+      '     d. pnpm lint && pnpm type-check && pnpm test',
+      '  Preset packages (@pinia/colada*, zod, vitest, etc.) are pinned to the "latest" dist-tag in package.json, unresolved — pin exact versions once installed if you want reproducible installs.'
+    )
+  }
+  console.log(lines.join('\n'))
+}
+
+// ── main ────────────────────────────────────────────────────────────────
+
+const CFG = loadConfig()
+
+// Any unexpected throw still surfaces through fail()'s `[scaffold] ERROR:`
+// contract documented in SKILL.md, not as a raw Node stack trace.
+try {
+  preflight()
+  if (!CFG.resume) {
+    stage1Init()
+    stage1bRefresh()
+  }
+  stage2Preset()
+  applyArtifacts()
+  if (!CFG.skipInstall) {
+    activateHooks()
+    verify()
+  }
+  commitIfDirty()
+  printNextSteps()
+} catch (err) {
+  fail(err?.stack || String(err))
+}
