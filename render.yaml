@@ -1,0 +1,63 @@
+# BigIn backend trên Render — khai báo bằng code (Blueprint).
+# Dùng: Render Dashboard -> New -> Blueprint -> chọn repo -> trỏ file này.
+# Sau đó chỉ nhập secret 1 lần trên dashboard; code đổi thì Render tự redeploy.
+# Đối chiếu: docs/deployment-guide.md §3 (Build/Start Command + env).
+
+services:
+  - type: web
+    name: bigin-backend
+    runtime: node
+    # Node 20 khớp engines của repo (apps/frontend/package.json + README),
+    # khai chung trong envVars bên dưới.
+    # Khớp deployment-guide §3: cài deps -> generate client -> migrate schema
+    # -> build TypeScript. Migrate chạy ở build-time theo guide hiện tại.
+    buildCommand: pnpm install --frozen-lockfile && pnpm --filter backend exec prisma generate && pnpm --filter backend exec prisma migrate deploy && pnpm --filter backend build
+    # Khớp apps/backend/package.json:start (node dist/server.js).
+    startCommand: pnpm --filter backend start
+    # Render dùng làm health probe, khớp GET /health (src/app.ts).
+    healthCheckPath: /health
+    envVars:
+      - key: NODE_VERSION
+        value: 20
+      # Database Aiven MySQL — nhập giá trị thật trên dashboard (sync: false
+      # nghĩa là Render không đọc từ file, bạn tự điền, không commit secret).
+      - key: DB_HOST
+        sync: false
+      - key: DB_PORT
+        sync: false
+      - key: DB_USER
+        sync: false
+      - key: DB_PASSWORD
+        sync: false
+      - key: DB_NAME
+        sync: false
+      - key: DATABASE_URL
+        sync: false
+      # JWT/refresh — nhập chuỗi random dài trên dashboard.
+      - key: JWT_SECRET
+        sync: false
+      - key: JWT_EXPIRES_IN
+        value: 15m
+      - key: REFRESH_TOKEN_SECRET
+        sync: false
+      - key: REFRESH_TOKEN_EXPIRES_IN
+        value: 7d
+      # Role fallback khi approve registration mà không chọn role.
+      # PHẢI trùng tên role có sẵn trong DB (xem apps/backend/.env.example).
+      - key: DEFAULT_REGISTER_ROLE_NAME
+        value: staff
+      # Origin Vercel của frontend, chính xác, không "/" cuối.
+      - key: FRONTEND_ORIGIN
+        sync: false
+      # Media S3/CloudFront — bắt buộc vì NODE_ENV=production trên Render
+      # (validateProductionMediaConfig, src/shared/media-config.ts).
+      - key: AWS_REGION
+        sync: false
+      - key: AWS_S3_BUCKET_NAME
+        sync: false
+      - key: AWS_ACCESS_KEY_ID
+        sync: false
+      - key: AWS_SECRET_ACCESS_KEY
+        sync: false
+      - key: PUBLIC_MEDIA_BASE_URL
+        sync: false

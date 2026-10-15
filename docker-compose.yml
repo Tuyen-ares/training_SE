@@ -1,0 +1,67 @@
+# BigIn compose DEV: 1 lệnh dựng cả dàn (db + api + web).
+# Chạy:  docker compose up -d --build
+# Xem:   web http://localhost:8080 | api http://localhost:3000/api | health http://localhost:3000/health
+# Dừng:  docker compose down      (thêm -v là XÓA LUÔN data DB local)
+
+services:
+  # ---- Database dùng chung cho dev ----
+  db:
+    image: mariadb:11
+    environment:
+      MARIADB_ROOT_PASSWORD: root
+      MARIADB_DATABASE: bigin
+      MARIADB_USER: bigin
+      MARIADB_PASSWORD: bigin
+    volumes:
+      # Giữ data khi restart. LƯU Ý: `docker compose down -v` là mất hết.
+      - db-data:/var/lib/mysql
+    healthcheck:
+      # Backend chỉ migrate khi DB đã tỉnh (tránh crash loop).
+      test: ["CMD", "healthcheck.sh", "--connect", "--innodb_initialized"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  # ---- Backend Express (build từ apps/backend/Dockerfile) ----
+  api:
+    build:
+      context: .
+      dockerfile: apps/backend/Dockerfile
+    ports:
+      - "3000:3000"
+    environment:
+      DB_HOST: db            # tên service db, KHÔNG phải localhost
+      DB_PORT: 3306
+      DB_NAME: bigin
+      DB_USER: bigin
+      DB_PASSWORD: bigin
+      # Browser mở web ở :8080 -> origin này phải nằm trong CORS (src/app.ts).
+      FRONTEND_ORIGIN: http://localhost:8080
+      # Để trống (= development) để tránh boot-crash thiếu media config prod.
+      NODE_ENV: ""
+    entrypoint: ["sh", "-c", "./node_modules/.bin/prisma migrate deploy && exec node dist/server.js"]
+    depends_on:
+      db:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD-SHELL", "node -e \"fetch('http://localhost:3000/health').then(r=>{if(!r.ok)process.exit(1)}).catch(()=>process.exit(1))\""]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+
+  # ---- Frontend Vue (build từ apps/frontend/Dockerfile) ----
+  web:
+    build:
+      context: .
+      dockerfile: apps/frontend/Dockerfile
+      args:
+        # VITE_* nướng vào bundle lúc build. Browser gọi API trực tiếp nên
+        # dùng localhost:3000, không phải tên service nội bộ.
+        VITE_API_BASE_URL: http://localhost:3000/api
+    ports:
+      - "8080:80"
+    depends_on:
+      - api
+
+volumes:
+  db-data:

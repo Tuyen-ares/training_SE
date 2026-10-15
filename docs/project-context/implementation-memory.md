@@ -647,3 +647,28 @@ không cho phép request mới được tạo với purpose rỗng.
 
 **Affected areas:** F03 requirements/contracts, borrow request form/controller/DTO,
 Prisma schema and migration, integration validation coverage.
+
+### 2026-10-14 — Docker dev setup, CI gate và Render Blueprint
+
+**Feature:** Dev environment / CI-CD.
+
+**Decision:** Docker chỉ phục vụ dev local + CI validation, không chạy prod.
+`docker-compose.yml` dựng db (MariaDB 11, data vứt đi) + api + web; prod vẫn là
+Render (native Node, `render.yaml` Blueprint) + Vercel + Aiven MySQL. CI
+(`.github/workflows/ci.yml`) gate PR bằng typecheck, unit tests, `pnpm audit
+--prod --audit-level high`, build 2 app và `docker build` thử. `test:db` chưa
+chạy ở CI vì thiếu baseline seed. Harness `tooling/codex-marketplace` full sync
+upstream `tammai/bigin-skills` v1.110.1, giữ 4 skill `$bigin-*` cho stack
+Vue 3 + Express 5/Prisma của repo.
+
+**Reason:** PaaS tự build từ code nên image Docker không tham gia deploy; Docker
+giữ vai trò parity dev và lưới an toàn. Upstream skill dùng
+`${CLAUDE_PLUGIN_ROOT}`, dưới Codex là `$PLUGIN_ROOT` — việc hàng ngày dùng
+`$bigin-*` cho tới khi chuẩn hóa path.
+
+**Affected areas:** `apps/*/Dockerfile`, `docker-compose.yml`, `.github/`,
+`render.yaml`, `tooling/codex-marketplace/`.
+
+**Verification:** `docker compose up` (db healthy, 31 migrations, `/health`
+`{"status":"ok"}`, web 200 + SPA fallback 200), `ci.yml` parse OK, `render.yaml`
+parse OK, harness `hooks.test.mjs` 5/5.

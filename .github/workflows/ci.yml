@@ -1,0 +1,46 @@
+# BigIn CI: chạy mỗi push lên main và mỗi pull request.
+# Việc: cài deps -> prisma generate -> typecheck -> unit tests (không cần DB)
+#       -> build backend -> build frontend -> build 2 image Docker.
+# KHÔNG chạy: test:db (cần DB test + baseline data riêng), deploy/CD (làm sau).
+
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+jobs:
+  verify:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 10.32.1
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: pnpm
+
+      - run: pnpm install --frozen-lockfile
+
+      - run: pnpm --filter backend exec prisma generate
+
+      - run: pnpm --filter backend typecheck
+
+      # Unit/service tests: dùng fake/mock repo, không cần database thật.
+      - run: pnpm --filter backend test
+
+      # Scan bảo mật: fail nếu thư viện production có lỗ hổng high/critical.
+      - run: pnpm audit --prod --audit-level high
+
+      - run: pnpm --filter backend build
+
+      - run: pnpm build:frontend
+
+      # Build thử 2 image để chắc Dockerfile không gãy (chưa push đi đâu).
+      - run: docker build -f apps/backend/Dockerfile -t bigin-backend:ci .
+      - run: docker build -f apps/frontend/Dockerfile -t bigin-frontend:ci .

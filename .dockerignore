@@ -1,0 +1,15 @@
+# Giữ build context gọn + không lọt secret/code thừa vào image.
+node_modules/
+**/node_modules/
+dist/
+generated/
+.env
+.env.*
+!.env.example
+.git/
+training/
+docs/
+tooling/
+_workspace/
+.tmp/
+*.log
